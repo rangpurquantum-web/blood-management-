@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  Admin
+  Staff
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(Staff)
+  fullName     String
+  auditLogs    AuditLog[]
+}
+
+model Donor {
+  id             Int               @id @default(autoincrement())
+  fullName       String
+  dob            DateTime
+  gender         String
+  bloodType      String
+  phone          String            @unique
+  email          String            @unique
+  address        String
+  isEligible     Boolean           @default(true)
+  deferralReason String?
+  deferredUntil  DateTime?
+  donations      DonationHistory[]
+
+  @@index([fullName])
+  @@index([phone])
+}
+
+model DonationHistory {
+  id           Int      @id @default(autoincrement())
+  donorId      Int
+  donor        Donor    @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  patientName  String
+  hospitalName String
+  donationDate DateTime
+  notes        String?
+}
+
+model BloodRequest {
+  id            Int      @id @default(autoincrement())
+  patientName   String
+  bloodGroup    String
+  requiredUnits Int
+  requiredDate  DateTime
+  contactPerson String
+  contactNumber String
+  notes         String?
+  status        String   @default("Pending")
+
+  @@index([status, requiredDate])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String
+  timestamp DateTime @default(now())
+}
