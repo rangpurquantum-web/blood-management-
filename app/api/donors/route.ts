@@ -23,8 +23,8 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   if (q) {
     where.OR = [
-      { fullName: { contains: q, mode: "insensitive" } },
-      { phone: { contains: q, mode: "insensitive" } },
+      { fullName: { contains: q } },
+      { phone: { contains: q } },
     ];
   }
 
