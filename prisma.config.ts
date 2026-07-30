@@ -2,7 +2,7 @@ import path from "node:path";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  earlyAccess: true,
+  export default defineconfig({
   schema: path.join("prisma", "schema.prisma"),
   migrate: {
     seed: {
