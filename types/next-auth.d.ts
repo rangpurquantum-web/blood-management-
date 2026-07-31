@@ -1,6 +1,6 @@
 import { DefaultSession } from "next-auth";
 
-import { Role } from "@prisma/client";
+type Role = "ADMIN" | "VOLUNTEER";
 
 declare module "next-auth" {
   interface Session {

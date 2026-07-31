@@ -46,3 +46,9 @@ next-env.d.ts
 # pwa helpers
 generate-icons.ps1
 public/icons/placeholder.txt
+
+# scratch files
+scratch/
+scratch-test.ts
+check-users.ts
+
