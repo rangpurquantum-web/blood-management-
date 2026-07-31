@@ -51,7 +51,17 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        toast.error("Invalid email or password");
+        // Check for specific error types
+        if (
+          result.error.includes("ACCOUNT_INACTIVE") ||
+          result.error.includes("account_inactive")
+        ) {
+          toast.error("আপনার অ্যাকাউন্ট নিষ্ক্রিয় করা হয়েছে। অনুগ্রহ করে Admin-এর সাথে যোগাযোগ করুন।", {
+            duration: 6000,
+          });
+        } else {
+          toast.error("ইমেইল বা পাসওয়ার্ড সঠিক নয়");
+        }
         return;
       }
 

@@ -29,7 +29,7 @@ export const GET = withAuth(
         take: pageSize,
         include: {
           user: {
-            select: { fullName: true, email: true },
+            select: { name: true, email: true },
           },
         },
       }),
@@ -39,7 +39,7 @@ export const GET = withAuth(
     const formatted = logs.map((log) => ({
       id: log.id,
       userId: log.userId,
-      userFullName: log.user?.fullName ?? null,
+      userFullName: log.user?.name ?? null,
       action: log.action,
       details: log.details,
       timestamp: log.timestamp,
@@ -55,5 +55,5 @@ export const GET = withAuth(
       },
     });
   },
-  { roles: [Role.Admin] },
+  { roles: [Role.ADMIN] },
 );

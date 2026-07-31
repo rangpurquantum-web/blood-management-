@@ -19,7 +19,7 @@ export const GET = withAuth(
 
     if (isNaN(donorId)) return apiError("Invalid donor ID", 400);
 
-    const donor = await prisma.donor.findUnique({ where: { id: donorId } });
+    const donor = await prisma.donor.findFirst({ where: { id: donorId, isDeleted: false } });
 
     if (!donor) return apiError("Donor not found", 404);
 
@@ -51,7 +51,7 @@ export const POST = withAuth(
 
     if (!parsed.success) return validationError(parsed.error);
 
-    const donor = await prisma.donor.findUnique({ where: { id: donorId } });
+    const donor = await prisma.donor.findFirst({ where: { id: donorId, isDeleted: false } });
 
     if (!donor) return apiError("Donor not found", 404);
 
@@ -109,6 +109,7 @@ export const POST = withAuth(
       201,
     );
   },
+  { permission: "donorEdit" }
 );
 
 // ─── DELETE /api/donors/[id]/history — (Admin only, removes a donation record) ─
@@ -142,5 +143,5 @@ export const DELETE = withAuth(
 
     return apiSuccess({ message: "Donation record deleted" });
   },
-  { roles: [Role.Admin] },
+  { permission: "donorEdit" }
 );

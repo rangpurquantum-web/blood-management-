@@ -8,16 +8,27 @@ datasource db {
 }
 
 enum Role {
-  Admin
-  Staff
+  ADMIN
+  VOLUNTEER
+}
+
+enum DonorStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model User {
   id           Int        @id @default(autoincrement())
+  name         String
   email        String     @unique
   passwordHash String
-  role         Role       @default(Staff)
-  fullName     String
+  role         Role       @default(VOLUNTEER)
+  permissions  Json?
+  isActive     Boolean    @default(true)
+  isDeleted    Boolean    @default(false)
+  deletedAt    DateTime?
+  createdAt    DateTime   @default(now())
   auditLogs    AuditLog[]
 }
 
@@ -27,16 +38,33 @@ model Donor {
   dob            DateTime
   gender         String
   bloodType      String
-  phone          String            @unique
+  phone          DonorPhone[]
   email          String            @unique
   address        String
   isEligible     Boolean           @default(true)
   deferralReason String?
   deferredUntil  DateTime?
+  status         DonorStatus       @default(APPROVED)
+  isDeleted      Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  deletedAt      DateTime?
+  notes          String?
   donations      DonationHistory[]
 
   @@index([fullName])
-  @@index([phone])
+  @@index([isDeleted])
+  @@index([status])
+}
+
+model DonorPhone {
+  id        Int     @id @default(autoincrement())
+  donorId   Int
+  donor     Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  number    String
+  label     String
+  isPrimary Boolean
+
+  @@index([number])
 }
 
 model DonationHistory {
@@ -49,19 +77,6 @@ model DonationHistory {
   notes        String?
 }
 
-model BloodRequest {
-  id            Int      @id @default(autoincrement())
-  patientName   String
-  bloodGroup    String
-  requiredUnits Int
-  requiredDate  DateTime
-  contactPerson String
-  contactNumber String
-  notes         String?
-  status        String   @default("Pending")
-
-  @@index([status, requiredDate])
-}
 
 model AuditLog {
   id        Int      @id @default(autoincrement())

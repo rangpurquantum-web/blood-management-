@@ -2,16 +2,22 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { Donor, DonationHistory } from "@prisma/client";
+import type { Donor, DonationHistory, DonorPhone } from "@prisma/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type DonorWithDonations = Donor & { donations: DonationHistory[] };
+export type DonorWithPhone = Donor & { phone: DonorPhone[] };
+export type DonorWithDonations = Donor & { 
+  donations: DonationHistory[];
+  phone: DonorPhone[];
+};
 
 export interface DonorFilters {
   q?: string;
   bloodGroup?: string;
   eligible?: string;
+  status?: string;
+  area?: string;
 }
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -24,11 +30,13 @@ export const donorKeys = {
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 
-async function fetchDonors(filters: DonorFilters): Promise<Donor[]> {
+async function fetchDonors(filters: DonorFilters): Promise<DonorWithPhone[]> {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
   if (filters.bloodGroup) params.set("bloodGroup", filters.bloodGroup);
   if (filters.eligible) params.set("eligible", filters.eligible);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.area) params.set("area", filters.area);
 
   const res = await fetch(`/api/donors?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch donors");
@@ -66,6 +74,26 @@ export function useCreateDonor() {
   return useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
       const res = await fetch("/api/donors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw json;
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: donorKeys.all });
+    },
+  });
+}
+
+export function usePublicRegisterDonor() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

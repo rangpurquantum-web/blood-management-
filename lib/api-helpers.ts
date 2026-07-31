@@ -21,9 +21,11 @@ type RouteHandler = (
  *   export const GET = withAuth(handler);
  *   export const DELETE = withAuth(handler, { roles: ["Admin"] });
  */
+import { hasPermission, PermissionKey } from "@/lib/permissions";
+
 export function withAuth(
   handler: RouteHandler,
-  options: { roles?: Role[] } = {},
+  options: { roles?: Role[]; permission?: PermissionKey } = {},
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
   return async (
@@ -37,16 +39,25 @@ export function withAuth(
       return apiError("Unauthorized — please log in", 401);
     }
 
+    const userId = session.user.id ? Number(session.user.id) : 0;
     const userRole = session.user.role as Role | undefined;
 
-    if (options.roles && (!userRole || !options.roles.includes(userRole))) {
+    // Check custom permissions first if options.permission is specified
+    if (options.permission) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, permissions: true },
+      });
+      if (!dbUser || !hasPermission(dbUser, options.permission)) {
+        return apiError("Forbidden — insufficient permissions", 403);
+      }
+    } else if (options.roles && (!userRole || !options.roles.includes(userRole))) {
       return apiError("Forbidden — insufficient permissions", 403);
     }
 
-    const userId = session.user.id ? Number(session.user.id) : 0;
     const params = context?.params ? await context.params : undefined;
 
-    return handler(req, { userId, role: userRole ?? Role.Staff }, params);
+    return handler(req, { userId, role: userRole ?? Role.VOLUNTEER }, params);
   };
 }
 

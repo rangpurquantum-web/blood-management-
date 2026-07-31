@@ -6,7 +6,7 @@ import { AuditLogTable } from "@/features/audit-logs/components/audit-log-table"
 export default async function AuditLogsPage() {
   const session = await auth();
 
-  if (session?.user?.role !== Role.Admin) {
+  if (session?.user?.role !== Role.ADMIN) {
     redirect("/dashboard");
   }
 

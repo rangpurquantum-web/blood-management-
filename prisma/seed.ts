@@ -7,28 +7,28 @@ async function main() {
   console.log("🌱 Seeding database...");
 
   // ─── Users ────────────────────────────────────────────────────────────────
-  const adminHash = await bcrypt.hash("Admin@1234", 10);
-  const staffHash = await bcrypt.hash("Staff@1234", 10);
+  const adminHash = await bcrypt.hash("Qblood@2026", 10);
+  const staffHash = await bcrypt.hash("StaffPassword@2026!", 10);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@bloodbank.org" },
+    where: { email: "admin@qblood.org" },
     update: {},
     create: {
-      email: "admin@bloodbank.org",
+      email: "admin@qblood.org",
       passwordHash: adminHash,
-      role: "Admin",
-      fullName: "System Administrator",
+      role: "ADMIN",
+      name: "System Administrator",
     },
   });
 
   const staff = await prisma.user.upsert({
-    where: { email: "staff@bloodbank.org" },
+    where: { email: "staff@qblood.org" },
     update: {},
     create: {
-      email: "staff@bloodbank.org",
+      email: "staff@qblood.org",
       passwordHash: staffHash,
-      role: "Staff",
-      fullName: "Jane Cooper",
+      role: "VOLUNTEER",
+      name: "Jane Cooper",
     },
   });
 
@@ -145,10 +145,22 @@ async function main() {
   const donors: Awaited<ReturnType<typeof prisma.donor.create>>[] = [];
 
   for (const d of donorSeedData) {
+    const { phone, ...rest } = d;
     const donor = await prisma.donor.upsert({
       where: { email: d.email },
       update: {},
-      create: d,
+      create: {
+        ...rest,
+        phone: {
+          create: [
+            {
+              number: phone,
+              label: "Primary",
+              isPrimary: true,
+            },
+          ],
+        },
+      },
     });
     donors.push(donor);
   }
@@ -200,65 +212,7 @@ async function main() {
 
   console.log(`✅ ${donationSeeds.length} donation records seeded`);
 
-  // ─── Blood Requests ────────────────────────────────────────────────────────
-  const requestSeeds = [
-    {
-      patientName: "Bruce Wayne",
-      bloodGroup: "O-",
-      requiredUnits: 3,
-      requiredDate: new Date("2026-07-10T12:00:00Z"),
-      contactPerson: "Alfred Pennyworth",
-      contactNumber: "+8801799000001",
-      notes: "Emergency surgery support",
-      status: "Pending",
-    },
-    {
-      patientName: "Selina Kyle",
-      bloodGroup: "AB+",
-      requiredUnits: 1,
-      requiredDate: new Date("2026-07-05T10:00:00Z"),
-      contactPerson: "Dr. Leslie Thompkins",
-      contactNumber: "+8801799000002",
-      notes: "Standard preparation request",
-      status: "Pending",
-    },
-    {
-      patientName: "James Gordon",
-      bloodGroup: "A+",
-      requiredUnits: 2,
-      requiredDate: new Date("2026-06-20T09:00:00Z"),
-      contactPerson: "Barbara Gordon",
-      contactNumber: "+8801799000003",
-      notes: null,
-      status: "Fulfilled",
-    },
-    {
-      patientName: "Lois Lane",
-      bloodGroup: "B+",
-      requiredUnits: 4,
-      requiredDate: new Date("2026-06-15T08:00:00Z"),
-      contactPerson: "Perry White",
-      contactNumber: "+8801799000004",
-      notes: "Urgent — trauma case",
-      status: "Fulfilled",
-    },
-    {
-      patientName: "Lex Luthor",
-      bloodGroup: "O+",
-      requiredUnits: 2,
-      requiredDate: new Date("2026-06-10T07:00:00Z"),
-      contactPerson: "Mercy Graves",
-      contactNumber: "+8801799000005",
-      notes: "Elective procedure",
-      status: "Cancelled",
-    },
-  ];
 
-  for (const req of requestSeeds) {
-    await prisma.bloodRequest.create({ data: req });
-  }
-
-  console.log(`✅ ${requestSeeds.length} blood requests seeded`);
 
   // ─── Audit Logs ────────────────────────────────────────────────────────────
   await prisma.auditLog.createMany({
@@ -277,19 +231,14 @@ async function main() {
         userId: staff.id,
         action: "Donation Recorded",
         details: "Logged donation for Marcus Brody → patient Arthur Dent",
-      },
-      {
-        userId: admin.id,
-        action: "Blood Request Created",
-        details: "Created blood request for patient Bruce Wayne (O-, 3 units)",
-      },
+      }
     ],
   });
 
   console.log("✅ Audit log entries seeded");
   console.log("\n🎉 Database seeding complete!");
-  console.log("   Admin:  admin@bloodbank.org / Admin@1234");
-  console.log("   Staff:  staff@bloodbank.org / Staff@1234");
+  console.log("   Admin:  admin@qblood.org / Qblood@2026");
+  console.log("   Staff:  staff@qblood.org / StaffPassword@2026!");
 }
 
 main()

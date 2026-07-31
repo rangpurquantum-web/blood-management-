@@ -18,9 +18,10 @@ export const GET = withAuth(
 
     if (isNaN(id)) return apiError("Invalid donor ID", 400);
 
-    const donor = await prisma.donor.findUnique({
-      where: { id },
+    const donor = await prisma.donor.findFirst({
+      where: { id, isDeleted: false },
       include: {
+        phone: true,
         donations: {
           orderBy: { donationDate: "desc" },
         },
@@ -31,6 +32,7 @@ export const GET = withAuth(
 
     return NextResponse.json(donor);
   },
+  { permission: "donorView" }
 );
 
 // ─── PATCH /api/donors/[id] ───────────────────────────────────────────────────
@@ -52,7 +54,7 @@ export const PATCH = withAuth(
 
     if (!parsed.success) return validationError(parsed.error);
 
-    const existing = await prisma.donor.findUnique({ where: { id } });
+    const existing = await prisma.donor.findFirst({ where: { id, isDeleted: false } });
 
     if (!existing) return apiError("Donor not found", 404);
 
@@ -60,14 +62,26 @@ export const PATCH = withAuth(
     const data = parsed.data;
 
     if (data.email || data.phone) {
+      const phoneNumbers = data.phone ? data.phone.map((p) => p.number) : [];
       const conflict = await prisma.donor.findFirst({
         where: {
           AND: [
             { id: { not: id } },
+            { isDeleted: false },
             {
               OR: [
                 ...(data.email ? [{ email: data.email }] : []),
-                ...(data.phone ? [{ phone: data.phone }] : []),
+                ...(phoneNumbers.length > 0
+                  ? [
+                      {
+                        phone: {
+                          some: {
+                            number: { in: phoneNumbers },
+                          },
+                        },
+                      },
+                    ]
+                  : []),
               ],
             },
           ],
@@ -75,14 +89,49 @@ export const PATCH = withAuth(
       });
 
       if (conflict) {
-        const field = conflict.email === data.email ? "email" : "phone";
-        return apiError(`Another donor already has this ${field}`, 409);
+        if (conflict.email === data.email) {
+          return apiError(
+            `এই ইমেইল দিয়ে ইতিমধ্যে অন্য একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
+            409,
+          );
+        } else {
+          return apiError(
+            `এই নম্বর দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
+            409,
+          );
+        }
       }
     }
 
-    const updated = await prisma.donor.update({
-      where: { id },
-      data,
+    const { phone: phoneData, ...donorData } = data;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (phoneData) {
+        await tx.donorPhone.deleteMany({
+          where: { donorId: id },
+        });
+      }
+
+      return await tx.donor.update({
+        where: { id },
+        data: {
+          ...donorData,
+          ...(phoneData
+            ? {
+                phone: {
+                  create: phoneData.map((p) => ({
+                    number: p.number,
+                    label: p.label,
+                    isPrimary: p.isPrimary,
+                  })),
+                },
+              }
+            : {}),
+        },
+        include: {
+          phone: true,
+        },
+      });
     });
 
     await writeAuditLog(
@@ -93,6 +142,7 @@ export const PATCH = withAuth(
 
     return apiSuccess({ message: "Donor updated", donor: updated });
   },
+  { permission: "donorEdit" }
 );
 
 // ─── DELETE /api/donors/[id] ──────────────────────────────────────────────────
@@ -103,11 +153,17 @@ export const DELETE = withAuth(
 
     if (isNaN(id)) return apiError("Invalid donor ID", 400);
 
-    const existing = await prisma.donor.findUnique({ where: { id } });
+    const existing = await prisma.donor.findFirst({ where: { id, isDeleted: false } });
 
     if (!existing) return apiError("Donor not found", 404);
 
-    await prisma.donor.delete({ where: { id } });
+    await prisma.donor.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+    });
 
     await writeAuditLog(
       session.userId,
@@ -117,5 +173,5 @@ export const DELETE = withAuth(
 
     return apiSuccess({ message: "Donor deleted successfully" });
   },
-  { roles: [Role.Admin] },
+  { permission: "donorDelete" }
 );

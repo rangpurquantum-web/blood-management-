@@ -42,3 +42,7 @@ next-env.d.ts
 # prisma
 /prisma/*.db
 /prisma/*.db-journal
+
+# pwa helpers
+generate-icons.ps1
+public/icons/placeholder.txt

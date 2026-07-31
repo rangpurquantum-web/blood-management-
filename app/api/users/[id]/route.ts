@@ -1,0 +1,127 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { withAuth, apiError, apiSuccess } from "@/lib/api-helpers";
+import { Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
+
+export const dynamic = 'force-dynamic';
+
+// ─── PATCH /api/users/[id]/reset-password  (Admin only) ───────────────────────
+// Body: { newPassword }  — no current password required
+export const PATCH = withAuth(
+  async (req: NextRequest, session, params) => {
+    const targetId = Number(params?.id);
+    if (isNaN(targetId)) return apiError("Invalid user id", 400);
+
+    const body = await req.json();
+    const { newPassword, role, name, email, permissions, isActive } = body ?? {};
+
+    if (!newPassword && !role && !name && !email && !permissions && isActive === undefined) {
+      return apiError("At least one update field must be provided", 400);
+    }
+
+    const target = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!target) return apiError("User not found", 404);
+
+    const updateData: any = {};
+
+    if (name) {
+      updateData.name = String(name);
+    }
+
+    if (email) {
+      const existing = await prisma.user.findFirst({
+        where: { email: String(email), id: { not: targetId } },
+      });
+      if (existing) return apiError("Email already in use", 409);
+      updateData.email = String(email);
+    }
+
+    if (newPassword) {
+      if (typeof newPassword !== "string" || newPassword.length < 8) {
+        return apiError("newPassword must be at least 8 characters", 400);
+      }
+      updateData.passwordHash = await bcrypt.hash(newPassword, 12);
+    }
+
+    if (role) {
+      if (!["ADMIN", "VOLUNTEER"].includes(role)) {
+        return apiError("Invalid role", 400);
+      }
+      if (targetId === session.userId) {
+        return apiError("Cannot change your own role", 400);
+      }
+      updateData.role = role as Role;
+    }
+
+    if (permissions) {
+      if (typeof permissions !== "object") {
+        return apiError("Invalid permissions format", 400);
+      }
+      if (targetId === session.userId && permissions.userManagement === false) {
+        return apiError("Cannot remove your own user management permission", 400);
+      }
+      updateData.permissions = permissions;
+    }
+
+    if (isActive !== undefined) {
+      if (targetId === session.userId) {
+        return apiError("Cannot freeze your own account", 400);
+      }
+      updateData.isActive = Boolean(isActive);
+    }
+
+    await prisma.user.update({
+      where: { id: targetId },
+      data: updateData,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: session.userId,
+        action: "User Updated",
+        details: `Admin (id=${session.userId}) updated user account: ${target.email}`,
+      },
+    });
+
+    return apiSuccess({ message: "User updated successfully" });
+  },
+  { permission: "userManagement" }
+);
+
+// ─── DELETE /api/users/[id]  (Admin only — soft delete) ──────────────────────
+export const DELETE = withAuth(
+  async (_req: NextRequest, session, params) => {
+    const targetId = Number(params?.id);
+    if (isNaN(targetId)) return apiError("Invalid user id", 400);
+
+    // Admin cannot delete themselves
+    if (targetId === session.userId) return apiError("Cannot delete your own account", 400);
+
+    const target = await prisma.user.findUnique({
+      where: { id: targetId, isDeleted: false },
+    });
+    if (!target) return apiError("User not found", 404);
+
+    // Soft delete — mark as deleted, keep the record
+    await prisma.user.update({
+      where: { id: targetId },
+      data: {
+        isDeleted: true,
+        isActive: false,
+        deletedAt: new Date(),
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: session.userId,
+        action: "User Deleted",
+        details: `Admin (id=${session.userId}) soft-deleted user: ${target.email}`,
+      },
+    });
+
+    return apiSuccess({ message: "User deleted" });
+  },
+  { permission: "userManagement" }
+);

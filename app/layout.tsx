@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppProviders } from "@/components/providers/app-providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 
 import "./globals.css";
 
@@ -21,7 +22,21 @@ export const metadata: Metadata = {
   title: "Internal Blood Management System",
   description:
     "Secure internal portal for managing blood donors, donation history, and blood requests.",
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/icons/icon-192x192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Blood System",
+  },
 };
+
+export const viewport: Viewport = {
+  themeColor: "#991b1b",
+};
+
 
 export default function RootLayout({
   children,
@@ -29,8 +44,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans`} suppressHydrationWarning>
+    <html lang="bn" suppressHydrationWarning>
+      <head>
+        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/siam-rupali" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ekushey/fonts@master/siam-rupali/siamrupali.css" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" />
+      </head>
+      <body className="min-h-screen font-sans" suppressHydrationWarning>
+        <RegisterServiceWorker />
         <AppProviders>
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="top-center" richColors />

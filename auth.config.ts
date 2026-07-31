@@ -14,11 +14,10 @@ export const authConfig = {
       const pathname = request.nextUrl.pathname;
       const isLoggedIn = !!auth?.user;
       const isAuthRoute = pathname.startsWith("/login");
-      const isPublicRoute = pathname === "/" || isAuthRoute;
+      const isPublicRoute = pathname === "/" || isAuthRoute || pathname.startsWith("/register");
       const isProtectedRoute =
         pathname.startsWith("/dashboard") ||
         pathname.startsWith("/donors") ||
-        pathname.startsWith("/requests") ||
         pathname.startsWith("/reports") ||
         pathname.startsWith("/import") ||
         pathname.startsWith("/audit-logs");
@@ -41,12 +40,21 @@ export const authConfig = {
       if (user?.role) {
         token.role = user.role as Role;
       }
+      if (user && "permissions" in user) {
+        token.permissions = user.permissions;
+      }
 
       return token;
     },
     session: async ({ session, token }) => {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+      }
       if (session.user && token.role) {
         session.user.role = token.role as Role;
+      }
+      if (session.user && "permissions" in token) {
+        session.user.permissions = token.permissions;
       }
 
       return session;

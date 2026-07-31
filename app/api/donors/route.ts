@@ -11,20 +11,37 @@ import {
 import { donorSchema } from "@/features/donors";
 
 // ─── GET /api/donors ──────────────────────────────────────────────────────────
-// Query params: q (name/phone search), bloodGroup, eligible (true/false)
+// Query params: q (name/phone search), bloodGroup, eligible (true/false), area
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(
+  async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q") ?? "";
   const bloodGroup = searchParams.get("bloodGroup") ?? "";
+  const statusParam = searchParams.get("status");
   const eligibleParam = searchParams.get("eligible");
+  const area = searchParams.get("area") ?? "";
 
-  const where: Prisma.DonorWhereInput = {};
+  const where: Prisma.DonorWhereInput = {
+    isDeleted: false,
+  };
+
+  if (statusParam && statusParam !== "all") {
+    where.status = statusParam as any;
+  } else if (!statusParam) {
+    where.status = "APPROVED";
+  }
 
   if (q) {
     where.OR = [
-      { fullName: { contains: q } },
-      { phone: { contains: q } },
+      { fullName: { contains: q, mode: "insensitive" } },
+      {
+        phone: {
+          some: {
+            number: { contains: q },
+          },
+        },
+      },
     ];
   }
 
@@ -34,6 +51,10 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   if (eligibleParam !== null) {
     where.isEligible = eligibleParam === "true";
+  }
+
+  if (area) {
+    where.address = { contains: area, mode: "insensitive" };
   }
 
   const donors = await prisma.donor.findMany({
@@ -55,11 +76,14 @@ export const GET = withAuth(async (req: NextRequest) => {
   });
 
   return NextResponse.json(donors);
-});
+  },
+  { permission: "donorView" }
+);
 
 // ─── POST /api/donors ─────────────────────────────────────────────────────────
 
-export const POST = withAuth(async (req: NextRequest, session) => {
+export const POST = withAuth(
+  async (req: NextRequest, session) => {
   let body: unknown;
 
   try {
@@ -77,24 +101,54 @@ export const POST = withAuth(async (req: NextRequest, session) => {
   const data = parsed.data;
 
   // Uniqueness checks
+  const phoneNumbers = data.phone.map((p) => p.number);
   const existing = await prisma.donor.findFirst({
     where: {
-      OR: [{ email: data.email }, { phone: data.phone }],
+      AND: [
+        { isDeleted: false },
+        {
+          OR: [
+            { email: data.email },
+            {
+              phone: {
+                some: {
+                  number: { in: phoneNumbers },
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
   });
 
   if (existing) {
-    const field = existing.email === data.email ? "email" : "phone";
-    return apiError(
-      `A donor with this ${field} already exists`,
-      409,
-    );
+    if (existing.email === data.email) {
+      return apiError(
+        `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
+        409,
+      );
+    } else {
+      return apiError(
+        `এই নম্বর দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
+        409,
+      );
+    }
   }
+
+  const { phone: phoneData, ...donorData } = data;
 
   const donor = await prisma.donor.create({
     data: {
-      ...data,
+      ...donorData,
       isEligible: true,
+      phone: {
+        create: phoneData.map((p) => ({
+          number: p.number,
+          label: p.label,
+          isPrimary: p.isPrimary,
+        })),
+      },
     },
   });
 
@@ -105,4 +159,6 @@ export const POST = withAuth(async (req: NextRequest, session) => {
   );
 
   return apiSuccess({ message: "Donor registered successfully", donorId: donor.id }, 201);
-});
+  },
+  { permission: "donorAdd" }
+);

@@ -24,16 +24,28 @@ export const donorSchema = z.object({
     errorMap: () => ({ message: "Invalid blood type" }),
   }),
   phone: z
-    .string()
-    .min(7, "Phone number is too short")
-    .max(20, "Phone number is too long"),
+    .array(
+      z.object({
+        number: z.string().regex(/^01\d{9}$/, "Must be a valid 11-digit Bangladeshi mobile number (01XXXXXXXXX)"),
+        label: z.string().min(1, "Label is required"),
+        isPrimary: z.boolean(),
+      })
+    )
+    .min(1, "At least one phone number is required")
+    .refine(
+      (phones) => phones.filter((p) => p.isPrimary).length === 1,
+      { message: "Exactly one phone number must be marked as primary" }
+    ),
   email: z.string().email("Invalid email address"),
   address: z.string().min(1, "Address is required"),
 });
 
 // ─── Donor Update Schema (all fields optional) ───────────────────────────────
 
-export const donorUpdateSchema = donorSchema.partial();
+export const donorUpdateSchema = donorSchema.partial().extend({
+  status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
+  notes: z.string().optional().nullable(),
+});
 
 // ─── Manual Deferral Schema ────────────────────────────────────────────────────
 

@@ -28,6 +28,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        if (user.isDeleted) {
+          // Account has been permanently deleted
+          return null;
+        }
+
+        if (!user.isActive) {
+          throw new Error("ACCOUNT_INACTIVE");
+        }
+
         const passwordMatch = await bcrypt.compare(
           String(credentials.password),
           user.passwordHash,
@@ -40,8 +49,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return {
           id: String(user.id),
           email: user.email,
-          name: user.fullName,
+          name: user.name,
           role: user.role,
+          permissions: user.permissions,
         };
       },
     }),

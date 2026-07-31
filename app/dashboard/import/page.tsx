@@ -6,7 +6,7 @@ import { FileUploader } from "@/features/import-export/components/file-uploader"
 export default async function ImportPage() {
   const session = await auth();
 
-  if (session?.user?.role !== Role.Admin) {
+  if (session?.user?.role !== Role.ADMIN) {
     redirect("/dashboard");
   }
 

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   withAuth,
@@ -29,7 +30,7 @@ export const PATCH = withAuth(
 
     if (!parsed.success) return validationError(parsed.error);
 
-    const donor = await prisma.donor.findUnique({ where: { id } });
+    const donor = await prisma.donor.findFirst({ where: { id, isDeleted: false } });
 
     if (!donor) return apiError("Donor not found", 404);
 
@@ -59,4 +60,5 @@ export const PATCH = withAuth(
       },
     });
   },
+  { permission: "approveReject" }
 );

@@ -48,7 +48,13 @@ export function FileUploader() {
             dob: row.dob || row.dateOfBirth || "2000-01-01",
             gender: row.gender || "",
             bloodType: row.bloodType || row.bloodGroup || "",
-            phone: row.phone || row.phoneNumber || "",
+            phone: [
+              {
+                number: String(row.phone || row.phoneNumber || "").trim().replace(/\s+/g, ""),
+                label: "Primary",
+                isPrimary: true,
+              },
+            ],
             email: row.email || "",
             address: row.address || "",
           };
