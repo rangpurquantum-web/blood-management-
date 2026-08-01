@@ -153,7 +153,7 @@ function PhoneCellActions({ phoneData }: { phoneData: any }) {
               variant="ghost"
               size="icon"
               className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 ml-0.5"
-              title="আরও নম্বর দেখুন"
+              title="Show more numbers"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-3.5 w-3.5" />
@@ -164,7 +164,7 @@ function PhoneCellActions({ phoneData }: { phoneData: any }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="space-y-2">
-              <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider">অন্যান্য ফোন নম্বর ({secondaryPhones.length})</h4>
+              <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Other Phone Numbers ({secondaryPhones.length})</h4>
               <div className="space-y-1 max-h-[180px] overflow-y-auto">
                 {secondaryPhones.map((p: any) => (
                   <div key={p.id || p.number} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
@@ -271,7 +271,7 @@ export function DonorTable() {
       <div className="rounded-xl border border-muted bg-card/60 backdrop-blur-sm p-4 shadow-sm space-y-3">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Filter className="h-4 w-4" />
-          ফিল্টার করুন
+          Filters
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -280,7 +280,7 @@ export function DonorTable() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               id="filter-search"
-              placeholder="নাম বা ফোন খুঁজুন..."
+              placeholder="Search by name or phone..."
               className="pl-8 h-9"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -290,10 +290,10 @@ export function DonorTable() {
           {/* Blood Group */}
           <Select value={bloodGroup} onValueChange={setBloodGroup}>
             <SelectTrigger id="filter-blood-group" className="h-9">
-              <SelectValue placeholder="ব্লাড গ্রুপ" />
+              <SelectValue placeholder="Blood Group" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">সব ব্লাড গ্রুপ</SelectItem>
+              <SelectItem value="all">All Blood Groups</SelectItem>
               {BLOOD_TYPES.map((bt) => (
                 <SelectItem key={bt} value={bt}>{bt}</SelectItem>
               ))}
@@ -305,7 +305,7 @@ export function DonorTable() {
             <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               id="filter-area"
-              placeholder="এলাকা / থানা..."
+              placeholder="Area / Thana..."
               className="pl-8 h-9"
               value={area}
               onChange={(e) => setArea(e.target.value)}
@@ -318,7 +318,7 @@ export function DonorTable() {
               <SelectValue placeholder="Availability" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="true">✅ Eligible Now</SelectItem>
               <SelectItem value="false">⏳ Not Eligible Yet</SelectItem>
             </SelectContent>
@@ -328,7 +328,7 @@ export function DonorTable() {
         {/* Active filter badges + Reset */}
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs text-muted-foreground">সক্রিয় ফিল্টার:</span>
+            <span className="text-xs text-muted-foreground">Active filters:</span>
             {q && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-xs px-2.5 py-0.5 font-medium">
                 &ldquo;{q}&rdquo;
@@ -367,7 +367,7 @@ export function DonorTable() {
               className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground ml-auto"
               onClick={handleReset}
             >
-              <X className="h-3 w-3 mr-1" /> সব রিসেট করুন
+              <X className="h-3 w-3 mr-1" /> Reset All
             </Button>
           </div>
         )}
