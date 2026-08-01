@@ -31,7 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <aside className="w-64 flex-shrink-0 border-r bg-card/50 backdrop-blur-sm hidden md:flex flex-col">
         <div className="flex h-14 items-center border-b px-4 gap-2 text-primary">
           <Droplet className="h-6 w-6 fill-current" />
-          <span className="font-semibold text-lg tracking-tight">Quantum Donor Pool</span>
+          <span className="font-semibold text-lg tracking-tight">Quantum Blood Donor Pool</span>
         </div>
 
         <div className="flex-1 overflow-y-auto py-4">
@@ -63,7 +63,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <header className="flex h-14 items-center justify-center border-b px-4 md:hidden bg-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-2 text-primary">
             <Droplet className="h-5 w-5 fill-current" />
-            <span className="font-semibold">Quantum Donor Pool</span>
+            <span className="font-semibold">Quantum Blood Donor Pool</span>
           </div>
         </header>
 
