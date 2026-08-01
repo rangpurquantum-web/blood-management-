@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner"; // we'll use sonner as toaster
+import { toast } from "sonner";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -51,7 +51,6 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        // Check for specific error types
         if (
           result.error.includes("ACCOUNT_INACTIVE") ||
           result.error.includes("account_inactive")
@@ -95,39 +94,6 @@ export default function LoginPage() {
         </CardHeader>
         
         <CardContent>
-          {/* Quick Fill Credentials Banner */}
-          <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1.5">
-            <p className="font-semibold text-foreground flex items-center justify-between">
-              <span>Demo / Default Credentials:</span>
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs bg-background/80"
-                onClick={() => {
-                  form.setValue("email", "admin@qblood.org");
-                  form.setValue("password", "Qblood@2026");
-                }}
-              >
-                Admin (admin@qblood.org)
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs bg-background/80"
-                onClick={() => {
-                  form.setValue("email", "staff@qblood.org");
-                  form.setValue("password", "StaffPassword@2026!");
-                }}
-              >
-                Staff (staff@qblood.org)
-              </Button>
-            </div>
-          </div>
-
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email" className={form.formState.errors.email ? "text-destructive" : ""}>
@@ -136,7 +102,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@qblood.org"
+                placeholder="you@example.com"
                 autoComplete="email"
                 disabled={isLoading}
                 className={`bg-background/50 ${form.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
