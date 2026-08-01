@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 
@@ -10,6 +11,18 @@ export function DashboardCharts({
   bloodTypeData: { name: string; value: number }[];
   trendData: { date: string; count: number }[];
 }) {
+  const trendChartRef = useRef<HTMLDivElement>(null);
+  const barChartRef = useRef<HTMLDivElement>(null);
+
+  // Mobile fix: touch doesn't fire "mouseleave", so Recharts tooltips get stuck.
+  // Manually dispatch mouseleave on touch-end to force the tooltip to close.
+  const dismissTooltip = (ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current) {
+      const event = new MouseEvent("mouseleave", { bubbles: true });
+      ref.current.dispatchEvent(event);
+    }
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
       <Card className="col-span-1 lg:col-span-4 shadow-sm bg-card/60 backdrop-blur-xl border-muted/50">
@@ -18,7 +31,11 @@ export function DashboardCharts({
           <CardDescription>Number of donations recorded daily</CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
-          <div className="h-[300px] w-full">
+          <div
+            ref={trendChartRef}
+            className="h-[300px] w-full"
+            onTouchEnd={() => setTimeout(() => dismissTooltip(trendChartRef), 2000)}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -65,7 +82,11 @@ export function DashboardCharts({
           <CardDescription>Distribution of active donors</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] w-full">
+          <div
+            ref={barChartRef}
+            className="h-[300px] w-full"
+            onTouchEnd={() => setTimeout(() => dismissTooltip(barChartRef), 2000)}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bloodTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
