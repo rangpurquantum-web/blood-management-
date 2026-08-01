@@ -56,11 +56,11 @@ export default function LoginPage() {
           result.error.includes("ACCOUNT_INACTIVE") ||
           result.error.includes("account_inactive")
         ) {
-          toast.error("আপনার অ্যাকাউন্ট নিষ্ক্রিয় করা হয়েছে। অনুগ্রহ করে Admin-এর সাথে যোগাযোগ করুন।", {
+          toast.error("Your account is currently inactive", {
             duration: 6000,
           });
         } else {
-          toast.error("ইমেইল বা পাসওয়ার্ড সঠিক নয়");
+          toast.error("Invalid email or password");
         }
         return;
       }
@@ -88,9 +88,9 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-destructive text-primary-foreground shadow-lg">
             <Droplet className="h-8 w-8 fill-current" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">Welcome Back</CardTitle>
+          <CardTitle className="text-3xl font-bold tracking-tight">login</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
-            Sign in to the Internal Blood Management System
+            Quantum blood donor pool
           </CardDescription>
         </CardHeader>
         
