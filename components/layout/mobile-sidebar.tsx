@@ -5,6 +5,7 @@ import { Menu, Droplet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
+import { SignOutButton } from "@/components/layout/signout-button";
 
 interface MobileSidebarProps {
   canApprove: boolean;
@@ -36,6 +37,9 @@ export function MobileSidebar({ canApprove, canImport, canReports, canUserMgmt }
             canUserMgmt={canUserMgmt}
             onNavigate={() => setOpen(false)}
           />
+        </div>
+        <div className="border-t p-3">
+          <SignOutButton />
         </div>
       </SheetContent>
     </Sheet>
