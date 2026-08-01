@@ -1,61 +1,99 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { Role } from "@prisma/client";
+import { LogOut, Droplet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ProfileDropdown } from "@/components/layout/profile-dropdown";
+import { DashboardNav } from "@/components/layout/dashboard-nav";
+import { MobileSidebar } from "@/components/layout/mobile-sidebar";
+import { hasPermission } from "@/lib/permissions";
 
-import { AppProviders } from "@/components/providers/app-providers";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster } from "@/components/ui/sonner";
-import { RegisterServiceWorker } from "@/components/pwa/register-sw";
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
 
-import "./globals.css";
+  if (!session?.user) {
+    redirect("/login");
+  }
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+  const role = session.user.role as Role;
+  const isAdmin = role === Role.ADMIN;
+  const userName = session.user.name ?? "User";
+  const userEmail = session.user.email ?? "";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+  const canApprove = hasPermission(session.user, "approveReject");
+  const canImport = hasPermission(session.user, "donorAdd");
+  const canReports = hasPermission(session.user, "reportsExport");
+  const canUserMgmt = hasPermission(session.user, "userManagement");
 
-export const metadata: Metadata = {
-  title: "Internal Blood Management System",
-  description:
-    "Secure internal portal for managing blood donors, donation history, and blood requests.",
-  manifest: "/manifest.json",
-  icons: {
-    apple: "/icons/icon-192x192.png",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Blood System",
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#991b1b",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
   return (
-    <html lang="bn" suppressHydrationWarning>
-      <head>
-        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/siam-rupali" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ekushey/fonts@master/siam-rupali/siamrupali.css" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" />
-      </head>
-      <body className="min-h-screen font-sans" suppressHydrationWarning>
-        <RegisterServiceWorker />
-        <AppProviders>
-          <TooltipProvider>{children}</TooltipProvider>
-          <Toaster position="top-center" richColors />
-        </AppProviders>
-      </body>
-    </html>
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Sidebar */}
+      <aside className="w-64 flex-shrink-0 border-r bg-card/50 backdrop-blur-sm hidden md:flex flex-col">
+        <div className="flex h-14 items-center border-b px-4 gap-2 text-primary">
+          <Droplet className="h-6 w-6 fill-current" />
+          <span className="font-semibold text-lg tracking-tight">BloodManager</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto py-4">
+          <DashboardNav
+            canApprove={canApprove}
+            canImport={canImport}
+            canReports={canReports}
+            canUserMgmt={canUserMgmt}
+          />
+        </div>
+
+        {/* Sidebar footer — user info */}
+        <div className="border-t p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <p className="truncate text-sm font-medium">{userName}</p>
+              <p className="truncate text-xs text-muted-foreground capitalize">{role.toLowerCase()}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Mobile Header */}
+        <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <MobileSidebar
+              canApprove={canApprove}
+              canImport={canImport}
+              canReports={canReports}
+              canUserMgmt={canUserMgmt}
+            />
+            <div className="flex items-center gap-2 text-primary">
+              <Droplet className="h-5 w-5 fill-current" />
+              <span className="font-semibold">BloodManager</span>
+            </div>
+          </div>
+          <form action="/api/auth/signout" method="POST">
+            <Button variant="ghost" size="icon" type="submit">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </form>
+        </header>
+
+        {/* Desktop Header */}
+        <header className="hidden h-14 items-center justify-end border-b px-6 md:flex bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 gap-3">
+          <ProfileDropdown
+            name={userName}
+            email={userEmail}
+            role={role}
+          />
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-muted/20">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }
