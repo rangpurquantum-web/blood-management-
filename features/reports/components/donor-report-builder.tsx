@@ -149,12 +149,12 @@ export function DonorReportBuilder() {
             </div>
             <div>
               <h2 className="font-semibold text-sm">Custom Filter Builder</h2>
-              <p className="text-xs text-muted-foreground">সব ফিল্টার অপশনাল — AND লজিকে কম্বাইন হবে</p>
+              <p className="text-xs text-muted-foreground">All filters are optional — combined with AND logic</p>
             </div>
           </div>
           {hasActiveFilters(applied) && (
             <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-xs">
-              ফিল্টার সক্রিয়
+              Filters Active
             </Badge>
           )}
         </div>
@@ -164,16 +164,16 @@ export function DonorReportBuilder() {
           {/* Row 1: Blood Group, Area, Gender, Eligibility */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-              <Droplet className="h-3.5 w-3.5" /> মূল ফিল্টার
+              <Droplet className="h-3.5 w-3.5" /> Primary Filters
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Blood Group */}
               <Select value={draft.bloodGroup || "__all__"} onValueChange={(v) => set("bloodGroup")(v === "__all__" ? "" : v)}>
                 <SelectTrigger id="rpt-blood-group" className="h-9">
-                  <SelectValue placeholder="ব্লাড গ্রুপ" />
+                  <SelectValue placeholder="Blood Group" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">সব ব্লাড গ্রুপ</SelectItem>
+                  <SelectItem value="__all__">All Blood Groups</SelectItem>
                   {BLOOD_TYPES.map((bt) => (
                     <SelectItem key={bt} value={bt}>{bt}</SelectItem>
                   ))}
@@ -185,7 +185,7 @@ export function DonorReportBuilder() {
                 <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="rpt-area"
-                  placeholder="এলাকা / থানা..."
+                  placeholder="Area / Thana..."
                   className="pl-8 h-9"
                   value={draft.area}
                   onChange={(e) => set("area")(e.target.value)}
@@ -195,13 +195,13 @@ export function DonorReportBuilder() {
               {/* Gender */}
               <Select value={draft.gender || "__all__"} onValueChange={(v) => set("gender")(v === "__all__" ? "" : v)}>
                 <SelectTrigger id="rpt-gender" className="h-9">
-                  <SelectValue placeholder="লিঙ্গ" />
+                  <SelectValue placeholder="Gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">সব লিঙ্গ</SelectItem>
-                  <SelectItem value="Male">পুরুষ (Male)</SelectItem>
-                  <SelectItem value="Female">মহিলা (Female)</SelectItem>
-                  <SelectItem value="Other">অন্যান্য (Other)</SelectItem>
+                  <SelectItem value="__all__">All Genders</SelectItem>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -211,7 +211,7 @@ export function DonorReportBuilder() {
                   <SelectValue placeholder="Availability" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">সব স্ট্যাটাস</SelectItem>
+                  <SelectItem value="__all__">All Statuses</SelectItem>
                   <SelectItem value="true">✅ Eligible Now</SelectItem>
                   <SelectItem value="false">⏳ Not Eligible Yet</SelectItem>
                 </SelectContent>
@@ -224,15 +224,15 @@ export function DonorReportBuilder() {
           {/* Row 2: Age Range */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" /> বয়স রেঞ্জ
+              <User className="h-3.5 w-3.5" /> Age Range
             </p>
             <div className="grid grid-cols-2 gap-3 max-w-xs">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">সর্বনিম্ন বয়স</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Minimum Age</label>
                 <Input
                   id="rpt-age-min"
                   type="number"
-                  placeholder="যেমন: 18"
+                  placeholder="e.g. 18"
                   min={18}
                   max={80}
                   className="h-9"
@@ -241,11 +241,11 @@ export function DonorReportBuilder() {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">সর্বোচ্চ বয়স</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Maximum Age</label>
                 <Input
                   id="rpt-age-max"
                   type="number"
-                  placeholder="যেমন: 60"
+                  placeholder="e.g. 60"
                   min={18}
                   max={100}
                   className="h-9"
@@ -261,15 +261,15 @@ export function DonorReportBuilder() {
           {/* Row 3: Date Ranges */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" /> তারিখ রেঞ্জ
+              <Calendar className="h-3.5 w-3.5" /> Date Range
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Registration Date */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">রেজিস্ট্রেশন তারিখ</p>
+                <p className="text-xs font-medium text-muted-foreground">Registration Date</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">থেকে</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">From</label>
                     <Input
                       id="rpt-created-from"
                       type="date"
@@ -279,7 +279,7 @@ export function DonorReportBuilder() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">পর্যন্ত</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">To</label>
                     <Input
                       id="rpt-created-to"
                       type="date"
@@ -293,10 +293,10 @@ export function DonorReportBuilder() {
 
               {/* Last Donation Date */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">সর্বশেষ রক্তদানের তারিখ</p>
+                <p className="text-xs font-medium text-muted-foreground">Last Donation Date</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">থেকে</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">From</label>
                     <Input
                       id="rpt-donation-from"
                       type="date"
@@ -306,7 +306,7 @@ export function DonorReportBuilder() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">পর্যন্ত</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">To</label>
                     <Input
                       id="rpt-donation-to"
                       type="date"
@@ -328,7 +328,7 @@ export function DonorReportBuilder() {
               className="gap-2 bg-primary hover:bg-primary/90"
             >
               <Search className="h-4 w-4" />
-              ফিল্টার প্রয়োগ করো
+              Apply Filters
             </Button>
             <Button
               id="rpt-reset"
@@ -337,7 +337,7 @@ export function DonorReportBuilder() {
               className="gap-2 text-muted-foreground"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              রিসেট
+              Reset
             </Button>
             <Button
               id="rpt-export-pdf"
@@ -370,7 +370,7 @@ export function DonorReportBuilder() {
                 <Skeleton className="h-5 w-32" />
               ) : (
                 <p className="font-semibold text-sm">
-                  {data?.total ?? 0} জন ডোনার পাওয়া গেছে
+                  {data?.total ?? 0} donors found
                 </p>
               )}
               <p className="text-xs text-muted-foreground truncate max-w-xs">
@@ -380,7 +380,7 @@ export function DonorReportBuilder() {
           </div>
           {totalPages > 1 && (
             <p className="text-xs text-muted-foreground self-start sm:self-auto">
-              পেজ {page} / {totalPages}
+              Page {page} / {totalPages}
             </p>
           )}
         </div>
@@ -390,15 +390,15 @@ export function DonorReportBuilder() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">নাম</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">ব্লাড গ্রুপ</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">লিঙ্গ</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">বয়স</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">ফোন</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">এলাকা</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Name</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Blood Group</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Gender</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Age</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Phone</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Area</TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">Availability</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">সর্বশেষ রক্তদান</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">রেজিস্ট্রেশন</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Last Donation</TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">Registered</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -413,7 +413,7 @@ export function DonorReportBuilder() {
               ) : isError ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
-                    ডেটা লোড করতে সমস্যা হয়েছে। পুনরায় চেষ্টা করুন।
+                    Failed to load data. Please try again.
                   </TableCell>
                 </TableRow>
               ) : !data || data.donors.length === 0 ? (
@@ -421,8 +421,8 @@ export function DonorReportBuilder() {
                   <TableCell colSpan={9} className="text-center py-16">
                     <div className="flex flex-col items-center gap-3 text-muted-foreground">
                       <Activity className="h-10 w-10 opacity-20" />
-                      <p className="text-sm">কোনো ডোনার পাওয়া যায়নি।</p>
-                      <p className="text-xs">ফিল্টার পরিবর্তন করুন বা রিসেট করুন।</p>
+                      <p className="text-sm">No donors found.</p>
+                      <p className="text-xs">Try adjusting or resetting the filters.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -439,7 +439,7 @@ export function DonorReportBuilder() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{d.gender}</TableCell>
-                      <TableCell className="text-sm">{age} বছর</TableCell>
+                      <TableCell className="text-sm">{age} yrs</TableCell>
                       <TableCell className="font-mono text-sm">{primaryPhone}</TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[140px] truncate" title={d.address}>
                         {d.address}
