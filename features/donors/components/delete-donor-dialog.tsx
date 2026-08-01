@@ -34,13 +34,13 @@ export function DeleteDonorDialog({
   const handleDelete = () => {
     deleteDonor.mutate(donorId, {
       onSuccess: () => {
-        toast.success("ডোনার সফলভাবে মুছে ফেলা হয়েছে");
+        toast.success("Donor deleted successfully");
         setOpen(false);
         onSuccess?.();
         router.push("/dashboard/donors");
       },
       onError: (err: any) => {
-        toast.error(err.error || "ডোনার মুছতে ব্যর্থ হয়েছে");
+        toast.error(err.error || "Failed to delete the donor");
       },
     });
   };
@@ -59,15 +59,15 @@ export function DeleteDonorDialog({
         <DialogHeader>
           <div className="flex items-center gap-2 text-destructive mb-1">
             <AlertTriangle className="h-5 w-5" />
-            <DialogTitle className="text-lg">আপনি কি নিশ্চিত এই ডোনারকে মুছে ফেলতে চান?</DialogTitle>
+            <DialogTitle className="text-lg">Are you sure you want to delete this donor?</DialogTitle>
           </div>
           <DialogDescription className="pt-2 text-sm text-muted-foreground">
             {donorName ? (
               <>
-                <span className="font-semibold text-foreground">{donorName}</span>-এর রেকর্ডটি সফট-ডিলিট করা হবে। এটি আর ডোনার ডিরেক্টরি বা সাধারণ অনুসন্ধানে দেখা যাবে না।
+                <span className="font-semibold text-foreground">{donorName}</span>This donor record will be soft deleted. It will no longer appear in the donor directory or standard search results
               </>
             ) : (
-              "এই ডোনারের রেকর্ডটি সফট-ডিলিট করা হবে। এটি আর সাধারণ ডিরেক্টরি বা অনুসন্ধানে দেখা যাবে না।"
+              "This donor record will be soft deleted. It will no longer be visible in the public directory or standard search results."
             )}
           </DialogDescription>
         </DialogHeader>
@@ -78,7 +78,7 @@ export function DeleteDonorDialog({
             onClick={() => setOpen(false)}
             disabled={deleteDonor.isPending}
           >
-            বাতিল
+            cancel 
           </Button>
           <Button
             type="button"
@@ -91,7 +91,7 @@ export function DeleteDonorDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            মুছে ফেলুন
+            delete 
           </Button>
         </div>
       </DialogContent>
