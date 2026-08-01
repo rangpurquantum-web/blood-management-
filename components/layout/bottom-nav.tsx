@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -63,7 +63,7 @@ export function BottomNav({ canApprove, canImport, canReports, canUserMgmt }: Bo
           <SheetContent side="bottom" className="p-0 flex flex-col max-h-[80vh]">
             <div className="flex h-14 items-center border-b px-4 gap-2 text-primary shrink-0">
               <Droplet className="h-6 w-6 fill-current" />
-              <span className="font-semibold text-lg tracking-tight">Quantum Donor Pool</span>
+              <span className="font-semibold text-lg tracking-tight">Quantum Blood Donor Pool</span>
             </div>
             <div className="flex-1 overflow-y-auto py-4">
               <DashboardNav
