@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Role } from "@prisma/client";
-import { LogOut, Droplet } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Droplet } from "lucide-react";
 import { ProfileDropdown } from "@/components/layout/profile-dropdown";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
 import { MobileSidebar } from "@/components/layout/mobile-sidebar";
+import { SignOutButton } from "@/components/layout/signout-button";
 import { hasPermission } from "@/lib/permissions";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -44,7 +44,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
 
         {/* Sidebar footer — user info */}
-        <div className="border-t p-4">
+        <div className="border-t p-4 space-y-2">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
               {userName.charAt(0).toUpperCase()}
@@ -54,6 +54,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <p className="truncate text-xs text-muted-foreground capitalize">{role.toLowerCase()}</p>
             </div>
           </div>
+          <SignOutButton />
         </div>
       </aside>
 
@@ -73,11 +74,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <span className="font-semibold">BloodManager</span>
             </div>
           </div>
-          <form action="/api/auth/signout" method="POST">
-            <Button variant="ghost" size="icon" type="submit">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </form>
         </header>
 
         {/* Desktop Header */}
