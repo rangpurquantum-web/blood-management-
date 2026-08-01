@@ -33,31 +33,31 @@ export function BottomNav({ canApprove, canImport, canReports, canUserMgmt }: Bo
       <nav className="fixed bottom-0 left-0 right-0 z-40 flex items-stretch border-t bg-card/95 backdrop-blur-sm md:hidden">
         <Link href="/dashboard" className={tabClass(isActive("/dashboard") && pathname === "/dashboard")}>
           <LayoutDashboard className="h-5 w-5" />
-          হোম
+          Home
         </Link>
 
         <Link href="/dashboard/donors" className={tabClass(isActive("/dashboard/donors"))}>
           <Users className="h-5 w-5" />
-          ডোনার
+          Donors
         </Link>
 
         {canApprove && (
           <Link href="/dashboard/donors/pending" className={tabClass(isActive("/dashboard/donors/pending"))}>
             <UserCheck className="h-5 w-5" />
-            অনুমোদন
+            Approvals
           </Link>
         )}
 
         <Link href="/dashboard/settings" className={tabClass(isActive("/dashboard/settings"))}>
           <Settings className="h-5 w-5" />
-          সেটিংস
+          Settings
         </Link>
 
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
           <SheetTrigger asChild>
             <button className={tabClass(false)}>
               <Menu className="h-5 w-5" />
-              আরো
+              More
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="p-0 flex flex-col max-h-[80vh]">
