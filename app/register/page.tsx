@@ -37,7 +37,7 @@ export default function PublicRegisterPage() {
       dob: "",
       gender: "Male",
       bloodType: "A+",
-      phone: [{ number: "", label: "Primary", isPrimary: true }],
+      phone: [{ number: "", label: "", isPrimary: true }],
       email: "",
       address: "",
     },
@@ -81,7 +81,7 @@ export default function PublicRegisterPage() {
           <span>Blood Management System</span>
         </Link>
         <p className="text-sm text-muted-foreground">
-          রক্তদান করে জীবন বাঁচান — স্বেচ্ছায় রক্তদাতা হিসেবে নিবন্ধন করুন
+          রক্তদান করে জীবন বাঁচান — স্বেচ্ছায় রক্তদাতা হিসেবে নিবন্ধন করুন
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export default function PublicRegisterPage() {
                 আপনার আবেদন জমা হয়েছে, রিভিউ করার পর অনুমোদন করা হবে
               </p>
               <p className="text-sm text-muted-foreground pt-2">
-                আমাদের এডমিন প্যানেল আপনার দেওয়া তথ্য যাচাই-বাছাই করে দ্রুতই রক্তদাতা হিসেবে তালিকাভুক্ত করবেন।
+                আমাদের এডমিন প্যানেল আপনার দেওয়া তথ্য যাচাই-বাছাই করে দ্রুতই রক্তদাতা হিসেবে তালিকাভুক্ত করবেন।
               </p>
             </div>
 
@@ -122,7 +122,7 @@ export default function PublicRegisterPage() {
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-xl flex items-center gap-2">
                 <Heart className="h-5 w-5 text-destructive" />
-                স্বেচ্ছায় রক্তদাতা রেজিস্ট্রেশন ফর্ম
+                স্বেচ্ছায় রক্তদাতা রেজিস্ট্রেশন ফর্ম
               </CardTitle>
               <CardDescription>
                 নিচের ফর্মে আপনার সঠিক তথ্য প্রদান করে আবেদন জমা দিন।
@@ -215,71 +215,79 @@ export default function PublicRegisterPage() {
 
                 {/* Dynamic Phone Numbers Section */}
                 <div className="space-y-3 border p-4 rounded-lg bg-muted/10">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-0.5">
                     <Label className="font-semibold">
                       ফোন নম্বরসমূহ <span className="text-destructive">*</span>
                     </Label>
                     <span className="text-xs text-muted-foreground">
-                      (একটি Primary নম্বর নির্বাচন করুন)
+                      একাধিক নম্বর যোগ করতে পারেন, একটি Primary হিসেবে নির্বাচন করুন
                     </span>
                   </div>
 
-                  {fields.map((field, index) => (
-                    <div
-                      key={field.id}
-                      className="flex gap-2 items-start border p-3 rounded-md bg-background relative"
-                    >
-                      <div className="grid gap-1 flex-1">
-                        <Label className="text-xs text-muted-foreground">মোবাইল নম্বর</Label>
-                        <Input
-                          placeholder="01XXXXXXXXX"
-                          {...form.register(`phone.${index}.number` as const)}
-                        />
-                        {errors.phone?.[index]?.number && (
-                          <span className="text-[11px] text-destructive">
-                            {errors.phone[index].number.message}
-                          </span>
-                        )}
-                      </div>
+                  {fields.map((field, index) => {
+                    const isPrimarySelected = form.watch(`phone.${index}.isPrimary`);
+                    return (
+                      <div
+                        key={field.id}
+                        className={`rounded-lg border bg-background p-3 space-y-3 transition-colors ${
+                          isPrimarySelected ? "border-primary/40 ring-1 ring-primary/20" : ""
+                        }`}
+                      >
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+                          <div className="grid gap-1">
+                            <Label className="text-xs text-muted-foreground">মোবাইল নম্বর</Label>
+                            <Input
+                              placeholder="01XXXXXXXXX"
+                              {...form.register(`phone.${index}.number` as const)}
+                            />
+                            {errors.phone?.[index]?.number && (
+                              <span className="text-[11px] text-destructive">
+                                {errors.phone[index].number.message}
+                              </span>
+                            )}
+                          </div>
 
-                      <div className="w-[110px] grid gap-1">
-                        <Label className="text-xs text-muted-foreground">লেবেল</Label>
-                        <Input
-                          placeholder="e.g. Personal"
-                          {...form.register(`phone.${index}.label` as const)}
-                        />
-                        {errors.phone?.[index]?.label && (
-                          <span className="text-[11px] text-destructive">
-                            {errors.phone[index].label.message}
-                          </span>
-                        )}
-                      </div>
+                          <div className="grid gap-1 sm:w-[140px]">
+                            <Label className="text-xs text-muted-foreground">লেবেল (ঐচ্ছিক)</Label>
+                            <Input
+                              placeholder="যেমন: ব্যক্তিগত"
+                              {...form.register(`phone.${index}.label` as const)}
+                            />
+                          </div>
+                        </div>
 
-                      <div className="flex flex-col items-center gap-1.5 px-1 self-center">
-                        <span className="text-[9px] text-muted-foreground font-semibold uppercase">
-                          Primary
-                        </span>
-                        <input
-                          type="radio"
-                          checked={form.watch(`phone.${index}.isPrimary`)}
-                          onChange={() => setPrimary(index)}
-                          className="h-4 w-4 accent-primary cursor-pointer"
-                        />
-                      </div>
+                        <div className="flex items-center justify-between pt-1 border-t">
+                          <label
+                            htmlFor={`primary-${index}`}
+                            className="flex items-center gap-2 text-sm cursor-pointer select-none pt-2"
+                          >
+                            <input
+                              id={`primary-${index}`}
+                              type="radio"
+                              checked={isPrimarySelected}
+                              onChange={() => setPrimary(index)}
+                              className="h-4 w-4 accent-primary cursor-pointer"
+                            />
+                            <span className={isPrimarySelected ? "font-medium text-primary" : "text-muted-foreground"}>
+                              {isPrimarySelected ? "Primary নম্বর" : "Primary হিসেবে সেট করুন"}
+                            </span>
+                          </label>
 
-                      {fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 self-center h-8 w-8"
-                          onClick={() => remove(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                          {fields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 mt-2"
+                              onClick={() => remove(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
 
                   {errors.phone?.root && (
                     <span className="text-xs text-destructive block">
@@ -291,7 +299,7 @@ export default function PublicRegisterPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append({ number: "", label: "Secondary", isPrimary: false })}
+                    onClick={() => append({ number: "", label: "", isPrimary: false })}
                     className="w-full mt-2"
                   >
                     <Plus className="mr-2 h-4 w-4" /> আরও ফোন নম্বর যোগ করুন
@@ -321,7 +329,7 @@ export default function PublicRegisterPage() {
                   </Label>
                   <Textarea
                     id="address"
-                    placeholder="জেলা, উপজেলা, ইউনিয়ন বা এলাকা উল্লেখ করুন"
+                    placeholder="জেলা, উপজেলা, ইউনিয়ন বা এলাকা উল্লেখ করুন"
                     rows={3}
                     {...form.register("address")}
                   />
@@ -331,7 +339,7 @@ export default function PublicRegisterPage() {
                 </div>
 
                 {/* Submit Action */}
-                <div className="pt-4 flex items-center justify-between gap-4">
+                <div className="pt-4 flex flex-col-reverse sm:flex-row items-center sm:justify-between gap-4">
                   <Link
                     href="/"
                     className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
@@ -339,7 +347,7 @@ export default function PublicRegisterPage() {
                     <ArrowLeft className="h-4 w-4" /> ফিরে যান
                   </Link>
 
-                  <Button type="submit" size="lg" disabled={publicRegister.isPending}>
+                  <Button type="submit" size="lg" disabled={publicRegister.isPending} className="w-full sm:w-auto">
                     {publicRegister.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
