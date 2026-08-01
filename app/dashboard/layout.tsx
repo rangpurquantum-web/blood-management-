@@ -4,7 +4,7 @@ import { Role } from "@prisma/client";
 import { Droplet } from "lucide-react";
 import { ProfileDropdown } from "@/components/layout/profile-dropdown";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
-import { MobileSidebar } from "@/components/layout/mobile-sidebar";
+import { BottomNav } from "@/components/layout/bottom-nav";
 import { SignOutButton } from "@/components/layout/signout-button";
 import { hasPermission } from "@/lib/permissions";
 
@@ -27,7 +27,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
+      {/* Sidebar (desktop only) */}
       <aside className="w-64 flex-shrink-0 border-r bg-card/50 backdrop-blur-sm hidden md:flex flex-col">
         <div className="flex h-14 items-center border-b px-4 gap-2 text-primary">
           <Droplet className="h-6 w-6 fill-current" />
@@ -43,7 +43,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
           />
         </div>
 
-        {/* Sidebar footer — user info */}
         <div className="border-t p-4 space-y-2">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
@@ -61,18 +60,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile Header */}
-        <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <MobileSidebar
-              canApprove={canApprove}
-              canImport={canImport}
-              canReports={canReports}
-              canUserMgmt={canUserMgmt}
-            />
-            <div className="flex items-center gap-2 text-primary">
-              <Droplet className="h-5 w-5 fill-current" />
-              <span className="font-semibold">BloodManager</span>
-            </div>
+        <header className="flex h-14 items-center justify-center border-b px-4 md:hidden bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-primary">
+            <Droplet className="h-5 w-5 fill-current" />
+            <span className="font-semibold">BloodManager</span>
           </div>
         </header>
 
@@ -89,6 +80,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-muted/20">
           {children}
         </main>
+
+        {/* Bottom Tab Bar (mobile only) */}
+        <BottomNav
+          canApprove={canApprove}
+          canImport={canImport}
+          canReports={canReports}
+          canUserMgmt={canUserMgmt}
+        />
       </div>
     </div>
   );
