@@ -24,7 +24,7 @@ export function DashboardCharts({
 
   // Mobile fix: touch doesn't fire "mouseleave", so Recharts tooltips get stuck.
   // Manually dispatch mouseleave on touch-end to force the tooltip to close.
-  const dismissTooltip = (ref: React.RefObject<HTMLDivElement>) => {
+  const dismissTooltip = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
       const event = new MouseEvent("mouseleave", { bubbles: true });
       ref.current.dispatchEvent(event);
@@ -32,7 +32,7 @@ export function DashboardCharts({
   };
 
   const scheduleDismiss = (
-    ref: React.RefObject<HTMLDivElement>,
+    ref: React.RefObject<HTMLDivElement | null>,
     timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
   ) => {
     // Cancel any dismiss still pending from a previous touch so it can't
