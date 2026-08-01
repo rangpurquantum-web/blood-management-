@@ -78,10 +78,10 @@ export default function PublicRegisterPage() {
       <div className="w-full max-w-xl mb-6 text-center space-y-2">
         <Link href="/" className="inline-flex items-center gap-2 text-primary font-bold text-2xl tracking-tight">
           <Droplet className="h-8 w-8 text-destructive fill-destructive" />
-          <span>Blood Management System</span>
+          <span>কোয়ান্টাম স্বেচ্ছা রক্তদান কার্যক্রম </span>
         </Link>
         <p className="text-sm text-muted-foreground">
-          রক্তদান করে জীবন বাঁচান — স্বেচ্ছায় রক্তদাতা হিসেবে নিবন্ধন করুন
+          স্বেচ্ছায় রক্তদাতা হিসেবে নিবন্ধন করুন
         </p>
       </div>
 
