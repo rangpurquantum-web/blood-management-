@@ -14,6 +14,14 @@ export function DashboardCharts({
   const trendChartRef = useRef<HTMLDivElement>(null);
   const barChartRef = useRef<HTMLDivElement>(null);
 
+  // Keep a per-chart timeout id so a new touch can cancel a still-pending
+  // dismiss from the previous touch. Without this, an old timeout can fire
+  // AFTER a new bar/point has already been touched, desyncing Recharts'
+  // internal active index from what's on screen (stuck/ghost highlight,
+  // tooltip rendered over the wrong bar).
+  const trendDismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const barDismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Mobile fix: touch doesn't fire "mouseleave", so Recharts tooltips get stuck.
   // Manually dispatch mouseleave on touch-end to force the tooltip to close.
   const dismissTooltip = (ref: React.RefObject<HTMLDivElement>) => {
@@ -21,6 +29,21 @@ export function DashboardCharts({
       const event = new MouseEvent("mouseleave", { bubbles: true });
       ref.current.dispatchEvent(event);
     }
+  };
+
+  const scheduleDismiss = (
+    ref: React.RefObject<HTMLDivElement>,
+    timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
+  ) => {
+    // Cancel any dismiss still pending from a previous touch so it can't
+    // fire after the user has already moved on to a different bar/point.
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      dismissTooltip(ref);
+      timeoutRef.current = null;
+    }, 400); // short delay is enough to let the tap register; long delays invite races
   };
 
   return (
@@ -34,7 +57,7 @@ export function DashboardCharts({
           <div
             ref={trendChartRef}
             className="h-[300px] w-full"
-            onTouchEnd={() => setTimeout(() => dismissTooltip(trendChartRef), 2000)}
+            onTouchEnd={() => scheduleDismiss(trendChartRef, trendDismissTimeout)}
           >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -85,7 +108,7 @@ export function DashboardCharts({
           <div
             ref={barChartRef}
             className="h-[300px] w-full"
-            onTouchEnd={() => setTimeout(() => dismissTooltip(barChartRef), 2000)}
+            onTouchEnd={() => scheduleDismiss(barChartRef, barDismissTimeout)}
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bloodTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
