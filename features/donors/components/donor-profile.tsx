@@ -160,13 +160,13 @@ export function DonorProfile({ donorId }: { donorId: number }) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 rounded-full border bg-muted/40 p-1">
           {/* Call Action */}
           <Button
             asChild
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            className="h-7 w-7 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
             title="Call"
           >
             <a href={`tel:${p.number}`}>
@@ -179,7 +179,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
             asChild
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
+            className="h-7 w-7 rounded-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
             title="WhatsApp"
           >
             <a href={getWhatsAppUrl(p.number)} target="_blank" rel="noopener noreferrer">
@@ -191,7 +191,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
             onClick={() => handleCopy(p.number)}
             title="Copy Number"
           >
