@@ -210,19 +210,19 @@ export function DonorProfile({ donorId }: { donorId: number }) {
     <div className="space-y-6">
       {/* Overview Card */}
       <Card className="bg-card shadow-sm border-muted">
-        <CardHeader className="flex flex-row items-start justify-between pb-4 border-b">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
               <User2 className="h-8 w-8" />
             </div>
-            <div>
-              <CardTitle className="text-2xl flex items-center gap-3">
+            <div className="min-w-0">
+              <CardTitle className="text-2xl flex items-center gap-3 flex-wrap">
                 {donor.fullName}
                 <Badge variant="outline" className="text-lg px-2 bg-destructive/10 text-destructive border-destructive/20 font-mono">
                   {donor.bloodType}
                 </Badge>
               </CardTitle>
-              <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+              <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                 {donor.isEligible ? (
                   <Badge className="bg-emerald-500">Eligible</Badge>
                 ) : (
@@ -236,7 +236,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
             </div>
           </div>
           
-          <div className="flex gap-2 flex-wrap justify-end">
+          <div className="flex gap-2 flex-wrap justify-start sm:justify-end w-full sm:w-auto">
             {canEdit && (
               <>
                 <Button 
