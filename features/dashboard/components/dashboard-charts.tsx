@@ -22,12 +22,37 @@ export function DashboardCharts({
   const trendDismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const barDismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mobile fix: touch doesn't fire "mouseleave", so Recharts tooltips get stuck.
-  // Manually dispatch mouseleave on touch-end to force the tooltip to close.
-  const dismissTooltip = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (ref.current) {
-      const event = new MouseEvent("mouseleave", { bubbles: true });
-      ref.current.dispatchEvent(event);
+  // Recharts computes which bar/point is "active" (and where to draw the
+  // cursor highlight + tooltip) from native "mousemove" events. Touch does
+  // NOT fire mousemove, so on mobile Recharts' internal active-index state
+  // never gets updated correctly -- this is exactly why the gray cursor
+  // highlight and the tooltip's text end up pointing at two different bars.
+  //
+  // Fix: manually translate touch events into real mousemove/mouseleave
+  // events at the touch's actual coordinates, so Recharts tracks the
+  // finger the same way it would track a mouse.
+  const dispatchMouseEvent = (
+    ref: React.RefObject<HTMLDivElement | null>,
+    type: "mousemove" | "mouseleave",
+    touch?: React.Touch
+  ) => {
+    if (!ref.current) return;
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX: touch?.clientX,
+      clientY: touch?.clientY,
+    });
+    ref.current.dispatchEvent(event);
+  };
+
+  const handleTouchMove = (
+    ref: React.RefObject<HTMLDivElement | null>,
+    e: React.TouchEvent<HTMLDivElement>
+  ) => {
+    const touch = e.touches[0];
+    if (touch) {
+      dispatchMouseEvent(ref, "mousemove", touch);
     }
   };
 
@@ -41,9 +66,9 @@ export function DashboardCharts({
       clearTimeout(timeoutRef.current);
     }
     timeoutRef.current = setTimeout(() => {
-      dismissTooltip(ref);
+      dispatchMouseEvent(ref, "mouseleave");
       timeoutRef.current = null;
-    }, 400); // short delay is enough to let the tap register; long delays invite races
+    }, 150);
   };
 
   return (
@@ -57,6 +82,8 @@ export function DashboardCharts({
           <div
             ref={trendChartRef}
             className="h-[300px] w-full"
+            onTouchStart={(e) => handleTouchMove(trendChartRef, e)}
+            onTouchMove={(e) => handleTouchMove(trendChartRef, e)}
             onTouchEnd={() => scheduleDismiss(trendChartRef, trendDismissTimeout)}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -108,6 +135,8 @@ export function DashboardCharts({
           <div
             ref={barChartRef}
             className="h-[300px] w-full"
+            onTouchStart={(e) => handleTouchMove(barChartRef, e)}
+            onTouchMove={(e) => handleTouchMove(barChartRef, e)}
             onTouchEnd={() => scheduleDismiss(barChartRef, barDismissTimeout)}
           >
             <ResponsiveContainer width="100%" height="100%">
