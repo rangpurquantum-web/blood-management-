@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 
@@ -11,64 +11,14 @@ export function DashboardCharts({
   bloodTypeData: { name: string; value: number }[];
   trendData: { date: string; count: number }[];
 }) {
-  const trendChartRef = useRef<HTMLDivElement>(null);
-  const barChartRef = useRef<HTMLDivElement>(null);
+  // Mobile fix: touch leaves Recharts' internal tooltip/hover state stuck
+  // (no real "mouseleave" fires on touch devices). Forcing a remount via
+  // a changing `key` after touch-end fully resets the chart's internal state.
+  const [trendKey, setTrendKey] = useState(0);
+  const [barKey, setBarKey] = useState(0);
 
-  // Keep a per-chart timeout id so a new touch can cancel a still-pending
-  // dismiss from the previous touch. Without this, an old timeout can fire
-  // AFTER a new bar/point has already been touched, desyncing Recharts'
-  // internal active index from what's on screen (stuck/ghost highlight,
-  // tooltip rendered over the wrong bar).
-  const trendDismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const barDismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Recharts computes which bar/point is "active" (and where to draw the
-  // cursor highlight + tooltip) from native "mousemove" events. Touch does
-  // NOT fire mousemove, so on mobile Recharts' internal active-index state
-  // never gets updated correctly -- this is exactly why the gray cursor
-  // highlight and the tooltip's text end up pointing at two different bars.
-  //
-  // Fix: manually translate touch events into real mousemove/mouseleave
-  // events at the touch's actual coordinates, so Recharts tracks the
-  // finger the same way it would track a mouse.
-  const dispatchMouseEvent = (
-    ref: React.RefObject<HTMLDivElement | null>,
-    type: "mousemove" | "mouseleave",
-    touch?: React.Touch
-  ) => {
-    if (!ref.current) return;
-    const event = new MouseEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      clientX: touch?.clientX,
-      clientY: touch?.clientY,
-    });
-    ref.current.dispatchEvent(event);
-  };
-
-  const handleTouchMove = (
-    ref: React.RefObject<HTMLDivElement | null>,
-    e: React.TouchEvent<HTMLDivElement>
-  ) => {
-    const touch = e.touches[0];
-    if (touch) {
-      dispatchMouseEvent(ref, "mousemove", touch);
-    }
-  };
-
-  const scheduleDismiss = (
-    ref: React.RefObject<HTMLDivElement | null>,
-    timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
-  ) => {
-    // Cancel any dismiss still pending from a previous touch so it can't
-    // fire after the user has already moved on to a different bar/point.
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      dispatchMouseEvent(ref, "mouseleave");
-      timeoutRef.current = null;
-    }, 150);
+  const resetAfterTouch = (setter: React.Dispatch<React.SetStateAction<number>>) => {
+    setTimeout(() => setter((k) => k + 1), 1200);
   };
 
   return (
@@ -80,14 +30,11 @@ export function DashboardCharts({
         </CardHeader>
         <CardContent className="pl-2">
           <div
-            ref={trendChartRef}
             className="h-[300px] w-full"
-            onTouchStart={(e) => handleTouchMove(trendChartRef, e)}
-            onTouchMove={(e) => handleTouchMove(trendChartRef, e)}
-            onTouchEnd={() => scheduleDismiss(trendChartRef, trendDismissTimeout)}
+            onTouchEnd={() => resetAfterTouch(setTrendKey)}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <LineChart key={trendKey} data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="date" 
@@ -133,14 +80,11 @@ export function DashboardCharts({
         </CardHeader>
         <CardContent>
           <div
-            ref={barChartRef}
             className="h-[300px] w-full"
-            onTouchStart={(e) => handleTouchMove(barChartRef, e)}
-            onTouchMove={(e) => handleTouchMove(barChartRef, e)}
-            onTouchEnd={() => scheduleDismiss(barChartRef, barDismissTimeout)}
+            onTouchEnd={() => resetAfterTouch(setBarKey)}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={bloodTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart key={barKey} data={bloodTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="name" 
