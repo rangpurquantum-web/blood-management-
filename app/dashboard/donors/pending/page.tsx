@@ -31,7 +31,6 @@ export default function PendingApprovalsPage() {
   const handleStatusChange = (donorId: number, newStatus: "APPROVED" | "REJECTED", fullName: string) => {
     setUpdatingId(donorId);
 
-    // Call update API
     fetch(`/api/donors/${donorId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -44,15 +43,14 @@ export default function PendingApprovalsPage() {
       })
       .then(() => {
         if (newStatus === "APPROVED") {
-          toast.success(`${fullName}-এর আবেদন অনুমোদন করা হয়েছে এবং ডিরেক্টরিতে যুক্ত হয়েছে`);
+          toast.success(`${fullName}'s application has been approved and added to the directory`);
         } else {
-          toast.success(`${fullName}-এর আবেদন বাতিল করা হয়েছে`);
+          toast.success(`${fullName}'s application has been rejected`);
         }
-        // Force refresh by reloading window or query invalidation
         window.location.reload();
       })
       .catch((err) => {
-        toast.error(err.error || "স্ট্যাটাস পরিবর্তন করতে ব্যর্থ হয়েছে");
+        toast.error(err.error || "Failed to update status");
       })
       .finally(() => {
         setUpdatingId(null);
@@ -68,7 +66,7 @@ export default function PendingApprovalsPage() {
               href="/dashboard/donors"
               className="text-muted-foreground hover:text-foreground text-sm flex items-center gap-1"
             >
-              <ArrowLeft className="h-4 w-4" /> ডোনার ডিরেক্টরি
+              <ArrowLeft className="h-4 w-4" /> Donors Directory
             </Link>
           </div>
           <h1 className="text-3xl font-bold tracking-tight mt-1 flex items-center gap-3">
@@ -76,7 +74,7 @@ export default function PendingApprovalsPage() {
             Pending Approvals
           </h1>
           <p className="text-muted-foreground mt-1">
-            পাবলিক রেজিস্ট্রেশন বা নতুন আবেদনকারী ডোনারদের অনুমোদন বা বাতিল করার সেকশন।
+            Approve or reject public registrations and new donor applications.
           </p>
         </div>
       </div>
@@ -89,16 +87,16 @@ export default function PendingApprovalsPage() {
         </div>
       ) : isError ? (
         <Card className="bg-destructive/10 border-destructive/20 text-destructive p-6 text-center">
-          অপেক্ষমান তালিকা লোড করতে ব্যর্থ হয়েছে।
+          Failed to load the pending list.
         </Card>
       ) : !pendingDonors || pendingDonors.length === 0 ? (
         <Card className="bg-card shadow-sm border-muted p-12 text-center space-y-3">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
             <Check className="h-6 w-6" />
           </div>
-          <h3 className="text-lg font-semibold">কোনো অপেক্ষমান আবেদন নেই</h3>
+          <h3 className="text-lg font-semibold">No pending applications</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            সবগুলো নতুন রেজিস্ট্রেশন রিভিউ করা হয়েছে। নতুন কোনো আবেদন জমা পড়লে এখানে দেখা যাবে।
+            All new registrations have been reviewed. New applications will appear here.
           </p>
         </Card>
       ) : (
