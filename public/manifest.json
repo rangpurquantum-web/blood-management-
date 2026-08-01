@@ -1,6 +1,6 @@
 {
-  "name": "Internal Blood Management System",
-  "short_name": "Blood System",
+  "name": "Quantum Donor Pool",
+  "short_name": "Donor Pool",
   "description": "Secure internal portal for managing blood donors, donation history, and blood requests.",
   "start_url": "/",
   "display": "standalone",
