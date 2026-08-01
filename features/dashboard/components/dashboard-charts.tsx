@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid, LabelList } from "recharts";
 
 export function DashboardCharts({
   bloodTypeData,
@@ -11,11 +11,9 @@ export function DashboardCharts({
   bloodTypeData: { name: string; value: number }[];
   trendData: { date: string; count: number }[];
 }) {
-  // Mobile fix: touch leaves Recharts' internal tooltip/hover state stuck
-  // (no real "mouseleave" fires on touch devices). Forcing a remount via
-  // a changing `key` after touch-end fully resets the chart's internal state.
+  // Mobile fix: touch leaves Recharts' internal tooltip/hover state stuck.
+  // Forcing a remount via a changing `key` after touch-end fully resets it.
   const [trendKey, setTrendKey] = useState(0);
-  const [barKey, setBarKey] = useState(0);
 
   const resetAfterTouch = (setter: React.Dispatch<React.SetStateAction<number>>) => {
     setTimeout(() => setter((k) => k + 1), 1200);
@@ -79,12 +77,9 @@ export function DashboardCharts({
           <CardDescription>Distribution of active donors</CardDescription>
         </CardHeader>
         <CardContent>
-          <div
-            className="h-[300px] w-full"
-            onTouchEnd={() => resetAfterTouch(setBarKey)}
-          >
+          <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart key={barKey} data={bloodTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={bloodTypeData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="name" 
@@ -100,17 +95,18 @@ export function DashboardCharts({
                   axisLine={false}
                   allowDecimals={false}
                 />
-                <Tooltip 
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-                  contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px" }}
-                  itemStyle={{ color: "hsl(var(--primary))" }}
-                />
                 <Bar 
                   dataKey="value" 
                   name="Donors"
                   fill="hsl(var(--destructive))" 
                   radius={[4, 4, 0, 0]} 
-                />
+                >
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    style={{ fill: "hsl(var(--foreground))", fontSize: 12, fontWeight: 600 }}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
