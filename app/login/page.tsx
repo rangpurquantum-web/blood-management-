@@ -20,6 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { InstallButton } from "@/components/install-button";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -153,7 +154,8 @@ export default function LoginPage() {
           </form>
         </CardContent>
         
-        <CardFooter className="flex justify-center border-t border-border/40 p-4">
+        <CardFooter className="flex flex-col items-center gap-3 border-t border-border/40 p-4">
+          <InstallButton />
           <p className="text-xs text-muted-foreground">
             Authorized management personnel only.
           </p>
