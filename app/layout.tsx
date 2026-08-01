@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Quantum Donor Pool",
+  title: "Quantum Blood Donor Pool",
   description:
     "Secure internal portal for managing blood donors, donation history, and blood requests.",
   manifest: "/manifest.json",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Quantum Donor Pool",
+    title: "Quantum Blood Donor Pool",
   },
 };
 
