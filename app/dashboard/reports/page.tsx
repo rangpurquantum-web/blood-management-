@@ -7,7 +7,7 @@ import { DonorReportBuilder } from "@/features/reports/components/donor-report-b
 
 export const metadata: Metadata = {
   title: "Donor Reports — BloodManager",
-  description: "ডোনার ডেটা কাস্টম ফিল্টার দিয়ে বিশ্লেষণ করুন।",
+  description: "Analyze donor data with custom filters.",
 };
 
 export default async function ReportsPage() {
@@ -27,7 +27,7 @@ export default async function ReportsPage() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Donor Reports</h1>
               <p className="text-sm text-muted-foreground">
-                কাস্টম ফিল্টার দিয়ে ডোনার ডেটা অ্যানালাইজ করুন
+                Analyze donor data with custom filters
               </p>
             </div>
           </div>
