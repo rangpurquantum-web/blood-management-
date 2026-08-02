@@ -13,6 +13,8 @@ import {
   Calendar,
   AlertCircle,
   ArrowLeft,
+  Copy,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,12 +23,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+
+const PUBLIC_REGISTRATION_FORM_URL = "https://blood-management-livid.vercel.app/register";
 
 export default function PendingApprovalsPage() {
   const { data: pendingDonors, isLoading, isError } = useDonors({ status: "PENDING" });
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const updateDonorStatus = useUpdateDonor;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(PUBLIC_REGISTRATION_FORM_URL);
+      setCopied(true);
+      toast.success("Link copied");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
 
   const handleStatusChange = (donorId: number, newStatus: "APPROVED" | "REJECTED", fullName: string) => {
     setUpdatingId(donorId);
@@ -78,6 +95,40 @@ export default function PendingApprovalsPage() {
           </p>
         </div>
       </div>
+
+      {/* Public registration form link — copy to share (e.g. via WhatsApp) */}
+      <Card className="bg-card shadow-sm border-muted">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+            <Link2 className="h-4 w-4 text-primary" />
+            Public Registration Form
+          </div>
+          <Input
+            readOnly
+            value={PUBLIC_REGISTRATION_FORM_URL}
+            className="bg-background/50 font-mono text-sm flex-1"
+            onFocus={(e) => e.target.select()}
+          />
+          <Button
+            type="button"
+            variant={copied ? "default" : "outline"}
+            className={copied ? "bg-emerald-600 hover:bg-emerald-700 text-white shrink-0" : "shrink-0"}
+            onClick={handleCopyLink}
+          >
+            {copied ? (
+              <>
+                <Check className="mr-2 h-4 w-4" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Link
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <div className="space-y-4">
