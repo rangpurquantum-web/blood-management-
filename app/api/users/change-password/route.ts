@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { withAuth, apiError, apiSuccess } from "@/lib/api-helpers";
+import { withAuth, apiError, apiSuccess, writeAuditLog } from "@/lib/api-helpers";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
@@ -34,13 +34,7 @@ export const POST = withAuth(async (req: NextRequest, session) => {
   });
 
   // Audit log
-  await prisma.auditLog.create({
-    data: {
-      userId: session.userId,
-      action: "Password Changed",
-      details: `User ${user.email} changed their own password`,
-    },
-  });
+  await writeAuditLog(session.userId, "Password Changed", `User ${user.email} changed their own password`);
 
   return apiSuccess({ message: "Password changed successfully" });
 });
