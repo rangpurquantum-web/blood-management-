@@ -47,6 +47,41 @@ export const donorUpdateSchema = donorSchema.partial().extend({
   notes: z.string().optional().nullable(),
 });
 
+// ─── Donor Import Schema (relaxed — used only for CSV/Excel bulk import) ────
+
+export const importDonorSchema = z.object({
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  dob: z.coerce
+    .date()
+    .catch(new Date("2000-01-01")),
+  gender: z
+    .string()
+    .optional()
+    .transform((val) => (val && val.trim() ? val : "Not specified")),
+  bloodType: z.enum(bloodTypes, {
+    errorMap: () => ({ message: "Invalid blood type" }),
+  }),
+  phone: z
+    .array(
+      z.object({
+        number: z.string().regex(/^01\d{9}$/, "Must be a valid 11-digit Bangladeshi mobile number (01XXXXXXXXX)"),
+        label: z.string().min(1).default("Primary"),
+        isPrimary: z.boolean().default(true),
+      })
+    )
+    .min(1, "At least one phone number is required"),
+  email: z
+    .string()
+    .email("Invalid email address")
+    .optional()
+    .or(z.literal(""))
+    .transform((val) => val || undefined),
+  address: z
+    .string()
+    .optional()
+    .transform((val) => (val && val.trim() ? val : "Not specified")),
+});
+
 // ─── Manual Deferral Schema ────────────────────────────────────────────────────
 
 export const donorEligibilitySchema = z.object({
@@ -60,3 +95,4 @@ export const donorEligibilitySchema = z.object({
 export type DonorInput = z.infer<typeof donorSchema>;
 export type DonorUpdateInput = z.infer<typeof donorUpdateSchema>;
 export type DonorEligibilityInput = z.infer<typeof donorEligibilitySchema>;
+export type ImportDonorInput = z.infer<typeof importDonorSchema>;
