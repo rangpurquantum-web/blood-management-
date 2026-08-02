@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { withAuth, apiError, apiSuccess } from "@/lib/api-helpers";
+import { withAuth, apiError, apiSuccess, writeAuditLog } from "@/lib/api-helpers";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -51,13 +51,7 @@ export const POST = withAuth(
       select: { id: true, name: true, email: true, role: true, createdAt: true, permissions: true },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        action: "User Created",
-        details: `Admin created user: ${email} (${role})`,
-      },
-    });
+    await writeAuditLog(session.userId, "User Created", `Admin created user: ${email} (${role})`);
 
     return NextResponse.json({ user }, { status: 201 });
   },
