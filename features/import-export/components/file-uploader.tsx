@@ -6,7 +6,7 @@ import Papa from "papaparse";
 import { UploadCloud, File, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { donorSchema, type DonorInput } from "@/features/donors/schemas";
+import { importDonorSchema, type DonorInput } from "@/features/donors/schemas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,20 +37,26 @@ export function FileUploader() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (header) => header.trim().toLowerCase(),
       complete: (results) => {
         const rawData = results.data as any[];
+
+        // Debug: প্রথম row এবং তার keys দেখতে চাইলে কমেন্ট খুলুন
+        // console.log("First parsed row:", rawData[0]);
+        // console.log("Keys:", rawData[0] ? Object.keys(rawData[0]) : []);
+
         const validDonors: DonorInput[] = [];
         const parsingErrors: { row: number; error: string }[] = [];
 
         rawData.forEach((row, index) => {
           const mappedRow = {
-            fullName: row.fullName || row.name || "",
-            dob: row.dob || row.dateOfBirth || "2000-01-01",
+            fullName: row.fullname || row.name || "",
+            dob: row.dob || row.dateofbirth || "2000-01-01",
             gender: row.gender || "",
-            bloodType: row.bloodType || row.bloodGroup || "",
+            bloodType: row.bloodtype || row.bloodgroup || "",
             phone: [
               {
-                number: String(row.phone || row.phoneNumber || "").trim().replace(/\s+/g, ""),
+                number: String(row.phone || row.phonenumber || "").trim().replace(/\s+/g, ""),
                 label: "Primary",
                 isPrimary: true,
               },
@@ -59,10 +65,10 @@ export function FileUploader() {
             address: row.address || "",
           };
 
-          const validation = donorSchema.safeParse(mappedRow);
+          const validation = importDonorSchema.safeParse(mappedRow);
 
           if (validation.success) {
-            validDonors.push(validation.data);
+            validDonors.push(validation.data as DonorInput);
           } else {
             parsingErrors.push({
               row: index + 2, // +2 because 0-indexed and header row
@@ -120,7 +126,7 @@ export function FileUploader() {
           Drag and drop a CSV file containing donor records. Ensure headers match: fullName, dob, gender, bloodType, phone, email, address.
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         {!file ? (
           <div
@@ -195,8 +201,8 @@ export function FileUploader() {
           <Button variant="outline" onClick={clearSelection} disabled={isUploading}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleUpload} 
+          <Button
+            onClick={handleUpload}
             disabled={parsedData.length === 0 || isUploading}
           >
             {isUploading ? (
