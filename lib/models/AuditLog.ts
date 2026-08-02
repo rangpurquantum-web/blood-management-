@@ -1,4 +1,4 @@
-import { Schema, models, model } from "mongoose";
+import { Schema, models, model, Model } from "mongoose";
 
 export interface IAuditLog {
   userId: number | null;
@@ -21,5 +21,8 @@ const AuditLogSchema = new Schema<IAuditLog>({
 AuditLogSchema.index({ userId: 1 });
 AuditLogSchema.index({ timestamp: -1 });
 
-// `models.AuditLog ||` avoids "OverwriteModelError" during Next.js dev hot reloads
-export const AuditLog = models.AuditLog || model<IAuditLog>("AuditLog", AuditLogSchema);
+// Explicit `Model<IAuditLog>` type avoids a TypeScript "not callable" error —
+// without it, `models.AuditLog || model(...)` resolves to an ambiguous union
+// type that TypeScript can't call methods like .find() on reliably.
+export const AuditLog: Model<IAuditLog> =
+  (models.AuditLog as Model<IAuditLog>) || model<IAuditLog>("AuditLog", AuditLogSchema);
