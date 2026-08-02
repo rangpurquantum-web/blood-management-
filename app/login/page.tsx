@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Droplet, Loader2, LogIn } from "lucide-react";
+import { Droplet, Loader2, LogIn, Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -56,11 +57,11 @@ export default function LoginPage() {
           result.error.includes("ACCOUNT_INACTIVE") ||
           result.error.includes("account_inactive")
         ) {
-          toast.error("Your account is currently inactive", {
+          toast.error("Your account has been deactivated. Please contact the Admin.", {
             duration: 6000,
           });
         } else {
-          toast.error("Invalid email or password");
+          toast.error("Incorrect email or password");
         }
         return;
       }
@@ -88,9 +89,9 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-destructive text-primary-foreground shadow-lg">
             <Droplet className="h-8 w-8 fill-current" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">login</CardTitle>
+          <CardTitle className="text-3xl font-bold tracking-tight">Welcome Back</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
-            Quantum blood donor pool
+            Sign in to the Internal Blood Management System
           </CardDescription>
         </CardHeader>
         
@@ -122,15 +123,26 @@ export default function LoginPage() {
                   Password
                 </Label>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                disabled={isLoading}
-                className={`bg-background/50 ${form.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                {...form.register("password")}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  disabled={isLoading}
+                  className={`bg-background/50 pr-10 ${form.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                  {...form.register("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {form.formState.errors.password && (
                 <p className="text-sm font-medium text-destructive">
                   {form.formState.errors.password.message}
