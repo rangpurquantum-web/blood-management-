@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { withAuth, apiError, apiSuccess } from "@/lib/api-helpers";
+import { withAuth, apiError, apiSuccess, writeAuditLog } from "@/lib/api-helpers";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -76,13 +76,11 @@ export const PATCH = withAuth(
       data: updateData,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        action: "User Updated",
-        details: `Admin (id=${session.userId}) updated user account: ${target.email}`,
-      },
-    });
+    await writeAuditLog(
+      session.userId,
+      "User Updated",
+      `Admin (id=${session.userId}) updated user account: ${target.email}`,
+    );
 
     return apiSuccess({ message: "User updated successfully" });
   },
@@ -113,13 +111,11 @@ export const DELETE = withAuth(
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        action: "User Deleted",
-        details: `Admin (id=${session.userId}) soft-deleted user: ${target.email}`,
-      },
-    });
+    await writeAuditLog(
+      session.userId,
+      "User Deleted",
+      `Admin (id=${session.userId}) soft-deleted user: ${target.email}`,
+    );
 
     return apiSuccess({ message: "User deleted" });
   },
