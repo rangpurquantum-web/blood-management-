@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
+import { connectMongo } from "@/lib/mongodb";
+import { AuditLog } from "@/lib/models/AuditLog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,19 +66,37 @@ export function withAuth(
 // ─── Audit Log Writer ─────────────────────────────────────────────────────────
 
 /**
- * Inserts an immutable audit log record.
+ * Inserts an immutable audit log record into MongoDB.
+ *
+ * Since AuditLog now lives in a separate database from User (Postgres),
+ * we can't join at read time — so we look up and denormalize the user's
+ * name/email into the log document here, once, at write time.
  */
 export async function writeAuditLog(
   userId: number | null,
   action: string,
   details: string,
 ): Promise<void> {
-  await prisma.auditLog.create({
-    data: {
-      userId: userId || null,
-      action,
-      details,
-    },
+  await connectMongo();
+
+  let userName: string | null = null;
+  let userEmail: string | null = null;
+
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
+    userName = user?.name ?? null;
+    userEmail = user?.email ?? null;
+  }
+
+  await AuditLog.create({
+    userId: userId || null,
+    userName,
+    userEmail,
+    action,
+    details,
   });
 }
 
