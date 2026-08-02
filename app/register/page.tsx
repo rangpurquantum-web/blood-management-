@@ -60,10 +60,10 @@ export default function PublicRegisterPage() {
     publicRegister.mutate(values, {
       onSuccess: () => {
         setSubmittedSuccess(true);
-        toast.success("আপনার আবেদন জমা হয়েছে");
+        toast.success("Your application has been submitted");
       },
       onError: (err: any) => {
-        const msg = err.error || "আবেদন জমা দিতে ব্যর্থ হয়েছে। আবার চেষ্টা করুন।";
+        const msg = err.error || "Failed to submit application. Please try again.";
         setServerError(msg);
         toast.error(msg);
       },
@@ -78,10 +78,10 @@ export default function PublicRegisterPage() {
       <div className="w-full max-w-xl mb-6 text-center space-y-2">
         <Link href="/" className="inline-flex items-center gap-2 text-primary font-bold text-2xl tracking-tight">
           <Droplet className="h-8 w-8 text-destructive fill-destructive" />
-          <span>কোয়ান্টাম স্বেচ্ছা রক্তদান কার্যক্রম </span>
+          <span>Quantum Voluntary Blood Donation Program</span>
         </Link>
         <p className="text-sm text-muted-foreground">
-          স্বেচ্ছায় রক্তদাতা হিসেবে নিবন্ধন করুন
+          Register as a voluntary blood donor
         </p>
       </div>
 
@@ -93,12 +93,12 @@ export default function PublicRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground">ধন্যবাদ!</h2>
+              <h2 className="text-2xl font-bold text-foreground">Thank You!</h2>
               <p className="text-base font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 py-3 px-4 rounded-lg">
-                আপনার আবেদন জমা হয়েছে, রিভিউ করার পর অনুমোদন করা হবে
+                Your application has been submitted and will be approved after review
               </p>
               <p className="text-sm text-muted-foreground pt-2">
-                আমাদের এডমিন প্যানেল আপনার দেওয়া তথ্য যাচাই-বাছাই করে দ্রুতই রক্তদাতা হিসেবে তালিকাভুক্ত করবেন।
+                Our admin team will verify your information and add you to the donor list soon.
               </p>
             </div>
 
@@ -110,10 +110,10 @@ export default function PublicRegisterPage() {
                   form.reset();
                 }}
               >
-                আরেকটি আবেদন করুন
+                Submit Another Application
               </Button>
               <Button asChild>
-                <Link href="/">হোমপেজে ফিরে যান</Link>
+                <Link href="/">Back to Home</Link>
               </Button>
             </div>
           </CardContent>
@@ -122,17 +122,17 @@ export default function PublicRegisterPage() {
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-xl flex items-center gap-2">
                 <Heart className="h-5 w-5 text-destructive" />
-                স্বেচ্ছায় রক্তদাতা রেজিস্ট্রেশন ফর্ম
+                Voluntary Blood Donor Registration Form
               </CardTitle>
               <CardDescription>
-                নিচের ফর্মে আপনার সঠিক তথ্য প্রদান করে আবেদন জমা দিন।
+                Please fill in accurate information below to submit your application.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="pt-6">
               {serverError && (
                 <div className="mb-6 p-4 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm space-y-1">
-                  <p className="font-semibold">রেজিস্ট্রেশন ব্যর্থ হয়েছে</p>
+                  <p className="font-semibold">Registration Failed</p>
                   <p>{serverError}</p>
                 </div>
               )}
@@ -141,11 +141,11 @@ export default function PublicRegisterPage() {
                 {/* Full Name */}
                 <div className="grid gap-2">
                   <Label htmlFor="fullName" className="font-semibold">
-                    পূর্ণ নাম <span className="text-destructive">*</span>
+                    Full Name <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="fullName"
-                    placeholder="আপনার পূর্ণ নাম লিখুন"
+                    placeholder="Enter your full name"
                     {...form.register("fullName")}
                   />
                   {errors.fullName && (
@@ -157,7 +157,7 @@ export default function PublicRegisterPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="dob" className="font-semibold">
-                      জন্ম তারিখ <span className="text-destructive">*</span>
+                      Date of Birth <span className="text-destructive">*</span>
                     </Label>
                     <Input id="dob" type="date" {...form.register("dob")} />
                     {errors.dob && (
@@ -167,19 +167,19 @@ export default function PublicRegisterPage() {
 
                   <div className="grid gap-2">
                     <Label className="font-semibold">
-                      লিঙ্গ <span className="text-destructive">*</span>
+                      Gender <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       defaultValue={form.getValues("gender")}
                       onValueChange={(val) => form.setValue("gender", val)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="লিঙ্গ নির্বাচন করুন" />
+                        <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Male">পুরুষ (Male)</SelectItem>
-                        <SelectItem value="Female">নারী (Female)</SelectItem>
-                        <SelectItem value="Other">অন্যান্য (Other)</SelectItem>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.gender && (
@@ -191,14 +191,14 @@ export default function PublicRegisterPage() {
                 {/* Blood Group */}
                 <div className="grid gap-2">
                   <Label className="font-semibold">
-                    ব্লাড গ্রুপ <span className="text-destructive">*</span>
+                    Blood Group <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     defaultValue={form.getValues("bloodType")}
                     onValueChange={(val: any) => form.setValue("bloodType", val)}
                   >
                     <SelectTrigger className="font-mono">
-                      <SelectValue placeholder="ব্লাড গ্রুপ নির্বাচন করুন" />
+                      <SelectValue placeholder="Select blood group" />
                     </SelectTrigger>
                     <SelectContent>
                       {BLOOD_TYPES.map((bt) => (
@@ -217,10 +217,10 @@ export default function PublicRegisterPage() {
                 <div className="space-y-3 border p-4 rounded-lg bg-muted/10">
                   <div className="flex flex-col gap-0.5">
                     <Label className="font-semibold">
-                      ফোন নম্বরসমূহ <span className="text-destructive">*</span>
+                      Phone Numbers <span className="text-destructive">*</span>
                     </Label>
                     <span className="text-xs text-muted-foreground">
-                      একাধিক নম্বর যোগ করতে পারেন, একটি Primary হিসেবে নির্বাচন করুন
+                      You can add multiple numbers; select one as Primary
                     </span>
                   </div>
 
@@ -235,7 +235,7 @@ export default function PublicRegisterPage() {
                       >
                         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
                           <div className="grid gap-1">
-                            <Label className="text-xs text-muted-foreground">মোবাইল নম্বর</Label>
+                            <Label className="text-xs text-muted-foreground">Mobile Number</Label>
                             <Input
                               placeholder="01XXXXXXXXX"
                               {...form.register(`phone.${index}.number` as const)}
@@ -248,9 +248,9 @@ export default function PublicRegisterPage() {
                           </div>
 
                           <div className="grid gap-1 sm:w-[140px]">
-                            <Label className="text-xs text-muted-foreground">লেবেল (ঐচ্ছিক)</Label>
+                            <Label className="text-xs text-muted-foreground">Label (optional)</Label>
                             <Input
-                              placeholder="যেমন: ব্যক্তিগত"
+                              placeholder="e.g. Personal"
                               {...form.register(`phone.${index}.label` as const)}
                             />
                           </div>
@@ -269,7 +269,7 @@ export default function PublicRegisterPage() {
                               className="h-4 w-4 accent-primary cursor-pointer"
                             />
                             <span className={isPrimarySelected ? "font-medium text-primary" : "text-muted-foreground"}>
-                              {isPrimarySelected ? "Primary নম্বর" : "Primary হিসেবে সেট করুন"}
+                              {isPrimarySelected ? "Primary Number" : "Set as Primary"}
                             </span>
                           </label>
 
@@ -302,14 +302,14 @@ export default function PublicRegisterPage() {
                     onClick={() => append({ number: "", label: "", isPrimary: false })}
                     className="w-full mt-2"
                   >
-                    <Plus className="mr-2 h-4 w-4" /> আরও ফোন নম্বর যোগ করুন
+                    <Plus className="mr-2 h-4 w-4" /> Add Another Phone Number
                   </Button>
                 </div>
 
                 {/* Email (Optional) */}
                 <div className="grid gap-2">
                   <Label htmlFor="email" className="font-semibold">
-                    ইমেইল ঠিকানা <span className="text-muted-foreground text-xs">(ঐচ্ছিক)</span>
+                    Email Address <span className="text-muted-foreground text-xs">(optional)</span>
                   </Label>
                   <Input
                     id="email"
@@ -325,11 +325,11 @@ export default function PublicRegisterPage() {
                 {/* Address / Area */}
                 <div className="grid gap-2">
                   <Label htmlFor="address" className="font-semibold">
-                    বর্তমান ঠিকানা / এলাকা <span className="text-destructive">*</span>
+                    Current Address / Area <span className="text-destructive">*</span>
                   </Label>
                   <Textarea
                     id="address"
-                    placeholder="জেলা, উপজেলা, ইউনিয়ন বা এলাকা উল্লেখ করুন"
+                    placeholder="Mention district, upazila, union or area"
                     rows={3}
                     {...form.register("address")}
                   />
@@ -344,17 +344,17 @@ export default function PublicRegisterPage() {
                     href="/"
                     className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
                   >
-                    <ArrowLeft className="h-4 w-4" /> ফিরে যান
+                    <ArrowLeft className="h-4 w-4" /> Back
                   </Link>
 
                   <Button type="submit" size="lg" disabled={publicRegister.isPending} className="w-full sm:w-auto">
                     {publicRegister.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        আবেদন জমা হচ্ছে...
+                        Submitting application...
                       </>
                     ) : (
-                      "আবেদন জমা দিন"
+                      "Submit Application"
                     )}
                   </Button>
                 </div>
