@@ -56,6 +56,7 @@ export function DonorForm({
         : [{ number: "", label: "Primary", isPrimary: true }],
       email: donor?.email || "",
       address: donor?.address || "",
+      lastDonationDate: "",
     },
   });
 
@@ -73,7 +74,8 @@ export function DonorForm({
   const onSubmit = (data: any) => {
     const submitData = {
       ...data,
-      dob: new Date(data.dob),
+      dob: data.dob ? new Date(data.dob) : null,
+      lastDonationDate: data.lastDonationDate ? new Date(data.lastDonationDate) : undefined,
     };
     if (donor) {
       updateDonor.mutate(submitData, {
@@ -127,7 +129,9 @@ export function DonorForm({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="dob">Date of Birth</Label>
+              <Label htmlFor="dob">
+                Date of Birth <span className="text-muted-foreground text-xs font-normal">(optional)</span>
+              </Label>
               <Input id="dob" type="date" {...form.register("dob")} />
               {errors.dob && (
                 <span className="text-xs text-destructive">{errors.dob.message}</span>
@@ -174,6 +178,19 @@ export function DonorForm({
               )}
             </div>
           </div>
+
+          {/* Last Donation Date — only shown when registering a new donor */}
+          {!donor && (
+            <div className="grid gap-2">
+              <Label htmlFor="lastDonationDate">
+                Last Donation Date <span className="text-muted-foreground text-xs font-normal">(optional — if they've donated before)</span>
+              </Label>
+              <Input id="lastDonationDate" type="date" {...form.register("lastDonationDate")} />
+              <p className="text-[11px] text-muted-foreground">
+                If provided, this will be recorded in the donor's donation history and used to calculate their eligibility.
+              </p>
+            </div>
+          )}
 
           {/* Dynamic Phone Numbers Section */}
           <div className="space-y-4">
