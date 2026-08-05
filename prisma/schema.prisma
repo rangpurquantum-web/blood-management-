@@ -8,6 +8,7 @@ datasource db {
 }
 
 enum Role {
+  SUPER_ADMIN
   ADMIN
   VOLUNTEER
 }
@@ -18,6 +19,16 @@ enum DonorStatus {
   REJECTED
 }
 
+model Branch {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  users     User[]
+  donors    Donor[]
+}
+
 model User {
   id           Int        @id @default(autoincrement())
   name         String
@@ -25,17 +36,21 @@ model User {
   passwordHash String
   role         Role       @default(VOLUNTEER)
   permissions  Json?
+  branchId     Int?
+  branch       Branch?    @relation(fields: [branchId], references: [id])
   isActive     Boolean    @default(true)
   isDeleted    Boolean    @default(false)
   deletedAt    DateTime?
   createdAt    DateTime   @default(now())
   auditLogs    AuditLog[]
+
+  @@index([branchId])
 }
 
 model Donor {
   id             Int               @id @default(autoincrement())
   fullName       String
-  dob            DateTime
+  dob            DateTime?
   gender         String
   bloodType      String
   phone          DonorPhone[]
@@ -50,10 +65,13 @@ model Donor {
   deletedAt      DateTime?
   notes          String?
   donations      DonationHistory[]
+  branchId       Int?
+  branch         Branch?           @relation(fields: [branchId], references: [id])
 
   @@index([fullName])
   @@index([isDeleted])
   @@index([status])
+  @@index([branchId])
 }
 
 model DonorPhone {
@@ -76,7 +94,6 @@ model DonationHistory {
   donationDate DateTime
   notes        String?
 }
-
 
 model AuditLog {
   id        Int      @id @default(autoincrement())
