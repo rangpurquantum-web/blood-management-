@@ -18,7 +18,9 @@ export const donorSchema = z.object({
         return age >= 18;
       },
       { message: "Donor must be at least 18 years old" },
-    ),
+    )
+    .optional()
+    .nullable(),
   gender: z.string().min(1, "Gender is required"),
   bloodType: z.enum(bloodTypes, {
     errorMap: () => ({ message: "Invalid blood type" }),
@@ -38,6 +40,7 @@ export const donorSchema = z.object({
     ),
   email: z.string().email("Invalid email address"),
   address: z.string().min(1, "Address is required"),
+  lastDonationDate: z.coerce.date().optional().nullable(),
 });
 
 // ─── Donor Update Schema (all fields optional) ───────────────────────────────
