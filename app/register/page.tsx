@@ -40,6 +40,7 @@ export default function PublicRegisterPage() {
       phone: [{ number: "", label: "", isPrimary: true }],
       email: "",
       address: "",
+      lastDonationDate: "",
     },
   });
 
@@ -78,10 +79,10 @@ export default function PublicRegisterPage() {
       <div className="w-full max-w-xl mb-6 text-center space-y-2">
         <Link href="/" className="inline-flex items-center gap-2 text-primary font-bold text-2xl tracking-tight">
           <Droplet className="h-8 w-8 text-destructive fill-destructive" />
-          <span>Quantum Voluntary Blood Donation Program</span>
+          <span>Blood Management System</span>
         </Link>
         <p className="text-sm text-muted-foreground">
-          Register as a voluntary blood donor
+          Save a life by donating blood — register as a voluntary donor
         </p>
       </div>
 
@@ -93,12 +94,12 @@ export default function PublicRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground">Thank You!</h2>
+              <h2 className="text-2xl font-bold text-foreground">Thank you!</h2>
               <p className="text-base font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 py-3 px-4 rounded-lg">
-                Your application has been submitted and will be approved after review
+                Your application has been submitted and will be reviewed for approval.
               </p>
               <p className="text-sm text-muted-foreground pt-2">
-                Our admin team will verify your information and add you to the donor list soon.
+                Our admin team will verify your information and add you to the donor directory shortly.
               </p>
             </div>
 
@@ -122,10 +123,10 @@ export default function PublicRegisterPage() {
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-xl flex items-center gap-2">
                 <Heart className="h-5 w-5 text-destructive" />
-                Voluntary Blood Donor Registration Form
+                Voluntary Blood Donor Registration
               </CardTitle>
               <CardDescription>
-                Please fill in accurate information below to submit your application.
+                Fill in your accurate information below to submit your application.
               </CardDescription>
             </CardHeader>
 
@@ -186,6 +187,14 @@ export default function PublicRegisterPage() {
                       <span className="text-xs text-destructive">{errors.gender.message}</span>
                     )}
                   </div>
+                </div>
+
+                {/* Last Donation Date (Optional) */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lastDonationDate" className="font-semibold">
+                    Last Donation Date <span className="text-muted-foreground text-xs font-normal">(optional — if you&apos;ve donated blood before)</span>
+                  </Label>
+                  <Input id="lastDonationDate" type="date" {...form.register("lastDonationDate")} />
                 </div>
 
                 {/* Blood Group */}
@@ -269,7 +278,7 @@ export default function PublicRegisterPage() {
                               className="h-4 w-4 accent-primary cursor-pointer"
                             />
                             <span className={isPrimarySelected ? "font-medium text-primary" : "text-muted-foreground"}>
-                              {isPrimarySelected ? "Primary Number" : "Set as Primary"}
+                              {isPrimarySelected ? "Primary number" : "Set as Primary"}
                             </span>
                           </label>
 
@@ -329,7 +338,7 @@ export default function PublicRegisterPage() {
                   </Label>
                   <Textarea
                     id="address"
-                    placeholder="Mention district, upazila, union or area"
+                    placeholder="Mention district, upazila, union, or area"
                     rows={3}
                     {...form.register("address")}
                   />
@@ -351,7 +360,7 @@ export default function PublicRegisterPage() {
                     {publicRegister.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Submitting application...
+                        Submitting...
                       </>
                     ) : (
                       "Submit Application"
