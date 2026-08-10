@@ -102,7 +102,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
   };
 
   const handleDonatedToday = () => {
-    if (window.confirm("আজকের তারিখে রক্তদান রেকর্ড করা হবে, নিশ্চিত?")) {
+    if (window.confirm("This will record a donation with today's date. Continue?")) {
       recordDonation.mutate(
         {
           patientName: "Direct / Self Donation",
@@ -111,8 +111,8 @@ export function DonorProfile({ donorId }: { donorId: number }) {
           notes: "Recorded via 'Donated Today' quick button",
         },
         {
-          onSuccess: () => toast.success("রক্তদান সফলভাবে রেকর্ড করা হয়েছে!"),
-          onError: (err: any) => toast.error(err.error || err.message || "রক্তদান রেকর্ড করতে সমস্যা হয়েছে"),
+          onSuccess: () => toast.success("Donation recorded successfully!"),
+          onError: (err: any) => toast.error(err.error || err.message || "Failed to record donation"),
         }
       );
     }
@@ -230,8 +230,12 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                 )}
                 <span>•</span>
                 <span>{donor.gender}</span>
-                <span>•</span>
-                <span>DOB: {format(new Date(donor.dob), "PP")}</span>
+                {donor.dob && (
+                  <>
+                    <span>•</span>
+                    <span>DOB: {format(new Date(donor.dob), "PP")}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -288,12 +292,12 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                       {showAllPhones ? (
                         <>
                           <ChevronUp className="h-3.5 w-3.5" />
-                          আরও নম্বর লুকান
+                          Hide extra numbers
                         </>
                       ) : (
                         <>
                           <ChevronDown className="h-3.5 w-3.5" />
-                          আরও নম্বর দেখুন ({secondaryPhones.length})
+                          Show more numbers ({secondaryPhones.length})
                         </>
                       )}
                     </Button>
