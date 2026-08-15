@@ -91,7 +91,7 @@ export const PATCH = withAuth(
       if (conflict) {
         if (conflict.email === data.email) {
           return apiError(
-            `এই ইমেইল দিয়ে ইতিমধ্যে অন্য একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
+            `এই ইমেইল দিয়ে ইতিমধ্যে অন্য একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
             409,
           );
         } else {
@@ -153,25 +153,21 @@ export const DELETE = withAuth(
 
     if (isNaN(id)) return apiError("Invalid donor ID", 400);
 
-    const existing = await prisma.donor.findFirst({ where: { id, isDeleted: false } });
+    const existing = await prisma.donor.findFirst({ where: { id } });
 
     if (!existing) return apiError("Donor not found", 404);
 
-    await prisma.donor.update({
-      where: { id },
-      data: {
-        isDeleted: true,
-        deletedAt: new Date(),
-      },
-    });
+    // Permanently delete the donor. Related DonorPhone and DonationHistory
+    // records are removed automatically via onDelete: Cascade in the schema.
+    await prisma.donor.delete({ where: { id } });
 
     await writeAuditLog(
       session.userId,
       "Donor Deleted",
-      `Deleted donor: ${existing.fullName} (${existing.bloodType}) — ID ${id}`,
+      `Permanently deleted donor: ${existing.fullName} (${existing.bloodType}) — ID ${id}`,
     );
 
-    return apiSuccess({ message: "Donor deleted successfully" });
+    return apiSuccess({ message: "Donor permanently deleted" });
   },
   { permission: "donorDelete" }
 );
