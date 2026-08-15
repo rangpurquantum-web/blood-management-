@@ -146,22 +146,31 @@ async function main() {
 
   for (const d of donorSeedData) {
     const { phone, ...rest } = d;
-    const donor = await prisma.donor.upsert({
-      where: { email: d.email },
-      update: {},
-      create: {
-        ...rest,
-        phone: {
-          create: [
-            {
-              number: phone,
-              label: "Primary",
-              isPrimary: true,
-            },
-          ],
-        },
-      },
+
+    // email is no longer a unique field (soft-deleted donors can reuse an
+    // email), so look up the active donor by email manually instead of
+    // using upsert (which requires a unique `where`).
+    const existing = await prisma.donor.findFirst({
+      where: { email: d.email, isDeleted: false },
     });
+
+    const donor = existing
+      ? existing
+      : await prisma.donor.create({
+          data: {
+            ...rest,
+            phone: {
+              create: [
+                {
+                  number: phone,
+                  label: "Primary",
+                  isPrimary: true,
+                },
+              ],
+            },
+          },
+        });
+
     donors.push(donor);
   }
 
@@ -207,12 +216,15 @@ async function main() {
   ];
 
   for (const donation of donationSeeds) {
-    await prisma.donationHistory.create({ data: donation });
+    const alreadyExists = await prisma.donationHistory.findFirst({
+      where: { donorId: donation.donorId, patientName: donation.patientName },
+    });
+    if (!alreadyExists) {
+      await prisma.donationHistory.create({ data: donation });
+    }
   }
 
   console.log(`✅ ${donationSeeds.length} donation records seeded`);
-
-
 
   // ─── Audit Logs ────────────────────────────────────────────────────────────
   await prisma.auditLog.createMany({
