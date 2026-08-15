@@ -330,7 +330,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                   <Droplet className="h-5 w-5 text-emerald-500 shrink-0" />
                   <div>
                     <p className="font-medium text-sm">Ready to Donate</p>
-                    <p className="text-xs text-muted-foreground mt-1">This donor has passed the 56-day waiting period and is eligible for donation.</p>
+                    <p className="text-xs text-muted-foreground mt-1">This donor has passed the required waiting period and is eligible for donation.</p>
                   </div>
                 </div>
               ) : (
