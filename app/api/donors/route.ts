@@ -7,6 +7,7 @@ import {
   apiError,
   apiSuccess,
   validationError,
+  eligibilityFromDonation,
 } from "@/lib/api-helpers";
 import { donorSchema } from "@/features/donors";
 
@@ -140,10 +141,20 @@ export const POST = withAuth(
     lastDonationDate?: Date | null;
   };
 
+  // If a last donation date was provided, calculate real eligibility from it
+  // instead of assuming the donor is eligible by default.
+  const eligibility = lastDonationDate
+    ? eligibilityFromDonation(lastDonationDate)
+    : { isEligible: true as const, deferredUntil: null };
+
   const donor = await prisma.donor.create({
     data: {
       ...donorData,
-      isEligible: true,
+      isEligible: eligibility.isEligible,
+      deferredUntil: eligibility.deferredUntil,
+      ...(lastDonationDate
+        ? { deferralReason: eligibility.isEligible ? null : "Recent donation — 4-month rest period" }
+        : {}),
       phone: {
         create: phoneData.map((p) => ({
           number: p.number,
