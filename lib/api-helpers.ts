@@ -124,10 +124,10 @@ export function apiSuccess(data: Record<string, unknown>, status = 200): NextRes
 
 // ─── Eligibility Calculator ────────────────────────────────────────────────────
 
-const DEFERRAL_DAYS = 56;
+const DEFERRAL_DAYS = 120; // 4 months
 
 /**
- * Calculates the post-donation deferral window (56 days from the donation date).
+ * Calculates the post-donation deferral window (4 months from the donation date).
  */
 export function eligibilityFromDonation(donationDate: Date): {
   isEligible: false;
