@@ -125,7 +125,7 @@ export const POST = withAuth(
   if (existing) {
     if (existing.email === data.email) {
       return apiError(
-        `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
+        `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
         409,
       );
     } else {
@@ -136,7 +136,9 @@ export const POST = withAuth(
     }
   }
 
-  const { phone: phoneData, ...donorData } = data;
+  const { phone: phoneData, lastDonationDate, ...donorData } = data as typeof data & {
+    lastDonationDate?: Date | null;
+  };
 
   const donor = await prisma.donor.create({
     data: {
@@ -149,6 +151,18 @@ export const POST = withAuth(
           isPrimary: p.isPrimary,
         })),
       },
+      ...(lastDonationDate
+        ? {
+            donations: {
+              create: {
+                patientName: "Previous / Prior Donation",
+                hospitalName: "Not specified",
+                donationDate: lastDonationDate,
+                notes: "Recorded from registration form (donor's stated last donation date)",
+              },
+            },
+          }
+        : {}),
     },
   });
 
