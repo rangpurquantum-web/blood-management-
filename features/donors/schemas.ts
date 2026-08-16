@@ -4,23 +4,29 @@ import { z } from "zod";
 
 const bloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
+// ─── Helper: treat "" and null as "not provided" before coercing to Date ─────
+// (HTML <input type="date"> sends "" when empty, not undefined, which breaks
+// plain `.optional()` on z.coerce.date())
+
+const optionalDate = z.preprocess(
+  (val) => (val === "" || val === null ? undefined : val),
+  z.coerce.date().optional().nullable()
+);
+
 // ─── Donor Create Schema ──────────────────────────────────────────────────────
 
 export const donorSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  dob: z.coerce
-    .date()
-    .refine(
-      (date) => {
-        const ageDiffMs = Date.now() - date.getTime();
-        const ageDate = new Date(ageDiffMs);
-        const age = Math.abs(ageDate.getUTCFullYear() - 1970);
-        return age >= 18;
-      },
-      { message: "Donor must be at least 18 years old" },
-    )
-    .optional()
-    .nullable(),
+  dob: optionalDate.refine(
+    (date) => {
+      if (!date) return true; // optional — skip age check if not provided
+      const ageDiffMs = Date.now() - date.getTime();
+      const ageDate = new Date(ageDiffMs);
+      const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+      return age >= 18;
+    },
+    { message: "Donor must be at least 18 years old" }
+  ),
   gender: z.string().min(1, "Gender is required"),
   bloodType: z.enum(bloodTypes, {
     errorMap: () => ({ message: "Invalid blood type" }),
@@ -38,9 +44,14 @@ export const donorSchema = z.object({
       (phones) => phones.filter((p) => p.isPrimary).length === 1,
       { message: "Exactly one phone number must be marked as primary" }
     ),
-  email: z.string().email("Invalid email address"),
+  email: z
+    .string()
+    .email("Invalid email address")
+    .optional()
+    .or(z.literal(""))
+    .transform((val) => (val ? val : undefined)),
   address: z.string().min(1, "Address is required"),
-  lastDonationDate: z.coerce.date().optional().nullable(),
+  lastDonationDate: optionalDate,
 });
 
 // ─── Donor Update Schema (all fields optional) ───────────────────────────────
