@@ -11,22 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-// Matches exactly what parseCSV below expects (header names + example format)
+// Matches exactly what parseCSV below expects (header names only — no example row)
 const TEMPLATE_HEADERS = ["fullName", "dob", "gender", "bloodType", "phone", "email", "address"];
-const TEMPLATE_EXAMPLE_ROW = [
-  "Fahim Feroz",
-  "2005-12-16",
-  "Male",
-  "O+",
-  "01719398997",
-  "fahim@example.com",
-  "Sagorpara, Rangpur",
-];
 
 function downloadCsvTemplate() {
   const csvContent = Papa.unparse({
     fields: TEMPLATE_HEADERS,
-    data: [TEMPLATE_EXAMPLE_ROW],
+    data: [],
   });
 
   // Prefix with a UTF-8 BOM so Excel opens Bangla text correctly if present
