@@ -103,6 +103,17 @@ export function DonorForm({
     }
   };
 
+  // Surfaces silent validation failures (e.g. a hidden/unrendered field
+  // failing schema validation) so "nothing happens on click" never happens again.
+  const onInvalid = (formErrors: any) => {
+    console.log("Validation errors:", formErrors);
+    const firstError = Object.values(formErrors)[0] as any;
+    const message =
+      (firstError && (firstError.message || firstError?.root?.message)) ||
+      "ফর্মে কিছু ভুল আছে, লাল দাগ দেওয়া ফিল্ডগুলো চেক করুন";
+    toast.error(message);
+  };
+
   const errors = form.formState.errors as any;
 
   return (
@@ -119,7 +130,7 @@ export function DonorForm({
               : "Enter the donor's details below to register them in the system."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="fullName">Full Name</Label>
             <Input id="fullName" {...form.register("fullName")} />
