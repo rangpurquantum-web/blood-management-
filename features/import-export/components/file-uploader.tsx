@@ -151,7 +151,7 @@ export function FileUploader() {
 
   return (
     <Card className="w-full shadow-sm bg-card/60 backdrop-blur-sm">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 space-y-0">
         <div>
           <CardTitle>Upload Donor List</CardTitle>
           <CardDescription>
@@ -163,7 +163,7 @@ export function FileUploader() {
           variant="outline"
           size="sm"
           onClick={downloadCsvTemplate}
-          className="shrink-0 whitespace-nowrap"
+          className="shrink-0 whitespace-nowrap w-full sm:w-auto"
         >
           <Download className="mr-2 h-4 w-4" />
           Download Template
