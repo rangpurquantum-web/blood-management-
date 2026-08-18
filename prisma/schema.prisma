@@ -54,7 +54,7 @@ model Donor {
   gender         String
   bloodType      String
   phone          DonorPhone[]
-  email          String            
+  email          String?
   address        String
   isEligible     Boolean           @default(true)
   deferralReason String?
