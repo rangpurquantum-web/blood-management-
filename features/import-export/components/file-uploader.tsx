@@ -3,13 +3,44 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
-import { UploadCloud, File, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { UploadCloud, File, AlertCircle, CheckCircle2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 
 import { importDonorSchema, type DonorInput } from "@/features/donors/schemas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+// Matches exactly what parseCSV below expects (header names + example format)
+const TEMPLATE_HEADERS = ["fullName", "dob", "gender", "bloodType", "phone", "email", "address"];
+const TEMPLATE_EXAMPLE_ROW = [
+  "Fahim Feroz",
+  "2005-12-16",
+  "Male",
+  "O+",
+  "01719398997",
+  "fahim@example.com",
+  "Sagorpara, Rangpur",
+];
+
+function downloadCsvTemplate() {
+  const csvContent = Papa.unparse({
+    fields: TEMPLATE_HEADERS,
+    data: [TEMPLATE_EXAMPLE_ROW],
+  });
+
+  // Prefix with a UTF-8 BOM so Excel opens Bangla text correctly if present
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", "donor_import_template.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export function FileUploader() {
   const [file, setFile] = useState<File | null>(null);
@@ -120,11 +151,23 @@ export function FileUploader() {
 
   return (
     <Card className="w-full shadow-sm bg-card/60 backdrop-blur-sm">
-      <CardHeader>
-        <CardTitle>Upload Donor List</CardTitle>
-        <CardDescription>
-          Drag and drop a CSV file containing donor records. Ensure headers match: fullName, dob, gender, bloodType, phone, email, address.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <div>
+          <CardTitle>Upload Donor List</CardTitle>
+          <CardDescription>
+            Drag and drop a CSV file containing donor records. Ensure headers match: fullName, dob, gender, bloodType, phone, email, address.
+          </CardDescription>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={downloadCsvTemplate}
+          className="shrink-0 whitespace-nowrap"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Download Template
+        </Button>
       </CardHeader>
 
       <CardContent className="space-y-6">
