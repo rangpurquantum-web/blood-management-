@@ -12,15 +12,22 @@ export const authConfig = {
   },
 
   callbacks: {
+    // ─────────────────────────────────────────────────────────────
+    // Route protection
+    // ─────────────────────────────────────────────────────────────
+
     authorized: ({ auth, request }) => {
       const pathname = request.nextUrl.pathname;
+
       const isLoggedIn = !!auth?.user;
 
-      const isAuthRoute = pathname.startsWith("/login");
+      const isAuthRoute =
+        pathname.startsWith("/login") ||
+        pathname.startsWith("/register");
 
       const isPublicRoute =
         pathname === "/" ||
-        isAuthRoute ||
+        pathname.startsWith("/login") ||
         pathname.startsWith("/register") ||
         pathname.startsWith("/check-donation") ||
         pathname.startsWith("/d/");
@@ -30,18 +37,22 @@ export const authConfig = {
         pathname.startsWith("/donors") ||
         pathname.startsWith("/reports") ||
         pathname.startsWith("/import") ||
-        pathname.startsWith("/audit-logs");
+        pathname.startsWith("/audit-logs") ||
+        pathname.startsWith("/branches");
 
+      // Protected pages require login
       if (isProtectedRoute && !isLoggedIn) {
         return false;
       }
 
+      // Logged-in user should not access login/register
       if (isLoggedIn && isAuthRoute) {
         return Response.redirect(
           new URL("/dashboard", request.nextUrl),
         );
       }
 
+      // Other non-public pages require login
       if (
         !isLoggedIn &&
         !isPublicRoute &&
@@ -53,41 +64,65 @@ export const authConfig = {
       return true;
     },
 
+    // ─────────────────────────────────────────────────────────────
+    // JWT
+    // ─────────────────────────────────────────────────────────────
+
     jwt: async ({ token, user }) => {
-      if (user?.id) {
-        token.sub = user.id;
-      }
+      if (user) {
+        token.role =
+          typeof user.role === "string"
+            ? user.role
+            : undefined;
 
-      if (user?.role) {
-        token.role = user.role as Role;
-      }
+        token.branchId =
+          typeof user.branchId === "number"
+            ? user.branchId
+            : null;
 
-      if (user && "permissions" in user) {
-        const permissions = user.permissions;
+        token.branchSlug =
+          typeof user.branchSlug === "string"
+            ? user.branchSlug
+            : null;
 
-        if (Array.isArray(permissions)) {
-          token.permissions = permissions;
-        } else {
-          token.permissions = [];
-        }
+        token.permissions = Array.isArray(user.permissions)
+          ? user.permissions
+          : [];
       }
 
       return token;
     },
 
-    session: async ({ session, token }) => {
-      if (session.user) {
-        const permissions = Array.isArray(token.permissions)
-          ? token.permissions
-          : [];
+    // ─────────────────────────────────────────────────────────────
+    // Session
+    // ─────────────────────────────────────────────────────────────
 
-        session.user = {
-          ...session.user,
-          id: token.sub ?? session.user.id,
-          role: token.role as Role | undefined,
-          permissions,
-        } as typeof session.user;
+    session: async ({ session, token }) => {
+      if (!session.user) {
+        return session;
       }
+
+      if (token.sub) {
+        session.user.id = token.sub;
+      }
+
+      if (typeof token.role === "string") {
+        session.user.role = token.role as Role;
+      }
+
+      session.user.branchId =
+        typeof token.branchId === "number"
+          ? token.branchId
+          : null;
+
+      session.user.branchSlug =
+        typeof token.branchSlug === "string"
+          ? token.branchSlug
+          : null;
+
+      session.user.permissions = Array.isArray(token.permissions)
+        ? token.permissions
+        : [];
 
       return session;
     },
