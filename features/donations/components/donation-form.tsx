@@ -22,7 +22,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export function DonationForm({ donorId, disabled }: { donorId: number; disabled?: boolean }) {
+export function DonationForm({
+  donorId,
+  disabled,
+  trigger,
+}: {
+  donorId: number;
+  disabled?: boolean;
+  trigger?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const recordDonation = useRecordDonation(donorId);
 
@@ -52,7 +60,7 @@ export function DonationForm({ donorId, disabled }: { donorId: number; disabled?
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={disabled}>Record Donation</Button>
+        {trigger || <Button disabled={disabled}>Record Donation</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
