@@ -50,10 +50,6 @@ export default function BranchesPage() {
   const [location, setLocation] = useState("");
   const [databaseUrl, setDatabaseUrl] = useState("");
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Load branches
-  // ───────────────────────────────────────────────────────────────────────────
-
   async function loadBranches() {
     try {
       setLoading(true);
@@ -86,14 +82,9 @@ export default function BranchesPage() {
     loadBranches();
   }, []);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Automatically create slug from branch name
-  // ───────────────────────────────────────────────────────────────────────────
-
   function handleNameChange(value: string) {
     setName(value);
 
-    // Only automatically update slug while user hasn't manually changed it.
     const generatedSlug = value
       .toLowerCase()
       .trim()
@@ -103,10 +94,6 @@ export default function BranchesPage() {
 
     setSlug(generatedSlug);
   }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // Create branch
-  // ───────────────────────────────────────────────────────────────────────────
 
   async function handleCreateBranch(
     event: React.FormEvent<HTMLFormElement>,
@@ -154,7 +141,6 @@ export default function BranchesPage() {
 
       toast.success("Branch created successfully");
 
-      // Reset form
       setName("");
       setSlug("");
       setLocation("");
@@ -162,7 +148,6 @@ export default function BranchesPage() {
 
       setOpen(false);
 
-      // Refresh list
       await loadBranches();
     } catch (error) {
       console.error(error);
@@ -179,10 +164,6 @@ export default function BranchesPage() {
 
   return (
     <div className="container mx-auto space-y-6 p-6">
-      {/* ───────────────────────────────────────────────────────────────────── */}
-      {/* Header */}
-      {/* ───────────────────────────────────────────────────────────────────── */}
-
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -214,7 +195,6 @@ export default function BranchesPage() {
             Refresh
           </Button>
 
-          {/* Create Branch */}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -239,7 +219,6 @@ export default function BranchesPage() {
                 onSubmit={handleCreateBranch}
                 className="space-y-5 pt-4"
               >
-                {/* Branch Name */}
                 <div className="space-y-2">
                   <Label htmlFor="branch-name">
                     Branch Name
@@ -256,7 +235,6 @@ export default function BranchesPage() {
                   />
                 </div>
 
-                {/* Slug */}
                 <div className="space-y-2">
                   <Label htmlFor="branch-slug">
                     Slug
@@ -281,7 +259,6 @@ export default function BranchesPage() {
                   </p>
                 </div>
 
-                {/* Location */}
                 <div className="space-y-2">
                   <Label htmlFor="branch-location">
                     Location
@@ -303,7 +280,6 @@ export default function BranchesPage() {
                   </div>
                 </div>
 
-                {/* Database URL */}
                 <div className="space-y-2">
                   <Label htmlFor="database-url">
                     Branch Database URL
@@ -322,13 +298,12 @@ export default function BranchesPage() {
                   />
 
                   <p className="text-xs text-muted-foreground">
-                    This connection string will be stored
-                    securely and will not be shown in the
-                    branch list.
+                    The database connection string is stored
+                    securely and is not displayed in the branch
+                    list.
                   </p>
                 </div>
 
-                {/* Buttons */}
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
                     type="button"
@@ -361,10 +336,6 @@ export default function BranchesPage() {
           </Dialog>
         </div>
       </div>
-
-      {/* ───────────────────────────────────────────────────────────────────── */}
-      {/* Branch list */}
-      {/* ───────────────────────────────────────────────────────────────────── */}
 
       {loading ? (
         <div className="rounded-lg border p-8 text-center">
