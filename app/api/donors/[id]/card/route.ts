@@ -71,6 +71,10 @@ export const GET = withAuth(
       width: 500,
       margin: 2,
       errorCorrectionLevel: "H",
+      color: {
+        dark: "#1a1a1a",
+        light: "#ffffff",
+      },
     });
 
     const qrBase64 = qrDataUrl.split(",")[1];
@@ -93,10 +97,10 @@ export const GET = withAuth(
 
     const pdfDoc = await PDFDocument.create();
 
-    // Standard ID card size
-    // 85.60mm × 53.98mm
-    const cardWidth = 242;
-    const cardHeight = 153;
+    // Standard ID card size (landscape, scaled up for detail)
+    // 85.60mm × 53.98mm ratio, sized in points
+    const cardWidth = 486;
+    const cardHeight = 270;
 
     const page = pdfDoc.addPage([
       cardWidth,
@@ -117,35 +121,16 @@ export const GET = withAuth(
     // Colors
     // --------------------------------------------------
 
-    const darkRed = rgb(
-      0.65,
-      0.02,
-      0.05
-    );
+    const headerRedDark = rgb(0.627, 0.082, 0.129); // #A01521
+    const headerRedLight = rgb(0.769, 0.118, 0.184); // #C41E2F
+    const red = rgb(0.769, 0.118, 0.184); // #C41E2F
+    const dark = rgb(0.102, 0.102, 0.102); // #1A1A1A
+    const gray = rgb(0.478, 0.478, 0.478); // #7A7A7A
+    const dividerPink = rgb(0.851, 0.604, 0.631); // #D99AA1
+    const cardBg = rgb(0.984, 0.980, 0.976); // #FBFAF9
+    const white = rgb(1, 1, 1);
 
-    const red = rgb(
-      0.85,
-      0.04,
-      0.06
-    );
-
-    const dark = rgb(
-      0.08,
-      0.08,
-      0.08
-    );
-
-    const gray = rgb(
-      0.45,
-      0.45,
-      0.45
-    );
-
-    const white = rgb(
-      1,
-      1,
-      1
-    );
+    const headerHeight = 48;
 
     // --------------------------------------------------
     // Background
@@ -156,171 +141,190 @@ export const GET = withAuth(
       y: 0,
       width: cardWidth,
       height: cardHeight,
-      color: white,
+      color: cardBg,
     });
 
-    // Border
-
-    page.drawRectangle({
-      x: 3,
-      y: 3,
-      width: cardWidth - 6,
-      height: cardHeight - 6,
-      borderColor: darkRed,
-      borderWidth: 1.5,
-    });
+    // Faint diagonal accent, bottom-right corner
+    page.drawSvgPath(
+      `M ${cardWidth} 0 L ${cardWidth} 140 L ${cardWidth - 140} 0 Z`,
+      {
+        color: red,
+        opacity: 0.05,
+      }
+    );
 
     // --------------------------------------------------
-    // Header
+    // Header band (two-tone strip approximates the gradient)
     // --------------------------------------------------
 
     page.drawRectangle({
-      x: 4,
-      y: cardHeight - 32,
-      width: cardWidth - 8,
-      height: 28,
-      color: darkRed,
+      x: 0,
+      y: cardHeight - headerHeight,
+      width: cardWidth,
+      height: headerHeight,
+      color: headerRedDark,
     });
+
+    page.drawRectangle({
+      x: cardWidth * 0.4,
+      y: cardHeight - headerHeight,
+      width: cardWidth * 0.6,
+      height: headerHeight,
+      color: headerRedLight,
+      opacity: 0.6,
+    });
+
+    // Skewed light sliver on the header's right edge, for texture
+    page.drawSvgPath(
+      `M ${cardWidth - 30} ${cardHeight} L ${cardWidth} ${cardHeight} L ${cardWidth} ${cardHeight - headerHeight} L ${cardWidth - 90} ${cardHeight - headerHeight} Z`,
+      {
+        color: white,
+        opacity: 0.06,
+      }
+    );
 
     page.drawText(
-      "QUANTUM VOLENTARY BLOOD DONATION PROGRAMME",
+      "QUANTUM VOLUNTARY BLOOD DONATION PROGRAMME",
       {
-        x: 16,
-        y: cardHeight - 17,
-        size: 7.8,
+        x: 22,
+        y: cardHeight - headerHeight / 2 - 6,
+        size: 13,
         font: boldFont,
         color: white,
       }
     );
 
     // --------------------------------------------------
-    // Large Blood Group
+    // Large Blood Group mark ("A" + custom plus sign)
     // --------------------------------------------------
 
-    page.drawText(donor.bloodType, {
-      x: 16,
-      y: 66,
-      size: 42,
+    const bloodGroupLetters = donor.bloodType.replace(/[+-]/g, "");
+    const isPositive = donor.bloodType.includes("+");
+
+    const letterX = 22;
+    const letterBaselineY = 150;
+
+    page.drawText(bloodGroupLetters, {
+      x: letterX,
+      y: letterBaselineY,
+      size: 68,
       font: boldFont,
       color: red,
     });
 
-    page.drawText("BLOOD GROUP", {
-      x: 25,
-      y: 52,
-      size: 6,
+    if (isPositive) {
+      // Draw a plus sign out of two rectangles, next to the letter
+      const plusX = letterX + boldFont.widthOfTextAtSize(bloodGroupLetters, 68) + 6;
+      const plusY = letterBaselineY + 18;
+      const barLength = 30;
+      const barThickness = 11;
+
+      // Horizontal bar
+      page.drawRectangle({
+        x: plusX,
+        y: plusY + (barLength - barThickness) / 2,
+        width: barLength,
+        height: barThickness,
+        color: red,
+      });
+
+      // Vertical bar
+      page.drawRectangle({
+        x: plusX + (barLength - barThickness) / 2,
+        y: plusY,
+        width: barThickness,
+        height: barLength,
+        color: red,
+      });
+    }
+
+    // --------------------------------------------------
+    // Donor Information (Name / DOB / Donor ID)
+    // --------------------------------------------------
+
+    const infoX = 22;
+    let cursorY = 118;
+
+    const drawField = (label: string, value: string, valueSize = 16) => {
+      page.drawText(label.toUpperCase(), {
+        x: infoX,
+        y: cursorY,
+        size: 8,
+        font: boldFont,
+        color: gray,
+      });
+
+      page.drawText(value, {
+        x: infoX,
+        y: cursorY - 18,
+        size: valueSize,
+        font: boldFont,
+        color: dark,
+      });
+
+      // Divider line beneath the field
+      page.drawLine({
+        start: { x: infoX, y: cursorY - 27 },
+        end: { x: infoX + 260, y: cursorY - 27 },
+        thickness: 0.8,
+        color: dividerPink,
+      });
+
+      cursorY -= 44;
+    };
+
+    drawField("Name", donor.fullName);
+
+    drawField(
+      "Date of Birth",
+      donor.dob ? donor.dob.toLocaleDateString("en-GB") : "N/A"
+    );
+
+    // Donor ID (last field, no divider needed after it)
+    page.drawText("DONOR ID", {
+      x: infoX,
+      y: cursorY,
+      size: 8,
       font: boldFont,
       color: gray,
     });
 
-    // --------------------------------------------------
-    // Donor Information
-    // --------------------------------------------------
-
-    const infoX = 82;
-
-    // NAME
-
-    page.drawText("NAME", {
+    page.drawText(String(donor.id), {
       x: infoX,
-      y: 103,
-      size: 6,
-      font: boldFont,
-      color: gray,
-    });
-
-    page.drawText(donor.fullName, {
-      x: infoX,
-      y: 91,
-      size: 10,
+      y: cursorY - 18,
+      size: 16,
       font: boldFont,
       color: dark,
     });
 
-    // DATE OF BIRTH
-
-    page.drawText("DATE OF BIRTH", {
-      x: infoX,
-      y: 74,
-      size: 6,
-      font: boldFont,
-      color: gray,
-    });
-
-    page.drawText(
-      donor.dob
-        ? donor.dob.toLocaleDateString("en-GB")
-        : "N/A",
-      {
-        x: infoX,
-        y: 63,
-        size: 8.5,
-        font: regularFont,
-        color: dark,
-      }
-    );
-
-    // LAST DONATION
-
-    page.drawText("LAST DONATION", {
-      x: infoX,
-      y: 49,
-      size: 6,
-      font: boldFont,
-      color: gray,
-    });
-
-    page.drawText(
-      donor.donations[0]
-        ? donor.donations[0].donationDate.toLocaleDateString(
-            "en-GB"
-          )
-        : "NO RECORD",
-      {
-        x: infoX,
-        y: 38,
-        size: 8.5,
-        font: regularFont,
-        color: dark,
-      }
-    );
-
     // --------------------------------------------------
-    // QR Code
+    // QR Code, boxed top-right
     // --------------------------------------------------
 
-    const qrImage =
-      await pdfDoc.embedPng(qrBytes);
+    const qrImage = await pdfDoc.embedPng(qrBytes);
+
+    const qrBoxSize = 100;
+    const qrBoxX = cardWidth - qrBoxSize - 24;
+    const qrBoxY = cardHeight - headerHeight - qrBoxSize - 24;
+    const qrPadding = 8;
+
+    // White backing box with red border
+    page.drawRectangle({
+      x: qrBoxX,
+      y: qrBoxY,
+      width: qrBoxSize,
+      height: qrBoxSize,
+      color: white,
+      borderColor: red,
+      borderWidth: 1.5,
+    });
 
     page.drawImage(qrImage, {
-      x: 174,
-      y: 26,
-      width: 52,
-      height: 52,
+      x: qrBoxX + qrPadding,
+      y: qrBoxY + qrPadding,
+      width: qrBoxSize - qrPadding * 2,
+      height: qrBoxSize - qrPadding * 2,
     });
-
-    page.drawText("SCAN TO VERIFY", {
-      x: 177,
-      y: 18,
-      size: 5.5,
-      font: boldFont,
-      color: gray,
-    });
-
-    // --------------------------------------------------
-    // Donor ID
-    // --------------------------------------------------
-
-    page.drawText(
-      `ID: ${donor.id}`,
-      {
-        x: 16,
-        y: 18,
-        size: 6.5,
-        font: regularFont,
-        color: gray,
-      }
-    );
 
     // --------------------------------------------------
     // Save PDF
