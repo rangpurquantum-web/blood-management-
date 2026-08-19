@@ -23,6 +23,14 @@ export const GET = withAuth(
       },
       include: {
         phone: true,
+
+        // Latest donation only
+        donations: {
+          orderBy: {
+            donationDate: "desc",
+          },
+          take: 1,
+        },
       },
     });
 
@@ -34,9 +42,8 @@ export const GET = withAuth(
     }
 
     // --------------------------------------------------
-    // IMPORTANT:
-    // Use the actual deployed Vercel domain.
-    // No .env required.
+    // Get deployed URL automatically
+    // No .env required
     // --------------------------------------------------
 
     const host = req.headers.get("host");
@@ -53,8 +60,8 @@ export const GET = withAuth(
 
     const baseUrl = `${protocol}://${host}`;
 
-    // Public donor page
-    const publicUrl = `${baseUrl}/d/${donor.publicToken}`;
+    const publicUrl =
+      `${baseUrl}/d/${donor.publicToken}`;
 
     // --------------------------------------------------
     // Generate QR
@@ -75,7 +82,10 @@ export const GET = withAuth(
       );
     }
 
-    const qrBytes = Buffer.from(qrBase64, "base64");
+    const qrBytes = Buffer.from(
+      qrBase64,
+      "base64"
+    );
 
     // --------------------------------------------------
     // Create PDF
@@ -83,11 +93,8 @@ export const GET = withAuth(
 
     const pdfDoc = await PDFDocument.create();
 
-    /*
-     * ID card size:
-     * 85.60mm × 53.98mm
-     * approximately 242 × 153 PDF points
-     */
+    // Standard ID card size
+    // 85.60mm × 53.98mm
     const cardWidth = 242;
     const cardHeight = 153;
 
@@ -96,27 +103,52 @@ export const GET = withAuth(
       cardHeight,
     ]);
 
-    const regularFont = await pdfDoc.embedFont(
-      StandardFonts.Helvetica
-    );
+    const regularFont =
+      await pdfDoc.embedFont(
+        StandardFonts.Helvetica
+      );
 
-    const boldFont = await pdfDoc.embedFont(
-      StandardFonts.HelveticaBold
-    );
+    const boldFont =
+      await pdfDoc.embedFont(
+        StandardFonts.HelveticaBold
+      );
 
     // --------------------------------------------------
     // Colors
     // --------------------------------------------------
 
-    const darkRed = rgb(0.65, 0.02, 0.05);
-    const red = rgb(0.85, 0.04, 0.06);
-    const dark = rgb(0.08, 0.08, 0.08);
-    const gray = rgb(0.45, 0.45, 0.45);
-    const lightGray = rgb(0.94, 0.94, 0.94);
-    const white = rgb(1, 1, 1);
+    const darkRed = rgb(
+      0.65,
+      0.02,
+      0.05
+    );
+
+    const red = rgb(
+      0.85,
+      0.04,
+      0.06
+    );
+
+    const dark = rgb(
+      0.08,
+      0.08,
+      0.08
+    );
+
+    const gray = rgb(
+      0.45,
+      0.45,
+      0.45
+    );
+
+    const white = rgb(
+      1,
+      1,
+      1
+    );
 
     // --------------------------------------------------
-    // Card background
+    // Background
     // --------------------------------------------------
 
     page.drawRectangle({
@@ -139,7 +171,7 @@ export const GET = withAuth(
     });
 
     // --------------------------------------------------
-    // Top Header
+    // Header
     // --------------------------------------------------
 
     page.drawRectangle({
@@ -150,45 +182,33 @@ export const GET = withAuth(
       color: darkRed,
     });
 
-    // Organization name
-
     page.drawText(
       "QUANTUM VOLENTARY BLOOD DONATION PROGRAMME",
       {
-        x: 15,
+        x: 16,
         y: cardHeight - 17,
-        size: 8.5,
+        size: 7.8,
         font: boldFont,
         color: white,
       }
     );
 
     // --------------------------------------------------
-    // Blood Group - Large
+    // Large Blood Group
     // --------------------------------------------------
 
     page.drawText(donor.bloodType, {
-      x: 18,
-      y: 65,
-      size: 43,
+      x: 16,
+      y: 66,
+      size: 42,
       font: boldFont,
       color: red,
     });
 
-    // Small label
-
-    page.drawText("BLOOD", {
-      x: 29,
-      y: 55,
-      size: 6.5,
-      font: boldFont,
-      color: gray,
-    });
-
-    page.drawText("GROUP", {
-      x: 29,
-      y: 47,
-      size: 6.5,
+    page.drawText("BLOOD GROUP", {
+      x: 25,
+      y: 52,
+      size: 6,
       font: boldFont,
       color: gray,
     });
@@ -199,11 +219,11 @@ export const GET = withAuth(
 
     const infoX = 82;
 
-    // Name
+    // NAME
 
     page.drawText("NAME", {
       x: infoX,
-      y: 104,
+      y: 103,
       size: 6,
       font: boldFont,
       color: gray,
@@ -211,17 +231,17 @@ export const GET = withAuth(
 
     page.drawText(donor.fullName, {
       x: infoX,
-      y: 92,
-      size: 10.5,
+      y: 91,
+      size: 10,
       font: boldFont,
       color: dark,
     });
 
-    // DOB
+    // DATE OF BIRTH
 
     page.drawText("DATE OF BIRTH", {
       x: infoX,
-      y: 73,
+      y: 74,
       size: 6,
       font: boldFont,
       color: gray,
@@ -233,70 +253,98 @@ export const GET = withAuth(
         : "N/A",
       {
         x: infoX,
-        y: 62,
-        size: 9,
+        y: 63,
+        size: 8.5,
         font: regularFont,
         color: dark,
       }
     );
 
-    // Donor ID
+    // LAST DONATION
 
-    page.drawText("DONOR ID", {
+    page.drawText("LAST DONATION", {
       x: infoX,
-      y: 44,
+      y: 49,
       size: 6,
       font: boldFont,
       color: gray,
     });
 
-    page.drawText(String(donor.id), {
-      x: infoX,
-      y: 33,
-      size: 8,
-      font: regularFont,
-      color: dark,
-    });
+    page.drawText(
+      donor.donations[0]
+        ? donor.donations[0].donationDate.toLocaleDateString(
+            "en-GB"
+          )
+        : "NO RECORD",
+      {
+        x: infoX,
+        y: 38,
+        size: 8.5,
+        font: regularFont,
+        color: dark,
+      }
+    );
 
     // --------------------------------------------------
     // QR Code
     // --------------------------------------------------
 
-    const qrImage = await pdfDoc.embedPng(qrBytes);
+    const qrImage =
+      await pdfDoc.embedPng(qrBytes);
 
     page.drawImage(qrImage, {
       x: 174,
-      y: 25,
-      width: 55,
-      height: 55,
+      y: 26,
+      width: 52,
+      height: 52,
     });
 
-    // --------------------------------------------------
-    // Footer
-    // --------------------------------------------------
-
     page.drawText("SCAN TO VERIFY", {
-      x: 181,
-      y: 17,
+      x: 177,
+      y: 18,
       size: 5.5,
       font: boldFont,
       color: gray,
     });
 
     // --------------------------------------------------
-    // Save
+    // Donor ID
     // --------------------------------------------------
 
-    const pdfBytes = await pdfDoc.save();
+    page.drawText(
+      `ID: ${donor.id}`,
+      {
+        x: 16,
+        y: 18,
+        size: 6.5,
+        font: regularFont,
+        color: gray,
+      }
+    );
 
-    return new NextResponse(Buffer.from(pdfBytes), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="donor-${donor.id}-id-card.pdf"`,
-        "Cache-Control": "no-store",
-      },
-    });
+    // --------------------------------------------------
+    // Save PDF
+    // --------------------------------------------------
+
+    const pdfBytes =
+      await pdfDoc.save();
+
+    return new NextResponse(
+      Buffer.from(pdfBytes),
+      {
+        status: 200,
+        headers: {
+          "Content-Type":
+            "application/pdf",
+
+          "Content-Disposition":
+            `attachment; filename="donor-${donor.id}-id-card.pdf"`,
+
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
   },
   {
     permission: "donorView",
