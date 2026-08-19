@@ -23,9 +23,8 @@ export const dynamic = "force-dynamic";
 // area        = address search
 // status      = APPROVED / PENDING / REJECTED / all
 //
-// IMPORTANT:
-// Eligibility is calculated from the donor's latest donation date.
-// Database's old isEligible value is NOT trusted.
+// Eligibility is ALWAYS calculated from the latest donation date.
+// Database's old isEligible value is not trusted.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const GET = withAuth(
@@ -111,7 +110,6 @@ export const GET = withAuth(
           orderBy: {
             donationDate: "desc",
           },
-
           take: 1,
         },
       },
@@ -120,8 +118,6 @@ export const GET = withAuth(
     // ─────────────────────────────────────────────────────────────────────────
     // Calculate REAL eligibility
     // ─────────────────────────────────────────────────────────────────────────
-    //
-    // We calculate from the latest donation.
     //
     // Example:
     //
@@ -135,7 +131,7 @@ export const GET = withAuth(
     // Today           = August 19, 2026
     //
     // Less than 120 days
-    // => Deferred
+    // => Not Eligible
     //
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -149,6 +145,10 @@ export const GET = withAuth(
         let deferredUntil: Date | null = null;
         let deferralReason: string | null = null;
 
+        // ─────────────────────────────────────────────────────────────────────
+        // If donor has previous donation
+        // ─────────────────────────────────────────────────────────────────────
+
         if (latestDonation) {
           const eligibility = eligibilityFromDonation(
             latestDonation.donationDate,
@@ -157,12 +157,15 @@ export const GET = withAuth(
           deferredUntil = eligibility.deferredUntil;
 
           // IMPORTANT:
-          // Compare the calculated date with TODAY.
+          // Check that deferredUntil exists before comparing.
           //
-          // If deferredUntil is in the past,
-          // donor is eligible again.
+          // If 120 days have passed:
+          //     Eligible
           //
-          if (now >= deferredUntil) {
+          // If 120 days have NOT passed:
+          //     Not Eligible
+          //
+          if (deferredUntil && now >= deferredUntil) {
             isEligible = true;
             deferredUntil = null;
             deferralReason = null;
@@ -174,7 +177,7 @@ export const GET = withAuth(
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // Sync database if old value is different
+        // Sync calculated eligibility with database
         // ─────────────────────────────────────────────────────────────────────
 
         const needsUpdate =
@@ -196,6 +199,10 @@ export const GET = withAuth(
           });
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // Return donor
+        // ─────────────────────────────────────────────────────────────────────
+
         return {
           id: donor.id,
           fullName: donor.fullName,
@@ -211,7 +218,7 @@ export const GET = withAuth(
           deferralReason,
           deferredUntil,
 
-          // Useful for UI / debugging
+          // Latest donation
           latestDonationDate:
             latestDonation?.donationDate ?? null,
         };
@@ -219,9 +226,7 @@ export const GET = withAuth(
     );
 
     // ─────────────────────────────────────────────────────────────────────────
-    // IMPORTANT:
-    // eligible=true / false filter must be applied AFTER
-    // calculating the real eligibility.
+    // Apply eligibility filter AFTER calculation
     // ─────────────────────────────────────────────────────────────────────────
 
     let filteredDonors = updatedDonors;
@@ -342,9 +347,10 @@ export const POST = withAuth(
 
       deferredUntil = eligibility.deferredUntil;
 
-      // IMPORTANT:
-      // If 120 days already passed, donor is immediately eligible.
-      if (new Date() >= deferredUntil) {
+      // If 120 days already passed,
+      // donor is immediately eligible.
+
+      if (deferredUntil && new Date() >= deferredUntil) {
         isEligible = true;
         deferredUntil = null;
         deferralReason = null;
