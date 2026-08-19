@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Role } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { Role } from "@prisma/client";
 import { connectMongo } from "@/lib/mongodb";
 import { AuditLog } from "@/lib/models/AuditLog";
 import {
@@ -17,21 +17,15 @@ import type { ZodError } from "zod";
 export type AuthSession = {
   userId: number;
   role: Role;
-  branchId: number | null;
-  branchSlug: string | null;
 };
 
-export type RouteContext = {
-  params: Promise<Record<string, string>>;
-};
-
-type RouteHandler = (
+export type RouteHandler = (
   req: NextRequest,
   session: AuthSession,
   params?: Record<string, string>,
 ) => Promise<NextResponse>;
 
-type WithAuthOptions = {
+export type AuthOptions = {
   roles?: Role[];
   permission?: PermissionKey;
 };
@@ -41,181 +35,139 @@ type WithAuthOptions = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Wraps a Route Handler with Auth.js session verification.
+ * Authentication and authorization helper.
  *
- * Examples:
+ * IMPORTANT:
+ * Do not export the result of withAuth directly from a Next.js route
+ * when using Next.js 15 route type validation.
  *
- * export const GET = withAuth(async (req, session) => {
- *   return NextResponse.json({
- *     userId: session.userId,
- *   });
- * });
+ * Instead:
  *
- * export const DELETE = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- *   {
- *     roles: [Role.ADMIN],
- *   },
- * );
- *
- * export const POST = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- *   {
- *     permission: "donorAdd",
- *   },
- * );
+ * export async function GET(req: NextRequest) {
+ *   return withAuth(req, handler, options);
+ * }
  */
-export function withAuth(
-  handler: RouteHandler,
-  options: WithAuthOptions = {},
-): (
+export async function withAuth(
   req: NextRequest,
-  context: RouteContext,
-) => Promise<NextResponse> {
-  return async (
-    req: NextRequest,
-    context: RouteContext,
-  ): Promise<NextResponse> => {
-    try {
-      const session = await auth();
+  handler: RouteHandler,
+  options: AuthOptions = {},
+  params?: Record<string, string>,
+): Promise<NextResponse> {
+  try {
+    // ───────────────────────────────────────────────────────────────────────
+    // Get Auth.js session
+    // ───────────────────────────────────────────────────────────────────────
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Authentication
-      // ───────────────────────────────────────────────────────────────────────
+    const session = await auth();
 
-      if (!session?.user) {
+    if (!session?.user) {
+      return apiError(
+        "Unauthorized — please log in",
+        401,
+      );
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Parse user ID
+    // ───────────────────────────────────────────────────────────────────────
+
+    const userId = session.user.id
+      ? Number(session.user.id)
+      : 0;
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return apiError(
+        "Unauthorized — invalid user session",
+        401,
+      );
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Parse role
+    // ───────────────────────────────────────────────────────────────────────
+
+    const userRole = session.user.role as Role | undefined;
+
+    if (!userRole) {
+      return apiError(
+        "Unauthorized — user role is missing",
+        401,
+      );
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Permission check
+    // ───────────────────────────────────────────────────────────────────────
+
+    if (options.permission) {
+      const dbUser = await prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          role: true,
+          permissions: true,
+        },
+      });
+
+      if (!dbUser) {
         return apiError(
-          "Unauthorized — please log in",
+          "Unauthorized — user account not found",
           401,
         );
       }
 
-      // ───────────────────────────────────────────────────────────────────────
-      // User ID
-      // ───────────────────────────────────────────────────────────────────────
+      const allowed = hasPermission(
+        dbUser,
+        options.permission,
+      );
 
-      const userId = session.user.id
-        ? Number(session.user.id)
-        : 0;
-
-      if (!Number.isInteger(userId) || userId <= 0) {
-        return apiError(
-          "Invalid authenticated user",
-          401,
-        );
-      }
-
-      // ───────────────────────────────────────────────────────────────────────
-      // Role
-      // ───────────────────────────────────────────────────────────────────────
-
-      const sessionRole = session.user.role;
-
-      const userRole: Role =
-        sessionRole === Role.ADMIN
-          ? Role.ADMIN
-          : Role.VOLUNTEER;
-
-      // ───────────────────────────────────────────────────────────────────────
-      // Branch
-      // ───────────────────────────────────────────────────────────────────────
-
-      const branchId =
-        typeof session.user.branchId === "number"
-          ? session.user.branchId
-          : null;
-
-      const branchSlug =
-        typeof session.user.branchSlug === "string"
-          ? session.user.branchSlug
-          : null;
-
-      const authSession: AuthSession = {
-        userId,
-        role: userRole,
-        branchId,
-        branchSlug,
-      };
-
-      // ───────────────────────────────────────────────────────────────────────
-      // Permission check
-      // ───────────────────────────────────────────────────────────────────────
-
-      if (options.permission) {
-        const dbUser = await prisma.user.findUnique({
-          where: {
-            id: userId,
-          },
-          select: {
-            role: true,
-            permissions: true,
-          },
-        });
-
-        if (
-          !dbUser ||
-          !hasPermission(
-            dbUser,
-            options.permission,
-          )
-        ) {
-          return apiError(
-            "Forbidden — insufficient permissions",
-            403,
-          );
-        }
-      }
-
-      // ───────────────────────────────────────────────────────────────────────
-      // Role check
-      // ───────────────────────────────────────────────────────────────────────
-
-      if (
-        options.roles &&
-        options.roles.length > 0 &&
-        !options.roles.includes(userRole)
-      ) {
+      if (!allowed) {
         return apiError(
           "Forbidden — insufficient permissions",
           403,
         );
       }
+    }
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Dynamic route params
-      // ───────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
+    // Role check
+    // ───────────────────────────────────────────────────────────────────────
 
-      let params: Record<string, string> | undefined;
-
-      if (context?.params) {
-        params = await context.params;
-      }
-
-      // ───────────────────────────────────────────────────────────────────────
-      // Execute actual route handler
-      // ───────────────────────────────────────────────────────────────────────
-
-      return await handler(
-        req,
-        authSession,
-        params,
-      );
-    } catch (error) {
-      console.error(
-        "withAuth error:",
-        error,
-      );
-
+    if (
+      options.roles &&
+      options.roles.length > 0 &&
+      !options.roles.includes(userRole)
+    ) {
       return apiError(
-        "Internal server error",
-        500,
+        "Forbidden — insufficient permissions",
+        403,
       );
     }
-  };
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Execute protected route handler
+    // ───────────────────────────────────────────────────────────────────────
+
+    return await handler(
+      req,
+      {
+        userId,
+        role: userRole,
+      },
+      params,
+    );
+  } catch (error) {
+    console.error(
+      "[withAuth] Unexpected error:",
+      error,
+    );
+
+    return apiError(
+      "Internal server error",
+      500,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,11 +175,10 @@ export function withAuth(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Inserts an immutable audit log record into MongoDB.
+ * Writes an immutable audit log entry to MongoDB.
  *
- * User information is copied into the audit log
- * at write time so the audit history remains readable
- * even if the user is later changed or deleted.
+ * User information is read from PostgreSQL and denormalized
+ * into the MongoDB audit document.
  */
 export async function writeAuditLog(
   userId: number | null,
@@ -235,16 +186,21 @@ export async function writeAuditLog(
   details: string,
 ): Promise<void> {
   try {
+    // Connect to MongoDB
     await connectMongo();
 
     let userName: string | null = null;
     let userEmail: string | null = null;
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
     // Get user information from PostgreSQL
-    // ─────────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
 
-    if (userId !== null) {
+    if (
+      userId !== null &&
+      Number.isInteger(userId) &&
+      userId > 0
+    ) {
       const user = await prisma.user.findUnique({
         where: {
           id: userId,
@@ -259,32 +215,44 @@ export async function writeAuditLog(
       userEmail = user?.email ?? null;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Write audit log to MongoDB
-    // ─────────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────
+    // Write audit record to MongoDB
+    // ───────────────────────────────────────────────────────────────────────
 
     await AuditLog.create({
-      userId,
+      userId:
+        userId !== null && userId > 0
+          ? userId
+          : null,
+
       userName,
       userEmail,
+
       action,
       details,
     });
   } catch (error) {
-    // Audit logging should never crash the main operation.
     console.error(
-      "Failed to write audit log:",
+      "[writeAuditLog] Failed to write audit log:",
       error,
     );
+
+    // Do not silently swallow audit failures.
+    // However, don't crash the main API operation either.
+    //
+    // If your security policy requires audit logging to be mandatory,
+    // replace this return behavior with:
+    //
+    // throw error;
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// API Error
+// API Error Factory
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Standard API error response.
+ * Standardized API error response.
  */
 export function apiError(
   message: string,
@@ -295,7 +263,7 @@ export function apiError(
     {
       success: false,
       error: message,
-      ...extra,
+      ...(extra ?? {}),
     },
     {
       status,
@@ -304,14 +272,14 @@ export function apiError(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// API Success
+// API Success Factory
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Standard API success response.
+ * Standardized API success response.
  */
 export function apiSuccess(
-  data: Record<string, unknown>,
+  data: Record<string, unknown> = {},
   status = 200,
 ): NextResponse {
   return NextResponse.json(
@@ -332,18 +300,20 @@ export function apiSuccess(
 /**
  * Number of days a donor must wait after donating blood.
  */
-const DEFERRAL_DAYS = 120;
+export const DEFERRAL_DAYS = 120;
 
 /**
- * Calculates donor eligibility from the latest donation date.
+ * Calculates donor eligibility based on the last donation date.
  *
  * Rules:
  *
- * Donation + 120 days <= today
- *     => Eligible
+ * - Less than 120 days → not eligible
+ * - 120 days or more → eligible
  *
- * Donation + 120 days > today
- *     => Not eligible
+ * Example:
+ *
+ * Donation date: 15 May 2024
+ * Eligible date: 12 September 2024
  */
 export function eligibilityFromDonation(
   donationDate: Date,
@@ -351,12 +321,22 @@ export function eligibilityFromDonation(
   isEligible: boolean;
   deferredUntil: Date | null;
 } {
-  // Create a new Date so the original object is never modified.
+  // Validate input
+  if (
+    !(donationDate instanceof Date) ||
+    Number.isNaN(donationDate.getTime())
+  ) {
+    throw new Error(
+      "Invalid donation date",
+    );
+  }
+
+  // Create a copy so the original Date is not modified
   const deferredUntil = new Date(
     donationDate.getTime(),
   );
 
-  // Ignore time-of-day.
+  // Remove time-of-day
   deferredUntil.setHours(
     0,
     0,
@@ -364,15 +344,16 @@ export function eligibilityFromDonation(
     0,
   );
 
-  // Add 120 days.
+  // Add required waiting period
   deferredUntil.setDate(
     deferredUntil.getDate() +
       DEFERRAL_DAYS,
   );
 
-  // Today without time-of-day.
+  // Current date
   const today = new Date();
 
+  // Remove time-of-day
   today.setHours(
     0,
     0,
@@ -380,6 +361,7 @@ export function eligibilityFromDonation(
     0,
   );
 
+  // Eligible on or after deferred date
   const isEligible =
     today.getTime() >=
     deferredUntil.getTime();
@@ -398,7 +380,8 @@ export function eligibilityFromDonation(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Converts a ZodError into a standard API response.
+ * Converts a Zod validation error into the
+ * standard API validation response.
  */
 export function validationError(
   error: ZodError,
