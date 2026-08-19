@@ -3,7 +3,7 @@ import { centralPrisma } from "@/lib/central-db";
 import { PrismaClient } from "@/generated/branch";
 
 const globalForBranchPrisma = globalThis as unknown as {
-  branchPrisma: PrismaClient | undefined;
+  branchPrismaClients: Map<string, PrismaClient> | undefined;
 };
 
 export async function getBranchDb(): Promise<PrismaClient> {
@@ -19,6 +19,8 @@ export async function getBranchDb(): Promise<PrismaClient> {
     branchId?: number | null;
   };
 
+  let branch;
+
   if (user.isSuperAdmin) {
     const currentBranchSlug = user.currentBranchSlug;
 
@@ -26,34 +28,24 @@ export async function getBranchDb(): Promise<PrismaClient> {
       throw new Error("No branch selected");
     }
 
-    const branch = await centralPrisma.branch.findUnique({
+    branch = await centralPrisma.branch.findUnique({
       where: {
         slug: currentBranchSlug,
       },
     });
+  } else {
+    const branchId = user.branchId;
 
-    if (!branch) {
-      throw new Error("Branch not found");
+    if (!branchId) {
+      throw new Error("No branch assigned");
     }
 
-    if (!branch.isActive) {
-      throw new Error("Branch is inactive");
-    }
-
-    return getPrismaClient(branch.databaseUrlSecret);
+    branch = await centralPrisma.branch.findUnique({
+      where: {
+        id: branchId,
+      },
+    });
   }
-
-  const branchId = user.branchId;
-
-  if (!branchId) {
-    throw new Error("No branch assigned");
-  }
-
-  const branch = await centralPrisma.branch.findUnique({
-    where: {
-      id: branchId,
-    },
-  });
 
   if (!branch) {
     throw new Error("Branch not found");
@@ -67,8 +59,16 @@ export async function getBranchDb(): Promise<PrismaClient> {
 }
 
 function getPrismaClient(databaseUrl: string): PrismaClient {
-  if (globalForBranchPrisma.branchPrisma) {
-    return globalForBranchPrisma.branchPrisma;
+  if (!globalForBranchPrisma.branchPrismaClients) {
+    globalForBranchPrisma.branchPrismaClients =
+      new Map<string, PrismaClient>();
+  }
+
+  const existingClient =
+    globalForBranchPrisma.branchPrismaClients.get(databaseUrl);
+
+  if (existingClient) {
+    return existingClient;
   }
 
   const client = new PrismaClient({
@@ -80,9 +80,10 @@ function getPrismaClient(databaseUrl: string): PrismaClient {
     log: ["error"],
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForBranchPrisma.branchPrisma = client;
-  }
+  globalForBranchPrisma.branchPrismaClients.set(
+    databaseUrl,
+    client
+  );
 
   return client;
 }
