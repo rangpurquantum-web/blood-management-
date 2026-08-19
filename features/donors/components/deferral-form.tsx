@@ -22,7 +22,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export function DeferralForm({ donorId }: { donorId: number }) {
+export function DeferralForm({
+  donorId,
+  trigger,
+}: {
+  donorId: number;
+  trigger?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const deferDonor = useDeferDonor(donorId);
 
@@ -36,9 +42,9 @@ export function DeferralForm({ donorId }: { donorId: number }) {
 
   const onSubmit = (data: DonorEligibilityInput) => {
     deferDonor.mutate(
-      { 
+      {
         deferralReason: data.deferralReason,
-        deferredUntil: data.deferredUntil.toISOString() 
+        deferredUntil: data.deferredUntil.toISOString(),
       },
       {
         onSuccess: () => {
@@ -56,10 +62,12 @@ export function DeferralForm({ donorId }: { donorId: number }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="text-amber-600 border-amber-200 hover:bg-amber-50">
-          <ShieldAlert className="mr-2 h-4 w-4" />
-          Manual Deferral
-        </Button>
+        {trigger || (
+          <Button variant="outline" className="text-amber-600 border-amber-200 hover:bg-amber-50">
+            <ShieldAlert className="mr-2 h-4 w-4" />
+            Manual Deferral
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -71,10 +79,10 @@ export function DeferralForm({ donorId }: { donorId: number }) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="deferralReason">Reason for Deferral</Label>
-            <Textarea 
-              id="deferralReason" 
+            <Textarea
+              id="deferralReason"
               placeholder="e.g., Recent travel to malaria-endemic region"
-              {...form.register("deferralReason")} 
+              {...form.register("deferralReason")}
             />
             {form.formState.errors.deferralReason && (
               <span className="text-xs text-destructive">{form.formState.errors.deferralReason.message}</span>
