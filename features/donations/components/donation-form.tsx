@@ -53,7 +53,7 @@ export function DonationForm({
 
   const onSubmit = (data: DonationInput) => {
     // ─────────────────────────────────────────────────────────────────────────
-    // Convert date-only input safely
+    // Safely convert donation date to Date
     // ─────────────────────────────────────────────────────────────────────────
 
     const donationDate =
@@ -66,7 +66,10 @@ export function DonationForm({
       return;
     }
 
-    // Prevent future donation
+    // ─────────────────────────────────────────────────────────────────────────
+    // Prevent future donation date
+    // ─────────────────────────────────────────────────────────────────────────
+
     const today = new Date();
 
     today.setHours(23, 59, 59, 999);
@@ -76,12 +79,16 @@ export function DonationForm({
       return;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Send donation to API
+    // ─────────────────────────────────────────────────────────────────────────
+
     recordDonation.mutate(
       {
         patientName: data.patientName.trim(),
+
         hospitalName: data.hospitalName.trim(),
 
-        // Send ISO date to API
         donationDate: donationDate.toISOString(),
 
         notes: data.notes?.trim() || "",
@@ -114,7 +121,10 @@ export function DonationForm({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+    >
       <DialogTrigger asChild>
         {trigger || (
           <Button disabled={disabled}>
@@ -130,8 +140,8 @@ export function DonationForm({
           </DialogTitle>
 
           <DialogDescription>
-            A donor will remain deferred until 120 days have
-            passed from the donation date.
+            A donor will remain deferred until 120 days
+            have passed from the donation date.
           </DialogDescription>
         </DialogHeader>
 
@@ -139,7 +149,10 @@ export function DonationForm({
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid gap-4 py-4"
         >
+          {/* ──────────────────────────────────────────────────────────────── */}
           {/* Patient Name */}
+          {/* ──────────────────────────────────────────────────────────────── */}
+
           <div className="grid gap-2">
             <Label htmlFor="patientName">
               Patient Name
@@ -161,7 +174,10 @@ export function DonationForm({
             )}
           </div>
 
-          {/* Hospital */}
+          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* Hospital Name */}
+          {/* ──────────────────────────────────────────────────────────────── */}
+
           <div className="grid gap-2">
             <Label htmlFor="hospitalName">
               Hospital Name
@@ -183,7 +199,10 @@ export function DonationForm({
             )}
           </div>
 
+          {/* ──────────────────────────────────────────────────────────────── */}
           {/* Donation Date */}
+          {/* ──────────────────────────────────────────────────────────────── */}
+
           <div className="grid gap-2">
             <Label htmlFor="donationDate">
               Donation Date
@@ -194,12 +213,20 @@ export function DonationForm({
               type="date"
               {...form.register("donationDate", {
                 setValueAs: (value) => {
-                  if (!value) return undefined;
+                  if (!value) {
+                    return undefined;
+                  }
 
-                  // Use local noon to avoid timezone shifting
-                  const [year, month, day] =
-                    value.split("-").map(Number);
+                  const [
+                    year,
+                    month,
+                    day,
+                  ] = value
+                    .split("-")
+                    .map(Number);
 
+                  // Use local noon to prevent
+                  // timezone shifting the date.
                   return new Date(
                     year,
                     month - 1,
@@ -228,7 +255,10 @@ export function DonationForm({
             </p>
           </div>
 
+          {/* ──────────────────────────────────────────────────────────────── */}
           {/* Notes */}
+          {/* ──────────────────────────────────────────────────────────────── */}
+
           <div className="grid gap-2">
             <Label htmlFor="notes">
               Notes (Optional)
@@ -243,13 +273,17 @@ export function DonationForm({
             {form.formState.errors.notes && (
               <span className="text-xs text-destructive">
                 {
-                  form.formState.errors.notes.message
+                  form.formState.errors.notes
+                    .message
                 }
               </span>
             )}
           </div>
 
+          {/* ──────────────────────────────────────────────────────────────── */}
           {/* Submit */}
+          {/* ──────────────────────────────────────────────────────────────── */}
+
           <div className="flex justify-end pt-4">
             <Button
               type="submit"
