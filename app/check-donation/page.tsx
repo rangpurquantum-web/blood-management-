@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Droplet, Search, ArrowLeft, Loader2, CheckCircle2, XCircle, Droplets } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,8 +63,7 @@ export default function CheckDonationPage() {
   return (
     <div className="min-h-screen bg-muted/20 py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
       <div className="w-full max-w-md mb-6 text-center space-y-2">
-        <Link href="/" className="inline-flex items-center gap-2 text-primary font-bold text-2xl tracking-tight">
-          <Droplet className="h-8 w-8 text-destructive fill-destructive" />
+        <Link href="/" className="inline-flex items-center justify-center text-primary font-bold text-2xl tracking-tight">
           <span>Quantum Blood Donor Pool</span>
         </Link>
         <p className="text-sm text-muted-foreground">
@@ -75,8 +73,7 @@ export default function CheckDonationPage() {
 
       <Card className="w-full max-w-md shadow-lg border-muted bg-card">
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-xl flex items-center gap-2">
-            <Search className="h-5 w-5 text-primary" />
+          <CardTitle className="text-xl">
             Check Your Last Donation Date
           </CardTitle>
           <CardDescription>
@@ -102,30 +99,22 @@ export default function CheckDonationPage() {
             </div>
 
             <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  খোঁজা হচ্ছে...
-                </>
-              ) : (
-                "Check Now"
-              )}
+              {isLoading ? "খোঁজা হচ্ছে..." : "Check Now"}
             </Button>
           </form>
 
           {result && (
             <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-5 space-y-3">
-              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 className="h-5 w-5" />
-                <h3 className="font-semibold">Donor Found</h3>
-              </div>
+              <h3 className="font-semibold text-emerald-700 dark:text-emerald-400">
+                Donor Found
+              </h3>
 
               <div className="space-y-1.5 text-sm">
                 <p>
                   <span className="text-muted-foreground">Name: </span>
                   <span className="font-medium">{result.fullName}</span>
                 </p>
-                <p className="flex items-center gap-1.5">
+                <p>
                   <span className="text-muted-foreground">Blood Type: </span>
                   <span className="font-mono font-semibold">{result.bloodType}</span>
                 </p>
@@ -137,8 +126,7 @@ export default function CheckDonationPage() {
                       : "কোনো রেকর্ড পাওয়া যায়নি"}
                   </span>
                 </p>
-                <p className="flex items-center gap-1.5 pt-1">
-                  <Droplets className="h-4 w-4 text-muted-foreground" />
+                <p className="pt-1">
                   {result.isEligible ? (
                     <span className="text-emerald-700 dark:text-emerald-400 font-medium">
                       এখন রক্তদানের জন্য উপযুক্ত
@@ -156,8 +144,7 @@ export default function CheckDonationPage() {
           )}
 
           {error && !result && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-2">
-              <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
@@ -165,9 +152,9 @@ export default function CheckDonationPage() {
           <div className="pt-2 border-t">
             <Link
               href="/"
-              className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 pt-4"
+              className="text-sm text-muted-foreground hover:text-foreground inline-block pt-4"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to Home
+              Back to Home
             </Link>
           </div>
         </CardContent>
