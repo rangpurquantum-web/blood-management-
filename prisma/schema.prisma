@@ -55,6 +55,7 @@ model Donor {
   bloodType      String
   phone          DonorPhone[]
   email          String?
+  publicToken    String            @unique @default(uuid())
   address        String
   isEligible     Boolean           @default(true)
   deferralReason String?
@@ -72,6 +73,7 @@ model Donor {
   @@index([isDeleted])
   @@index([status])
   @@index([branchId])
+  @@index([publicToken])
 }
 
 model DonorPhone {
