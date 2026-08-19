@@ -3,9 +3,10 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Filter, RotateCcw, Search, Users, ChevronLeft, ChevronRight,
-  Calendar, Droplet, MapPin, User, Activity, ChevronsLeft, ChevronsRight,
+  RotateCcw, Search, Users, ChevronLeft, ChevronRight,
+  Calendar, User, Activity, ChevronsLeft, ChevronsRight,
   FileText, Loader2, SlidersHorizontal, ChevronDown, ChevronUp,
+  MapPin,
 } from "lucide-react";
 import { format, differenceInYears } from "date-fns";
 import { toast } from "sonner";
@@ -151,23 +152,35 @@ export function DonorReportBuilder() {
       {/* ── Filter Panel ────────────────────────────────────────── */}
       <div className="rounded-2xl border border-muted bg-card shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-gradient-to-r from-primary/5 to-transparent border-b border-muted">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-              <Filter className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-sm">Custom Filter Builder</h2>
-              <p className="text-xs text-muted-foreground hidden sm:block">
-                All filters are optional — combined with AND logic
-              </p>
-            </div>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-gradient-to-r from-primary/5 to-transparent border-b border-muted gap-2">
+          <h2 className="font-semibold text-sm">Custom Filter Builder</h2>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {hasActiveFilters(applied) && (
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                Active
+              </Badge>
+            )}
+            <Button
+              id="rpt-reset"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+              onClick={handleReset}
+              title="Reset Filters"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              id="rpt-apply"
+              size="sm"
+              onClick={handleApply}
+              className="gap-1.5 bg-primary hover:bg-primary/90"
+            >
+              <Search className="h-3.5 w-3.5" />
+              Apply
+            </Button>
           </div>
-          {hasActiveFilters(applied) && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-xs shrink-0">
-              Active
-            </Badge>
-          )}
         </div>
 
         {/* Controls */}
@@ -349,31 +362,12 @@ export function DonorReportBuilder() {
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <Button
-              id="rpt-apply"
-              onClick={handleApply}
-              size="sm"
-              className="gap-2 bg-primary hover:bg-primary/90"
-            >
-              <Search className="h-4 w-4" />
-              Apply Filters
-            </Button>
-            <Button
-              id="rpt-reset"
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              className="gap-2 text-muted-foreground"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </Button>
-            <Button
               id="rpt-export-pdf"
               variant="outline"
               size="sm"
               onClick={handleExportPdf}
               disabled={isPdfExporting || !data || data.total === 0}
-              className="gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 ml-auto"
+              className="gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
             >
               {isPdfExporting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -390,22 +384,17 @@ export function DonorReportBuilder() {
       <div className="rounded-2xl border border-muted bg-card shadow-sm overflow-hidden">
         {/* Results header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3.5 border-b border-muted gap-2">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 shrink-0">
-              <Users className="h-4 w-4 text-emerald-600" />
-            </div>
-            <div className="min-w-0">
-              {isLoading || isFetching ? (
-                <Skeleton className="h-5 w-32" />
-              ) : (
-                <p className="font-semibold text-sm">
-                  {data?.total ?? 0} donors found
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground truncate max-w-xs">
-                {filterSummary(applied)}
+          <div className="min-w-0">
+            {isLoading || isFetching ? (
+              <Skeleton className="h-5 w-32" />
+            ) : (
+              <p className="font-semibold text-sm">
+                {data?.total ?? 0} donors found
               </p>
-            </div>
+            )}
+            <p className="text-xs text-muted-foreground truncate max-w-xs">
+              {filterSummary(applied)}
+            </p>
           </div>
           {totalPages > 1 && (
             <p className="text-xs text-muted-foreground self-start sm:self-auto">
