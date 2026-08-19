@@ -40,22 +40,22 @@ export function DonationForm({
 
   const recordDonation = useRecordDonation(donorId);
 
-  const today = new Date();
-  const todayString = today.toISOString().split("T")[0];
-
   const form = useForm<DonationInput>({
     resolver: zodResolver(donationSchema),
 
     defaultValues: {
       patientName: "",
       hospitalName: "",
-      donationDate: today,
+      donationDate: new Date(),
       notes: "",
     },
   });
 
   const onSubmit = (data: DonationInput) => {
-    // Make absolutely sure the date sent to the API is a Date.
+    // ─────────────────────────────────────────────────────────────────────────
+    // Convert date-only input safely
+    // ─────────────────────────────────────────────────────────────────────────
+
     const donationDate =
       data.donationDate instanceof Date
         ? data.donationDate
@@ -66,20 +66,30 @@ export function DonationForm({
       return;
     }
 
-    if (donationDate > new Date()) {
+    // Prevent future donation
+    const today = new Date();
+
+    today.setHours(23, 59, 59, 999);
+
+    if (donationDate > today) {
       toast.error("Donation date cannot be in the future");
       return;
     }
 
     recordDonation.mutate(
       {
-        ...data,
+        patientName: data.patientName.trim(),
+        hospitalName: data.hospitalName.trim(),
+
+        // Send ISO date to API
         donationDate: donationDate.toISOString(),
+
+        notes: data.notes?.trim() || "",
       },
       {
         onSuccess: () => {
           toast.success(
-            "Donation history recorded successfully. Donor will be deferred for 120 days.",
+            "Donation history recorded successfully."
           );
 
           form.reset({
@@ -96,10 +106,10 @@ export function DonationForm({
           toast.error(
             err?.error ||
               err?.message ||
-              "Failed to record donation",
+              "Failed to record donation"
           );
         },
-      },
+      }
     );
   };
 
@@ -120,9 +130,8 @@ export function DonationForm({
           </DialogTitle>
 
           <DialogDescription>
-            Recording a donation will automatically calculate
-            the donor's eligibility using the 120-day waiting
-            period.
+            A donor will remain deferred until 120 days have
+            passed from the donation date.
           </DialogDescription>
         </DialogHeader>
 
@@ -130,7 +139,7 @@ export function DonationForm({
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid gap-4 py-4"
         >
-          {/* Patient */}
+          {/* Patient Name */}
           <div className="grid gap-2">
             <Label htmlFor="patientName">
               Patient Name
@@ -183,10 +192,24 @@ export function DonationForm({
             <Input
               id="donationDate"
               type="date"
-              max={todayString}
               {...form.register("donationDate", {
-                setValueAs: (value) =>
-                  value ? new Date(`${value}T00:00:00`) : value,
+                setValueAs: (value) => {
+                  if (!value) return undefined;
+
+                  // Use local noon to avoid timezone shifting
+                  const [year, month, day] =
+                    value.split("-").map(Number);
+
+                  return new Date(
+                    year,
+                    month - 1,
+                    day,
+                    12,
+                    0,
+                    0,
+                    0
+                  );
+                },
               })}
             />
 
@@ -198,6 +221,11 @@ export function DonationForm({
                 }
               </span>
             )}
+
+            <p className="text-xs text-muted-foreground">
+              Eligibility is calculated automatically
+              using 120 days from this date.
+            </p>
           </div>
 
           {/* Notes */}
@@ -214,7 +242,9 @@ export function DonationForm({
 
             {form.formState.errors.notes && (
               <span className="text-xs text-destructive">
-                {form.formState.errors.notes.message}
+                {
+                  form.formState.errors.notes.message
+                }
               </span>
             )}
           </div>
