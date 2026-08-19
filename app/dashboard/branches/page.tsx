@@ -61,7 +61,9 @@ export default function BranchesPage() {
       const json: BranchResponse = await res.json();
 
       if (!res.ok) {
-        throw new Error(json.error || "Failed to load branches");
+        throw new Error(
+          json.error || "Failed to load branches",
+        );
       }
 
       setBranches(json.branches ?? []);
@@ -164,6 +166,7 @@ export default function BranchesPage() {
 
   return (
     <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -175,12 +178,13 @@ export default function BranchesPage() {
           </div>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage your organization's branches and their
-            database connections.
+            Manage your organization&apos;s branches and
+            their database connections.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Refresh */}
           <Button
             variant="outline"
             onClick={loadBranches}
@@ -195,7 +199,11 @@ export default function BranchesPage() {
             Refresh
           </Button>
 
-          <Dialog open={open} onOpenChange={setOpen}>
+          {/* Create Branch Dialog */}
+          <Dialog
+            open={open}
+            onOpenChange={setOpen}
+          >
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -219,6 +227,7 @@ export default function BranchesPage() {
                 onSubmit={handleCreateBranch}
                 className="space-y-5 pt-4"
               >
+                {/* Branch Name */}
                 <div className="space-y-2">
                   <Label htmlFor="branch-name">
                     Branch Name
@@ -235,6 +244,7 @@ export default function BranchesPage() {
                   />
                 </div>
 
+                {/* Slug */}
                 <div className="space-y-2">
                   <Label htmlFor="branch-slug">
                     Slug
@@ -259,6 +269,7 @@ export default function BranchesPage() {
                   </p>
                 </div>
 
+                {/* Location */}
                 <div className="space-y-2">
                   <Label htmlFor="branch-location">
                     Location
@@ -280,6 +291,7 @@ export default function BranchesPage() {
                   </div>
                 </div>
 
+                {/* Database URL */}
                 <div className="space-y-2">
                   <Label htmlFor="database-url">
                     Branch Database URL
@@ -304,6 +316,7 @@ export default function BranchesPage() {
                   </p>
                 </div>
 
+                {/* Buttons */}
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
                     type="button"
@@ -337,6 +350,7 @@ export default function BranchesPage() {
         </div>
       </div>
 
+      {/* Loading */}
       {loading ? (
         <div className="rounded-lg border p-8 text-center">
           <Loader2 className="mx-auto h-6 w-6 animate-spin" />
@@ -346,6 +360,7 @@ export default function BranchesPage() {
           </p>
         </div>
       ) : branches.length === 0 ? (
+        /* Empty State */
         <div className="rounded-lg border border-dashed p-10 text-center">
           <Building2 className="mx-auto h-10 w-10 text-muted-foreground" />
 
@@ -358,6 +373,7 @@ export default function BranchesPage() {
           </p>
         </div>
       ) : (
+        /* Branch List */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {branches.map((branch) => (
             <div
@@ -381,6 +397,7 @@ export default function BranchesPage() {
                   </div>
                 </div>
 
+                {/* Status */}
                 <span
                   className={`rounded-full px-2 py-1 text-xs font-medium ${
                     branch.isActive
@@ -394,6 +411,7 @@ export default function BranchesPage() {
                 </span>
               </div>
 
+              {/* Location */}
               {branch.location && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4" />
@@ -402,6 +420,7 @@ export default function BranchesPage() {
                 </div>
               )}
 
+              {/* Created Date */}
               <div className="mt-4 border-t pt-4">
                 <p className="text-xs text-muted-foreground">
                   Created
