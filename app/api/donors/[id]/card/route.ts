@@ -131,7 +131,6 @@ export const GET = withAuth(
     // Colors
     // --------------------------------------------------
 
-    const headerRedDark = rgb(0.627, 0.082, 0.129); // #A01521
     const headerRedLight = rgb(0.769, 0.118, 0.184); // #C41E2F
     const red = rgb(0.769, 0.118, 0.184); // #C41E2F
     const dark = rgb(0.102, 0.102, 0.102); // #1A1A1A
@@ -156,20 +155,26 @@ export const GET = withAuth(
 
     // --------------------------------------------------
     // Faded logo watermark, drawn behind everything else
+    // Fully contained within the body area (below the header)
     // --------------------------------------------------
+
+    const bodyHeight = cardHeight - headerHeight;
+    const bodyCenterX = cardWidth / 2;
+    const bodyCenterY = bodyHeight / 2;
 
     if (fs.existsSync(LOGO_PATH)) {
       const logoBytes = fs.readFileSync(LOGO_PATH);
       const logoImage = await pdfDoc.embedPng(logoBytes);
 
-      const watermarkSize = 220;
+      // Sized to comfortably fit inside the body without touching the header
+      const watermarkSize = Math.min(bodyHeight, cardWidth) * 0.85;
 
       page.drawImage(logoImage, {
-        x: cardWidth / 2 - watermarkSize / 2,
-        y: cardHeight / 2 - watermarkSize / 2 - 8,
+        x: bodyCenterX - watermarkSize / 2,
+        y: bodyCenterY - watermarkSize / 2,
         width: watermarkSize,
         height: watermarkSize,
-        opacity: 0.06,
+        opacity: 0.07,
       });
     }
 
@@ -183,7 +188,7 @@ export const GET = withAuth(
     );
 
     // --------------------------------------------------
-    // Header band (two-tone strip approximates the gradient)
+    // Header band (single solid color — no seams)
     // --------------------------------------------------
 
     page.drawRectangle({
@@ -191,26 +196,8 @@ export const GET = withAuth(
       y: cardHeight - headerHeight,
       width: cardWidth,
       height: headerHeight,
-      color: headerRedDark,
-    });
-
-    page.drawRectangle({
-      x: cardWidth * 0.4,
-      y: cardHeight - headerHeight,
-      width: cardWidth * 0.6,
-      height: headerHeight,
       color: headerRedLight,
-      opacity: 0.6,
     });
-
-    // Skewed light sliver on the header's right edge, for texture
-    page.drawSvgPath(
-      `M ${cardWidth - 30} ${cardHeight} L ${cardWidth} ${cardHeight} L ${cardWidth} ${cardHeight - headerHeight} L ${cardWidth - 90} ${cardHeight - headerHeight} Z`,
-      {
-        color: white,
-        opacity: 0.06,
-      }
-    );
 
     page.drawText(
       "QUANTUM VOLUNTARY BLOOD DONATION PROGRAMME",
@@ -299,7 +286,7 @@ export const GET = withAuth(
         color: dividerPink,
       });
 
-      cursorY -= 44;
+      cursorY -= 38;
     };
 
     drawField("Name", donor.fullName);
@@ -332,10 +319,10 @@ export const GET = withAuth(
 
     const qrImage = await pdfDoc.embedPng(qrBytes);
 
-    const qrBoxSize = 100;
-    const qrBoxX = cardWidth - qrBoxSize - 24;
-    const qrBoxY = cardHeight - headerHeight - qrBoxSize - 24;
-    const qrPadding = 8;
+    const qrBoxSize = 130;
+    const qrBoxX = cardWidth - qrBoxSize - 20;
+    const qrBoxY = cardHeight - headerHeight - qrBoxSize - 18;
+    const qrPadding = 9;
 
     // White backing box with red border
     page.drawRectangle({
@@ -354,6 +341,31 @@ export const GET = withAuth(
       width: qrBoxSize - qrPadding * 2,
       height: qrBoxSize - qrPadding * 2,
     });
+
+    // --------------------------------------------------
+    // Footer: branch name + "if found, please return" note
+    // --------------------------------------------------
+
+    const footerY = 14;
+
+    page.drawText("QUANTUM FOUNDATION — RANGPUR BRANCH", {
+      x: infoX,
+      y: footerY,
+      size: 7.5,
+      font: boldFont,
+      color: gray,
+    });
+
+    page.drawText(
+      "If found, please return this card to the nearest Quantum Foundation office.",
+      {
+        x: infoX,
+        y: footerY - 9,
+        size: 6.5,
+        font: regularFont,
+        color: gray,
+      }
+    );
 
     // --------------------------------------------------
     // Save PDF
