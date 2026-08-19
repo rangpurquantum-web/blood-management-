@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
+import fs from "fs";
+import path from "path";
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/api-helpers";
+
+// Place the logo file here: public/assets/logo-watermark.png
+const LOGO_PATH = path.join(
+  process.cwd(),
+  "public",
+  "assets",
+  "logo-watermark.png"
+);
 
 // GET /api/donors/[id]/card
 export const GET = withAuth(
@@ -143,6 +153,25 @@ export const GET = withAuth(
       height: cardHeight,
       color: cardBg,
     });
+
+    // --------------------------------------------------
+    // Faded logo watermark, drawn behind everything else
+    // --------------------------------------------------
+
+    if (fs.existsSync(LOGO_PATH)) {
+      const logoBytes = fs.readFileSync(LOGO_PATH);
+      const logoImage = await pdfDoc.embedPng(logoBytes);
+
+      const watermarkSize = 220;
+
+      page.drawImage(logoImage, {
+        x: cardWidth / 2 - watermarkSize / 2,
+        y: cardHeight / 2 - watermarkSize / 2 - 8,
+        width: watermarkSize,
+        height: watermarkSize,
+        opacity: 0.06,
+      });
+    }
 
     // Faint diagonal accent, bottom-right corner
     page.drawSvgPath(
