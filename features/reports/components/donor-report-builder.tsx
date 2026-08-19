@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Filter, RotateCcw, Search, Users, ChevronLeft, ChevronRight,
   Calendar, Droplet, MapPin, User, Activity, ChevronsLeft, ChevronsRight,
-  FileText, Loader2,
+  FileText, Loader2, SlidersHorizontal, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { format, differenceInYears } from "date-fns";
 import { toast } from "sonner";
@@ -67,6 +67,12 @@ function hasActiveFilters(f: Filters) {
   return Object.values(f).some((v) => v !== "");
 }
 
+function hasAdvancedFilters(f: Filters) {
+  return Boolean(
+    f.ageMin || f.ageMax || f.createdFrom || f.createdTo || f.lastDonationFrom || f.lastDonationTo
+  );
+}
+
 function filterSummary(f: Filters): string {
   const parts: string[] = [];
   if (f.bloodGroup)  parts.push(`Blood Group: ${f.bloodGroup}`);
@@ -91,6 +97,7 @@ export function DonorReportBuilder() {
   const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const PAGE_SIZE = 20;
 
   const queryKey = ["donor-report", applied, page];
@@ -130,201 +137,221 @@ export function DonorReportBuilder() {
     setDraft(EMPTY_FILTERS);
     setApplied(EMPTY_FILTERS);
     setPage(1);
+    setShowAdvanced(false);
   }, []);
 
   const set = (key: keyof Filters) => (value: string) =>
     setDraft((prev) => ({ ...prev, [key]: value }));
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
+  const advancedActive = hasAdvancedFilters(applied);
 
   return (
     <div className="space-y-6">
       {/* ── Filter Panel ────────────────────────────────────────── */}
       <div className="rounded-2xl border border-muted bg-card shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent border-b border-muted">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-gradient-to-r from-primary/5 to-transparent border-b border-muted">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
               <Filter className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h2 className="font-semibold text-sm">Custom Filter Builder</h2>
-              <p className="text-xs text-muted-foreground">All filters are optional — combined with AND logic</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">
+                All filters are optional — combined with AND logic
+              </p>
             </div>
           </div>
           {hasActiveFilters(applied) && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-xs">
-              Filters Active
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-xs shrink-0">
+              Active
             </Badge>
           )}
         </div>
 
         {/* Controls */}
-        <div className="p-6 space-y-5">
-          {/* Row 1: Blood Group, Area, Gender, Eligibility */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-              <Droplet className="h-3.5 w-3.5" /> Primary Filters
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Blood Group */}
-              <Select value={draft.bloodGroup || "__all__"} onValueChange={(v) => set("bloodGroup")(v === "__all__" ? "" : v)}>
-                <SelectTrigger id="rpt-blood-group" className="h-9">
-                  <SelectValue placeholder="Blood Group" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All Blood Groups</SelectItem>
-                  {BLOOD_TYPES.map((bt) => (
-                    <SelectItem key={bt} value={bt}>{bt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="p-4 sm:p-6 space-y-4">
+          {/* Primary Filters — 2 columns even on mobile */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {/* Blood Group */}
+            <Select value={draft.bloodGroup || "__all__"} onValueChange={(v) => set("bloodGroup")(v === "__all__" ? "" : v)}>
+              <SelectTrigger id="rpt-blood-group" className="h-9 text-xs sm:text-sm">
+                <SelectValue placeholder="Blood Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Blood Groups</SelectItem>
+                {BLOOD_TYPES.map((bt) => (
+                  <SelectItem key={bt} value={bt}>{bt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-              {/* Area */}
-              <div className="relative">
-                <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="rpt-area"
-                  placeholder="Area / Thana..."
-                  className="pl-8 h-9"
-                  value={draft.area}
-                  onChange={(e) => set("area")(e.target.value)}
-                />
-              </div>
+            {/* Gender */}
+            <Select value={draft.gender || "__all__"} onValueChange={(v) => set("gender")(v === "__all__" ? "" : v)}>
+              <SelectTrigger id="rpt-gender" className="h-9 text-xs sm:text-sm">
+                <SelectValue placeholder="Gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Genders</SelectItem>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
 
-              {/* Gender */}
-              <Select value={draft.gender || "__all__"} onValueChange={(v) => set("gender")(v === "__all__" ? "" : v)}>
-                <SelectTrigger id="rpt-gender" className="h-9">
-                  <SelectValue placeholder="Gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All Genders</SelectItem>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Eligibility */}
+            <Select value={draft.eligible || "__all__"} onValueChange={(v) => set("eligible")(v === "__all__" ? "" : v)}>
+              <SelectTrigger id="rpt-eligibility" className="h-9 text-xs sm:text-sm">
+                <SelectValue placeholder="Availability" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Statuses</SelectItem>
+                <SelectItem value="true">✅ Eligible Now</SelectItem>
+                <SelectItem value="false">⏳ Not Eligible Yet</SelectItem>
+              </SelectContent>
+            </Select>
 
-              {/* Eligibility */}
-              <Select value={draft.eligible || "__all__"} onValueChange={(v) => set("eligible")(v === "__all__" ? "" : v)}>
-                <SelectTrigger id="rpt-eligibility" className="h-9">
-                  <SelectValue placeholder="Availability" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All Statuses</SelectItem>
-                  <SelectItem value="true">✅ Eligible Now</SelectItem>
-                  <SelectItem value="false">⏳ Not Eligible Yet</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Area */}
+            <div className="relative">
+              <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="rpt-area"
+                placeholder="Area / Thana"
+                className="pl-8 h-9 text-xs sm:text-sm"
+                value={draft.area}
+                onChange={(e) => set("area")(e.target.value)}
+              />
             </div>
           </div>
 
-          <Separator />
+          {/* Advanced Filters toggle */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            {showAdvanced ? "Hide" : "More Filters"} (Age & Date)
+            {advancedActive && !showAdvanced && (
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-[10px] px-1.5 py-0 h-4">
+                Active
+              </Badge>
+            )}
+            {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
 
-          {/* Row 2: Age Range */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" /> Age Range
-            </p>
-            <div className="grid grid-cols-2 gap-3 max-w-xs">
+          {showAdvanced && (
+            <div className="space-y-4 pt-1 animate-in slide-in-from-top-1 duration-200">
+              <Separator />
+
+              {/* Age Range */}
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Minimum Age</label>
-                <Input
-                  id="rpt-age-min"
-                  type="number"
-                  placeholder="e.g. 18"
-                  min={18}
-                  max={80}
-                  className="h-9"
-                  value={draft.ageMin}
-                  onChange={(e) => set("ageMin")(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Maximum Age</label>
-                <Input
-                  id="rpt-age-max"
-                  type="number"
-                  placeholder="e.g. 60"
-                  min={18}
-                  max={100}
-                  className="h-9"
-                  value={draft.ageMax}
-                  onChange={(e) => set("ageMax")(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Row 3: Date Ranges */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" /> Date Range
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Registration Date */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Registration Date</p>
-                <div className="grid grid-cols-2 gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5" /> Age Range
+                </p>
+                <div className="grid grid-cols-2 gap-2.5 max-w-xs">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">From</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">Minimum Age</label>
                     <Input
-                      id="rpt-created-from"
-                      type="date"
+                      id="rpt-age-min"
+                      type="number"
+                      placeholder="e.g. 18"
+                      min={18}
+                      max={80}
                       className="h-9 text-sm"
-                      value={draft.createdFrom}
-                      onChange={(e) => set("createdFrom")(e.target.value)}
+                      value={draft.ageMin}
+                      onChange={(e) => set("ageMin")(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">To</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">Maximum Age</label>
                     <Input
-                      id="rpt-created-to"
-                      type="date"
+                      id="rpt-age-max"
+                      type="number"
+                      placeholder="e.g. 60"
+                      min={18}
+                      max={100}
                       className="h-9 text-sm"
-                      value={draft.createdTo}
-                      onChange={(e) => set("createdTo")(e.target.value)}
+                      value={draft.ageMax}
+                      onChange={(e) => set("ageMax")(e.target.value)}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Last Donation Date */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Last Donation Date</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">From</label>
-                    <Input
-                      id="rpt-donation-from"
-                      type="date"
-                      className="h-9 text-sm"
-                      value={draft.lastDonationFrom}
-                      onChange={(e) => set("lastDonationFrom")(e.target.value)}
-                    />
+              <Separator />
+
+              {/* Date Ranges */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Date Range
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Registration Date */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Registration Date</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">From</label>
+                        <Input
+                          id="rpt-created-from"
+                          type="date"
+                          className="h-9 text-sm"
+                          value={draft.createdFrom}
+                          onChange={(e) => set("createdFrom")(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">To</label>
+                        <Input
+                          id="rpt-created-to"
+                          type="date"
+                          className="h-9 text-sm"
+                          value={draft.createdTo}
+                          onChange={(e) => set("createdTo")(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">To</label>
-                    <Input
-                      id="rpt-donation-to"
-                      type="date"
-                      className="h-9 text-sm"
-                      value={draft.lastDonationTo}
-                      onChange={(e) => set("lastDonationTo")(e.target.value)}
-                    />
+
+                  {/* Last Donation Date */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Last Donation Date</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">From</label>
+                        <Input
+                          id="rpt-donation-from"
+                          type="date"
+                          className="h-9 text-sm"
+                          value={draft.lastDonationFrom}
+                          onChange={(e) => set("lastDonationFrom")(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">To</label>
+                        <Input
+                          id="rpt-donation-to"
+                          type="date"
+                          className="h-9 text-sm"
+                          value={draft.lastDonationTo}
+                          onChange={(e) => set("lastDonationTo")(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <Button
               id="rpt-apply"
               onClick={handleApply}
+              size="sm"
               className="gap-2 bg-primary hover:bg-primary/90"
             >
               <Search className="h-4 w-4" />
@@ -333,6 +360,7 @@ export function DonorReportBuilder() {
             <Button
               id="rpt-reset"
               variant="outline"
+              size="sm"
               onClick={handleReset}
               className="gap-2 text-muted-foreground"
             >
@@ -342,16 +370,17 @@ export function DonorReportBuilder() {
             <Button
               id="rpt-export-pdf"
               variant="outline"
+              size="sm"
               onClick={handleExportPdf}
               disabled={isPdfExporting || !data || data.total === 0}
-              className="gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 ml-auto sm:ml-0"
+              className="gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 ml-auto"
             >
               {isPdfExporting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <FileText className="h-3.5 w-3.5" />
               )}
-              Export to PDF
+              Export PDF
             </Button>
           </div>
         </div>
@@ -360,12 +389,12 @@ export function DonorReportBuilder() {
       {/* ── Results Panel ───────────────────────────────────────── */}
       <div className="rounded-2xl border border-muted bg-card shadow-sm overflow-hidden">
         {/* Results header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-muted gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3.5 border-b border-muted gap-2">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 shrink-0">
               <Users className="h-4 w-4 text-emerald-600" />
             </div>
-            <div>
+            <div className="min-w-0">
               {isLoading || isFetching ? (
                 <Skeleton className="h-5 w-32" />
               ) : (
@@ -467,7 +496,7 @@ export function DonorReportBuilder() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 px-6 py-4 border-t border-muted">
+          <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-4 border-t border-muted">
             <Button
               variant="outline"
               size="icon"
