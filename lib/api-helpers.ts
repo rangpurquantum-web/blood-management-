@@ -9,9 +9,16 @@ import type { ZodError } from "zod";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type RouteSession = {
+  userId: number;
+  role: Role;
+  branchId: number | null;
+  branchSlug: string | null;
+};
+
 type RouteHandler = (
   req: NextRequest,
-  session: { userId: number; role: Role },
+  session: RouteSession,
   params?: Record<string, string>,
 ) => Promise<NextResponse>;
 
@@ -19,42 +26,110 @@ type RouteHandler = (
 
 /**
  * Wraps a Route Handler with Auth.js session verification.
+ *
  * Optionally restricts to specific roles or permissions.
  *
  * Usage:
+ *
  *   export const GET = withAuth(handler);
- *   export const DELETE = withAuth(handler, { roles: [Role.ADMIN] });
- *   export const PATCH = withAuth(handler, { permission: "donorEdit" });
+ *
+ *   export const DELETE = withAuth(handler, {
+ *     roles: [Role.ADMIN],
+ *   });
+ *
+ *   export const PATCH = withAuth(handler, {
+ *     permission: "donorEdit",
+ *   });
  */
 export function withAuth(
   handler: RouteHandler,
-  options: { roles?: Role[]; permission?: PermissionKey } = {},
-): any {
+  options: {
+    roles?: Role[];
+    permission?: PermissionKey;
+  } = {},
+): (
+  req: NextRequest,
+  context?: {
+    params?: Promise<Record<string, string>>;
+  },
+) => Promise<NextResponse> {
   return async (
     req: NextRequest,
-    context: any,
+    context?: {
+      params?: Promise<Record<string, string>>;
+    },
   ): Promise<NextResponse> => {
     const session = await auth();
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Authentication
+    // ─────────────────────────────────────────────────────────────────────────
+
     if (!session?.user) {
-      return apiError("Unauthorized — please log in", 401);
+      return apiError(
+        "Unauthorized — please log in",
+        401,
+      );
     }
 
-    const userId = session.user.id ? Number(session.user.id) : 0;
-    const userRole = session.user.role as Role | undefined;
+    // ─────────────────────────────────────────────────────────────────────────
+    // User ID
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // ── Permission check ────────────────────────────────────────────────────
+    const userId = session.user.id
+      ? Number(session.user.id)
+      : 0;
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return apiError(
+        "Invalid user session",
+        401,
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Role
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const userRole =
+      session.user.role as Role | undefined;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Branch information
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const branchId =
+      typeof session.user.branchId === "number"
+        ? session.user.branchId
+        : null;
+
+    const branchSlug =
+      typeof session.user.branchSlug === "string"
+        ? session.user.branchSlug
+        : null;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Permission check
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (options.permission) {
       const dbUser = await prisma.user.findUnique({
-        where: { id: userId },
+        where: {
+          id: userId,
+        },
         select: {
           role: true,
           permissions: true,
         },
       });
 
-      if (!dbUser || !hasPermission(dbUser, options.permission)) {
+      if (
+        !dbUser ||
+        !hasPermission(
+          dbUser,
+          options.permission,
+        )
+      ) {
         return apiError(
           "Forbidden — insufficient permissions",
           403,
@@ -62,11 +137,16 @@ export function withAuth(
       }
     }
 
-    // ── Role check ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Role check
+    // ─────────────────────────────────────────────────────────────────────────
 
     else if (
       options.roles &&
-      (!userRole || !options.roles.includes(userRole))
+      (
+        !userRole ||
+        !options.roles.includes(userRole)
+      )
     ) {
       return apiError(
         "Forbidden — insufficient permissions",
@@ -74,17 +154,26 @@ export function withAuth(
       );
     }
 
-    // ── Next.js dynamic route params ────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Dynamic route params
+    // ─────────────────────────────────────────────────────────────────────────
 
     const params = context?.params
       ? await context.params
       : undefined;
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Handler
+    // ─────────────────────────────────────────────────────────────────────────
+
     return handler(
       req,
       {
         userId,
-        role: userRole ?? Role.VOLUNTEER,
+        role:
+          userRole ?? Role.VOLUNTEER,
+        branchId,
+        branchSlug,
       },
       params,
     );
@@ -112,7 +201,9 @@ export async function writeAuditLog(
 
   if (userId) {
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: {
+        id: userId,
+      },
       select: {
         name: true,
         email: true,
@@ -132,7 +223,7 @@ export async function writeAuditLog(
   });
 }
 
-// ─── Error Factory ─────────────────────────────────────────────────────────────
+// ─── Error Factory ────────────────────────────────────────────────────────────
 
 /**
  * Returns a standardized JSON error response.
@@ -148,11 +239,13 @@ export function apiError(
       error: message,
       ...extra,
     },
-    { status },
+    {
+      status,
+    },
   );
 }
 
-// ─── Success Factory ───────────────────────────────────────────────────────────
+// ─── Success Factory ──────────────────────────────────────────────────────────
 
 /**
  * Returns a standardized JSON success response.
@@ -166,11 +259,13 @@ export function apiSuccess(
       success: true,
       ...data,
     },
-    { status },
+    {
+      status,
+    },
   );
 }
 
-// ─── Eligibility Calculator ────────────────────────────────────────────────────
+// ─── Eligibility Calculator ──────────────────────────────────────────────────
 
 /**
  * Number of days a donor must wait after donation.
@@ -181,60 +276,85 @@ const DEFERRAL_DAYS = 120;
  * Calculates donor eligibility from the donation date.
  *
  * Rules:
+ *
  * - Less than 120 days since donation → Deferred
  * - 120 days or more since donation → Eligible
  *
  * Example:
+ *
  * Donation: 15 May 2024
  * Eligible from: 12 September 2024
  *
- * So an old donation from 2024 will correctly make the donor
- * eligible now, even if the database still contains isEligible=false.
+ * An old donation will therefore correctly make
+ * the donor eligible.
  */
-export function eligibilityFromDonation(donationDate: Date): {
+export function eligibilityFromDonation(
+  donationDate: Date,
+): {
   isEligible: boolean;
   deferredUntil: Date | null;
 } {
-  const deferredUntil = new Date(donationDate);
-
-  // Compare dates without time-of-day differences.
-  deferredUntil.setHours(0, 0, 0, 0);
-
-  // Add the required 120-day waiting period.
-  deferredUntil.setDate(
-    deferredUntil.getDate() + DEFERRAL_DAYS,
+  // Copy the date so the original Date object
+  // is never modified.
+  const deferredUntil = new Date(
+    donationDate,
   );
 
+  // Compare dates without time-of-day differences.
+  deferredUntil.setHours(
+    0,
+    0,
+    0,
+    0,
+  );
+
+  // Add required waiting period.
+  deferredUntil.setDate(
+    deferredUntil.getDate() +
+      DEFERRAL_DAYS,
+  );
+
+  // Today's date.
   const today = new Date();
 
-  today.setHours(0, 0, 0, 0);
+  today.setHours(
+    0,
+    0,
+    0,
+    0,
+  );
 
   // If today is on or after the eligible date,
-  // the donor is eligible.
-  const isEligible = today >= deferredUntil;
+  // donor is eligible.
+  const isEligible =
+    today >= deferredUntil;
 
   return {
     isEligible,
 
-    // No need for deferredUntil once the donor is eligible.
+    // No deferred date is necessary
+    // after the donor becomes eligible.
     deferredUntil: isEligible
       ? null
       : deferredUntil,
   };
 }
 
-// ─── Zod Validation Error Formatter ────────────────────────────────────────────
+// ─── Zod Validation Error Formatter ──────────────────────────────────────────
 
 /**
- * Formats a ZodError into the standard API validation error response.
+ * Formats a ZodError into the standard API
+ * validation error response.
  */
 export function validationError(
   error: ZodError,
 ): NextResponse {
-  const issues = error.errors.map((e) => ({
-    field: e.path.join("."),
-    message: e.message,
-  }));
+  const issues = error.errors.map(
+    (e) => ({
+      field: e.path.join("."),
+      message: e.message,
+    }),
+  );
 
   return NextResponse.json(
     {
@@ -242,6 +362,8 @@ export function validationError(
       error: "Validation failed",
       issues,
     },
-    { status: 400 },
+    {
+      status: 400,
+    },
   );
 }
