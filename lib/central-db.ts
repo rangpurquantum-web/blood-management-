@@ -6,12 +6,7 @@ const globalForCentralPrisma = globalThis as unknown as {
 
 export const centralPrisma =
   globalForCentralPrisma.centralPrisma ??
-  new PrismaClient({
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-  });
+  new PrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForCentralPrisma.centralPrisma = centralPrisma;
