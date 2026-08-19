@@ -8,10 +8,6 @@ datasource db {
   url      = env("CENTRAL_DATABASE_URL")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Branch
-// ─────────────────────────────────────────────────────────────────────────────
-
 model Branch {
   id                Int          @id @default(autoincrement())
   name              String       @unique
@@ -26,10 +22,6 @@ model Branch {
   updatedAt         DateTime     @updatedAt
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Super Admin
-// ─────────────────────────────────────────────────────────────────────────────
-
 model SuperAdmin {
   id           Int       @id @default(autoincrement())
   name         String
@@ -41,28 +33,15 @@ model SuperAdmin {
   updatedAt    DateTime  @updatedAt
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Branch User
-//
-// These users belong to a specific branch.
-// Their branchId determines which branch database they can access.
-// ─────────────────────────────────────────────────────────────────────────────
-
 model BranchUser {
   id           Int       @id @default(autoincrement())
-
   name         String
   email        String    @unique
   passwordHash String
-
   role         String    @default("VOLUNTEER")
 
   branchId     Int
-  branch       Branch    @relation(
-    fields: [branchId],
-    references: [id],
-    onDelete: Cascade
-  )
+  branch       Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   isActive     Boolean   @default(true)
 
