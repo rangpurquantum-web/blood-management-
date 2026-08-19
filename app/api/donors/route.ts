@@ -3,9 +3,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   withAuth,
+  writeAuditLog,
   apiError,
   apiSuccess,
-  writeAuditLog,
+  validationError,
   eligibilityFromDonation,
 } from "@/lib/api-helpers";
 import { donorSchema } from "@/features/donors";
@@ -14,11 +15,11 @@ export const dynamic = "force-dynamic";
 
 // ─── GET /api/donors ──────────────────────────────────────────────────────────
 // Query params:
-// q
-// bloodGroup
-// eligible=true/false
-// status
-// area
+// q          = name / phone search
+// bloodGroup = blood group
+// eligible   = true / false
+// area       = address search
+// status     = APPROVED / PENDING / REJECTED / all
 
 export const GET = withAuth(
   async (req: NextRequest) => {
@@ -34,7 +35,9 @@ export const GET = withAuth(
       isDeleted: false,
     };
 
-    // ── Status ────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Status
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (statusParam && statusParam !== "all") {
       where.status = statusParam as any;
@@ -42,7 +45,9 @@ export const GET = withAuth(
       where.status = "APPROVED";
     }
 
-    // ── Search ────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Search
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (q) {
       where.OR = [
@@ -64,13 +69,17 @@ export const GET = withAuth(
       ];
     }
 
-    // ── Blood Group ───────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Blood group
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (bloodGroup) {
       where.bloodType = bloodGroup;
     }
 
-    // ── Area ──────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Area
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (area) {
       where.address = {
@@ -79,92 +88,95 @@ export const GET = withAuth(
       };
     }
 
-    // ── Fetch donors ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // IMPORTANT:
+    // Do NOT filter eligibility from database here.
+    //
+    // We calculate eligibility from the latest donation below.
+    // This prevents old/stale isEligible values from causing wrong results.
+    // ─────────────────────────────────────────────────────────────────────────
 
     const donors = await prisma.donor.findMany({
       where,
+
       orderBy: {
         fullName: "asc",
       },
-      select: {
-        id: true,
-        fullName: true,
-        dob: true,
-        gender: true,
-        bloodType: true,
-        phone: true,
-        email: true,
-        address: true,
-        isEligible: true,
-        deferralReason: true,
-        deferredUntil: true,
 
-        // IMPORTANT:
-        // Latest donation is needed to calculate eligibility again.
+      include: {
+        phone: true,
+
         donations: {
           orderBy: {
             donationDate: "desc",
           },
+
           take: 1,
-          select: {
-            donationDate: true,
-          },
         },
       },
     });
 
-    // ── Recalculate eligibility ───────────────────────────────────────────────
-    //
-    // Database value may be old.
-    // Therefore latest donation is always checked against today's date.
-    //
+    // ─────────────────────────────────────────────────────────────────────────
+    // Calculate current eligibility
+    // ─────────────────────────────────────────────────────────────────────────
 
-    const updatedDonors = donors.map((donor) => {
+    const result = donors.map((donor) => {
       const latestDonation = donor.donations[0];
 
-      if (!latestDonation) {
-        return {
-          ...donor,
-          isEligible: true,
-          deferredUntil: null,
-          deferralReason: null,
-          donations: undefined,
-        };
+      let isEligible = true;
+      let deferredUntil: Date | null = null;
+      let deferralReason: string | null = null;
+
+      if (latestDonation) {
+        const eligibility = eligibilityFromDonation(
+          latestDonation.donationDate,
+        );
+
+        isEligible = eligibility.isEligible;
+        deferredUntil = eligibility.deferredUntil;
+
+        if (!isEligible) {
+          deferralReason = "Recent donation — 120-day rest period";
+        }
       }
 
-      const eligibility = eligibilityFromDonation(
-        latestDonation.donationDate,
-      );
-
-      const isEligible = eligibility.deferredUntil <= new Date();
-
       return {
-        ...donor,
+        id: donor.id,
+        fullName: donor.fullName,
+        dob: donor.dob,
+        gender: donor.gender,
+        bloodType: donor.bloodType,
+        phone: donor.phone,
+        email: donor.email,
+        address: donor.address,
+
+        // Calculated values
         isEligible,
-        deferredUntil: isEligible
-          ? null
-          : eligibility.deferredUntil,
-        deferralReason: isEligible
-          ? null
-          : "Recent donation — 120-day rest period",
-        donations: undefined,
+        deferralReason,
+        deferredUntil,
+
+        // Optional useful information
+        latestDonationDate: latestDonation?.donationDate ?? null,
       };
     });
 
-    // ── Eligible filter ───────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Apply eligibility filter AFTER calculating it
+    // ─────────────────────────────────────────────────────────────────────────
 
-    let filteredDonors = updatedDonors;
+    let filteredResult = result;
 
     if (eligibleParam !== null) {
-      const requestedEligible = eligibleParam === "true";
+      const wantedEligibility = eligibleParam === "true";
 
-      filteredDonors = updatedDonors.filter(
-        (donor) => donor.isEligible === requestedEligible,
+      filteredResult = result.filter(
+        (donor) => donor.isEligible === wantedEligibility,
       );
     }
 
-    return NextResponse.json(filteredDonors);
+    return NextResponse.json(filteredResult);
   },
+
   {
     permission: "donorView",
   },
@@ -182,21 +194,23 @@ export const POST = withAuth(
       return apiError("Invalid JSON body", 400);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Validate
+    // ─────────────────────────────────────────────────────────────────────────
+
     const parsed = donorSchema.safeParse(body);
 
     if (!parsed.success) {
-      return (
-        await import("@/lib/api-helpers")
-      ).validationError(parsed.error);
+      return validationError(parsed.error);
     }
 
     const data = parsed.data;
 
-    // ── Phone numbers ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Check duplicate phone/email
+    // ─────────────────────────────────────────────────────────────────────────
 
     const phoneNumbers = data.phone.map((p) => p.number);
-
-    // ── Uniqueness check ──────────────────────────────────────────────────────
 
     const existing = await prisma.donor.findFirst({
       where: {
@@ -238,7 +252,9 @@ export const POST = withAuth(
       );
     }
 
-    // ── Prepare data ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Separate phone + lastDonationDate
+    // ─────────────────────────────────────────────────────────────────────────
 
     const {
       phone: phoneData,
@@ -248,37 +264,26 @@ export const POST = withAuth(
       lastDonationDate?: Date | null;
     };
 
-    // ── Initial eligibility ───────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Calculate initial eligibility
+    // ─────────────────────────────────────────────────────────────────────────
 
-    let eligibility = {
-      isEligible: true,
-      deferredUntil: null as Date | null,
-    };
+    const eligibility = lastDonationDate
+      ? eligibilityFromDonation(lastDonationDate)
+      : {
+          isEligible: true as const,
+          deferredUntil: null,
+        };
 
-    if (lastDonationDate) {
-      const calculated = eligibilityFromDonation(
-        lastDonationDate,
-      );
-
-      const isEligible =
-        calculated.deferredUntil <= new Date();
-
-      eligibility = {
-        isEligible,
-        deferredUntil: isEligible
-          ? null
-          : calculated.deferredUntil,
-      };
-    }
-
-    // ── Create donor ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Create donor
+    // ─────────────────────────────────────────────────────────────────────────
 
     const donor = await prisma.donor.create({
       data: {
         ...donorData,
 
         isEligible: eligibility.isEligible,
-
         deferredUntil: eligibility.deferredUntil,
 
         deferralReason: eligibility.isEligible
@@ -292,6 +297,11 @@ export const POST = withAuth(
             isPrimary: p.isPrimary,
           })),
         },
+
+        // ─────────────────────────────────────────────────────────────────────
+        // If previous donation date was provided,
+        // save it into donation history.
+        // ─────────────────────────────────────────────────────────────────────
 
         ...(lastDonationDate
           ? {
@@ -309,7 +319,9 @@ export const POST = withAuth(
       },
     });
 
-    // ── Audit ─────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Audit
+    // ─────────────────────────────────────────────────────────────────────────
 
     await writeAuditLog(
       session.userId,
@@ -325,6 +337,7 @@ export const POST = withAuth(
       201,
     );
   },
+
   {
     permission: "donorAdd",
   },
