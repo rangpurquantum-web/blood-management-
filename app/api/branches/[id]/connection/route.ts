@@ -19,9 +19,16 @@ export async function POST(
   _req: NextRequest,
   context: RouteContext,
 ) {
-  let branchId: number;
+  // IMPORTANT:
+  // Use undefined initially so TypeScript knows that branchId
+  // may not have been assigned if an error occurs before params parsing.
+  let branchId: number | undefined;
 
   try {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Authentication
+    // ─────────────────────────────────────────────────────────────────────────
+
     const session = await auth();
 
     if (!session?.user) {
@@ -34,9 +41,17 @@ export async function POST(
       );
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Get route parameters
+    // ─────────────────────────────────────────────────────────────────────────
+
     const params = await context.params;
 
     branchId = Number(params.id);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Validate branch ID
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (!Number.isInteger(branchId) || branchId <= 0) {
       return NextResponse.json(
@@ -64,7 +79,8 @@ export async function POST(
     // Check whether the branch database contains the expected
     // Prisma tables.
     //
-    // We don't expose database errors/details to the browser.
+    // We intentionally do not expose database errors/details
+    // to the browser.
     // ─────────────────────────────────────────────────────────────────────────
 
     let schemaReady = true;
@@ -75,6 +91,10 @@ export async function POST(
       schemaReady = false;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Successful response
+    // ─────────────────────────────────────────────────────────────────────────
+
     return NextResponse.json({
       success: true,
       connected: true,
@@ -84,11 +104,16 @@ export async function POST(
         : "Database connected, but branch schema is not ready",
     });
   } catch (error) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Server-side error logging
+    // ─────────────────────────────────────────────────────────────────────────
+
     console.error(
       `POST /api/branches/${branchId ?? "unknown"}/connection error:`,
       error,
     );
 
+    // Never expose the actual database error to the client.
     return NextResponse.json(
       {
         success: false,
