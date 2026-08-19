@@ -27,6 +27,22 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatDateForInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function DonationForm({
   donorId,
   disabled = false,
@@ -40,6 +56,10 @@ export function DonationForm({
 
   const recordDonation = useRecordDonation(donorId);
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Form
+  // ─────────────────────────────────────────────────────────────────────────
+
   const form = useForm<DonationInput>({
     resolver: zodResolver(donationSchema),
 
@@ -51,11 +71,12 @@ export function DonationForm({
     },
   });
 
-  const onSubmit = (data: DonationInput) => {
-    // ─────────────────────────────────────────────────────────────────────────
-    // Safely convert donation date to Date
-    // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Submit
+  // ─────────────────────────────────────────────────────────────────────────
 
+  const onSubmit = (data: DonationInput) => {
+    // Make sure donationDate is a real Date before sending it.
     const donationDate =
       data.donationDate instanceof Date
         ? data.donationDate
@@ -66,37 +87,46 @@ export function DonationForm({
       return;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Prevent future donation date
-    // ─────────────────────────────────────────────────────────────────────────
+    // Donation cannot be in the future.
+    const now = new Date();
 
-    const today = new Date();
+    // Compare only the calendar date.
+    const selectedDate = new Date(
+      donationDate.getFullYear(),
+      donationDate.getMonth(),
+      donationDate.getDate(),
+    );
 
-    today.setHours(23, 59, 59, 999);
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
 
-    if (donationDate > today) {
+    if (selectedDate > today) {
       toast.error("Donation date cannot be in the future");
       return;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Send donation to API
+    // Send normalized date to API
     // ─────────────────────────────────────────────────────────────────────────
 
     recordDonation.mutate(
       {
         patientName: data.patientName.trim(),
-
         hospitalName: data.hospitalName.trim(),
 
+        // ISO date sent to API
         donationDate: donationDate.toISOString(),
 
         notes: data.notes?.trim() || "",
       },
+
       {
         onSuccess: () => {
           toast.success(
-            "Donation history recorded successfully."
+            "Donation history recorded successfully. Donor eligibility has been recalculated.",
           );
 
           form.reset({
@@ -113,18 +143,19 @@ export function DonationForm({
           toast.error(
             err?.error ||
               err?.message ||
-              "Failed to record donation"
+              "Failed to record donation",
           );
         },
-      }
+      },
     );
   };
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Dialog
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button disabled={disabled}>
@@ -140,8 +171,9 @@ export function DonationForm({
           </DialogTitle>
 
           <DialogDescription>
-            A donor will remain deferred until 120 days
-            have passed from the donation date.
+            The donor will remain deferred until 120 days have
+            passed from the donation date. After 120 days,
+            eligibility will automatically become active.
           </DialogDescription>
         </DialogHeader>
 
@@ -149,9 +181,9 @@ export function DonationForm({
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid gap-4 py-4"
         >
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
           {/* Patient Name */}
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
 
           <div className="grid gap-2">
             <Label htmlFor="patientName">
@@ -174,9 +206,9 @@ export function DonationForm({
             )}
           </div>
 
-          {/* ──────────────────────────────────────────────────────────────── */}
-          {/* Hospital Name */}
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
+          {/* Hospital */}
+          {/* ─────────────────────────────────────────────────────────────── */}
 
           <div className="grid gap-2">
             <Label htmlFor="hospitalName">
@@ -199,9 +231,9 @@ export function DonationForm({
             )}
           </div>
 
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
           {/* Donation Date */}
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
 
           <div className="grid gap-2">
             <Label htmlFor="donationDate">
@@ -211,30 +243,23 @@ export function DonationForm({
             <Input
               id="donationDate"
               type="date"
+              max={formatDateForInput(new Date())}
               {...form.register("donationDate", {
                 setValueAs: (value) => {
                   if (!value) {
-                    return undefined;
+                    return new Date();
                   }
 
-                  const [
-                    year,
-                    month,
-                    day,
-                  ] = value
-                    .split("-")
-                    .map(Number);
+                  // HTML date input returns YYYY-MM-DD.
+                  // Convert it to a local Date to avoid
+                  // timezone-related date shifting.
+                  const [year, month, day] =
+                    value.split("-").map(Number);
 
-                  // Use local noon to prevent
-                  // timezone shifting the date.
                   return new Date(
                     year,
                     month - 1,
                     day,
-                    12,
-                    0,
-                    0,
-                    0
                   );
                 },
               })}
@@ -250,14 +275,14 @@ export function DonationForm({
             )}
 
             <p className="text-xs text-muted-foreground">
-              Eligibility is calculated automatically
-              using 120 days from this date.
+              Enter the actual date on which the blood
+              donation happened.
             </p>
           </div>
 
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
           {/* Notes */}
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
 
           <div className="grid gap-2">
             <Label htmlFor="notes">
@@ -266,23 +291,22 @@ export function DonationForm({
 
             <Textarea
               id="notes"
-              placeholder="Optional notes..."
+              placeholder="Additional information..."
               {...form.register("notes")}
             />
 
             {form.formState.errors.notes && (
               <span className="text-xs text-destructive">
                 {
-                  form.formState.errors.notes
-                    .message
+                  form.formState.errors.notes.message
                 }
               </span>
             )}
           </div>
 
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
           {/* Submit */}
-          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
 
           <div className="flex justify-end pt-4">
             <Button
@@ -293,7 +317,9 @@ export function DonationForm({
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
 
-              Save Record
+              {recordDonation.isPending
+                ? "Saving..."
+                : "Save Record"}
             </Button>
           </div>
         </form>
