@@ -8,6 +8,7 @@ import {
   User,
   FileText,
 } from "lucide-react";
+
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function DonationTimeline({
@@ -20,6 +21,10 @@ export function DonationTimeline({
     isLoading,
     isError,
   } = useDonorHistory(donorId);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Loading
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -41,6 +46,10 @@ export function DonationTimeline({
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Error
+  // ─────────────────────────────────────────────────────────────────────────
+
   if (isError) {
     return (
       <div className="text-muted-foreground pt-4">
@@ -49,12 +58,15 @@ export function DonationTimeline({
     );
   }
 
-  // New API response:
-  // {
-  //   donor: {...},
-  //   donations: [...]
-  // }
+  // ─────────────────────────────────────────────────────────────────────────
+  // API response
+  // ─────────────────────────────────────────────────────────────────────────
+
   const history = data?.donations ?? [];
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Empty
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (history.length === 0) {
     return (
@@ -66,91 +78,101 @@ export function DonationTimeline({
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Timeline
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6 pt-6 pl-2">
-      {history.map((record, index) => (
-        <div
-          key={record.id}
-          className="relative flex gap-6"
-        >
-          {/* Timeline Line */}
-          {index !== history.length - 1 && (
-            <div className="absolute left-[11px] top-6 bottom-[-24px] w-px bg-border" />
-          )}
+      {history.map((record, index) => {
+        const donationDate = new Date(
+          record.donationDate,
+        );
 
-          {/* Timeline Dot */}
-          <div className="relative z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
-            <div className="h-2 w-2 rounded-full bg-primary" />
-          </div>
+        return (
+          <div
+            key={record.id}
+            className="relative flex gap-6"
+          >
+            {/* Timeline Line */}
+            {index !== history.length - 1 && (
+              <div className="absolute left-[11px] top-6 bottom-[-24px] w-px bg-border" />
+            )}
 
-          {/* Content */}
-          <div className="flex-1 pb-6">
-            {/* Donation Date */}
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-
-              <span className="font-semibold text-sm">
-                {format(
-                  new Date(record.donationDate),
-                  "MMMM d, yyyy"
-                )}
-              </span>
+            {/* Timeline Dot */}
+            <div className="relative z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
+              <div className="h-2 w-2 rounded-full bg-primary" />
             </div>
 
-            {/* Donation Details */}
-            <div className="rounded-md border bg-card p-4 space-y-3 shadow-sm">
-              <div className="grid sm:grid-cols-2 gap-4">
-                {/* Patient */}
-                <div className="flex items-start gap-2">
-                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            {/* Content */}
+            <div className="flex-1 pb-6">
+              {/* Date */}
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
 
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Patient
-                    </p>
-
-                    <p className="text-sm font-medium">
-                      {record.patientName}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Hospital */}
-                <div className="flex items-start gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Hospital
-                    </p>
-
-                    <p className="text-sm font-medium">
-                      {record.hospitalName}
-                    </p>
-                  </div>
-                </div>
+                <span className="font-semibold text-sm">
+                  {format(
+                    donationDate,
+                    "MMMM d, yyyy",
+                  )}
+                </span>
               </div>
 
-              {/* Notes */}
-              {record.notes && (
-                <div className="flex items-start gap-2 pt-2 border-t">
-                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              {/* Donation Card */}
+              <div className="rounded-md border bg-card p-4 space-y-3 shadow-sm">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Patient */}
+                  <div className="flex items-start gap-2">
+                    <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
 
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Notes
-                    </p>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Patient
+                      </p>
 
-                    <p className="text-sm italic">
-                      {record.notes}
-                    </p>
+                      <p className="text-sm font-medium">
+                        {record.patientName}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Hospital */}
+                  <div className="flex items-start gap-2">
+                    <Building className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Hospital
+                      </p>
+
+                      <p className="text-sm font-medium">
+                        {record.hospitalName}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              )}
+
+                {/* Notes */}
+                {record.notes && (
+                  <div className="flex items-start gap-2 pt-2 border-t">
+                    <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Notes
+                      </p>
+
+                      <p className="text-sm italic">
+                        {record.notes}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
