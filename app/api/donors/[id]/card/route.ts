@@ -9,7 +9,7 @@ export const GET = withAuth(
   async (_req: NextRequest, _session, params) => {
     const id = Number(params?.id);
 
-    if (Number.isNaN(id)) {
+    if (!Number.isInteger(id) || id <= 0) {
       return NextResponse.json(
         { error: "Invalid donor ID" },
         { status: 400 }
@@ -21,15 +21,6 @@ export const GET = withAuth(
         id,
         isDeleted: false,
       },
-      include: {
-        phone: true,
-        donations: {
-          orderBy: {
-            donationDate: "desc",
-          },
-          take: 1,
-        },
-      },
     });
 
     if (!donor) {
@@ -39,25 +30,34 @@ export const GET = withAuth(
       );
     }
 
-    // ─────────────────────────────────────────────
-    // Public donor URL
-    // ─────────────────────────────────────────────
+    /*
+     * IMPORTANT:
+     * QR code must point to the PUBLIC donor page.
+     *
+     * Production:
+     * NEXT_PUBLIC_APP_URL=https://your-domain.com
+     *
+     * Local:
+     * http://localhost:3000
+     */
 
-    const baseUrl =
+    const baseUrl = (
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.NEXTAUTH_URL ||
-      "http://localhost:3000";
+      "http://localhost:3000"
+    ).replace(/\/$/, "");
 
     const publicUrl = `${baseUrl}/d/${donor.publicToken}`;
 
-    // ─────────────────────────────────────────────
-    // Generate QR Code
-    // ─────────────────────────────────────────────
-
+    // Generate QR
     const qrDataUrl = await QRCode.toDataURL(publicUrl, {
-      width: 300,
-      margin: 1,
+      width: 500,
+      margin: 2,
       errorCorrectionLevel: "H",
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
     });
 
     const qrBase64 = qrDataUrl.split(",")[1];
@@ -71,222 +71,278 @@ export const GET = withAuth(
 
     const qrBytes = Buffer.from(qrBase64, "base64");
 
-    // ─────────────────────────────────────────────
-    // Create PDF
-    // ─────────────────────────────────────────────
+    // --------------------------------------------------
+    // CREATE ID CARD
+    // --------------------------------------------------
 
     const pdfDoc = await PDFDocument.create();
 
-    const page = pdfDoc.addPage([595, 842]);
+    /*
+     * ID card size:
+     * 360 x 230 points
+     *
+     * Landscape compact card
+     */
+    const page = pdfDoc.addPage([360, 230]);
 
     const { width, height } = page.getSize();
 
-    const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const regularFont = await pdfDoc.embedFont(
+      StandardFonts.Helvetica
+    );
 
-    // Background
+    const boldFont = await pdfDoc.embedFont(
+      StandardFonts.HelveticaBold
+    );
+
+    // Colors
+    const darkGreen = rgb(0.02, 0.32, 0.18);
+    const green = rgb(0.04, 0.48, 0.27);
+    const red = rgb(0.78, 0.04, 0.04);
+    const darkText = rgb(0.08, 0.08, 0.08);
+    const mutedText = rgb(0.35, 0.35, 0.35);
+    const white = rgb(1, 1, 1);
+    const lightBg = rgb(0.97, 0.98, 0.97);
+
+    // --------------------------------------------------
+    // CARD BACKGROUND
+    // --------------------------------------------------
+
     page.drawRectangle({
       x: 0,
       y: 0,
       width,
       height,
-      color: rgb(0.97, 0.98, 0.99),
+      color: lightBg,
     });
 
-    // Header
+    // Outer border
     page.drawRectangle({
-      x: 40,
-      y: height - 150,
-      width: width - 80,
-      height: 100,
-      color: rgb(0.04, 0.45, 0.25),
+      x: 5,
+      y: 5,
+      width: width - 10,
+      height: height - 10,
+      borderColor: darkGreen,
+      borderWidth: 2,
+      color: lightBg,
     });
 
-    page.drawText("BLOOD DONOR ID CARD", {
-      x: 170,
-      y: height - 90,
-      size: 20,
+    // --------------------------------------------------
+    // HEADER
+    // --------------------------------------------------
+
+    page.drawRectangle({
+      x: 6,
+      y: height - 52,
+      width: width - 12,
+      height: 46,
+      color: darkGreen,
+    });
+
+    // Programme title
+    const title =
+      "QUANTUM VOLUNTARY BLOOD DONATION PROGRAMME";
+
+    const titleSize = 11;
+
+    const titleWidth = boldFont.widthOfTextAtSize(
+      title,
+      titleSize
+    );
+
+    page.drawText(title, {
+      x: (width - titleWidth) / 2,
+      y: height - 27,
+      size: titleSize,
       font: boldFont,
-      color: rgb(1, 1, 1),
+      color: white,
     });
 
-    page.drawText("Verified Blood Donor", {
-      x: 215,
-      y: height - 115,
-      size: 11,
+    // Small subtitle
+    const subtitle = "DONOR IDENTIFICATION CARD";
+    const subtitleSize = 7.5;
+
+    const subtitleWidth = regularFont.widthOfTextAtSize(
+      subtitle,
+      subtitleSize
+    );
+
+    page.drawText(subtitle, {
+      x: (width - subtitleWidth) / 2,
+      y: height - 41,
+      size: subtitleSize,
       font: regularFont,
-      color: rgb(0.9, 1, 0.95),
+      color: rgb(0.88, 1, 0.92),
     });
 
-    // ─────────────────────────────────────────────
-    // Donor Information
-    // ─────────────────────────────────────────────
+    // --------------------------------------------------
+    // BLOOD GROUP AREA
+    // --------------------------------------------------
 
-    const left = 65;
+    /*
+     * Left side acts like the photo area
+     * but instead displays the blood group.
+     */
 
-    page.drawText("DONOR INFORMATION", {
-      x: left,
-      y: height - 195,
+    page.drawRectangle({
+      x: 18,
+      y: 82,
+      width: 105,
+      height: 82,
+      color: white,
+      borderColor: red,
+      borderWidth: 2,
+    });
+
+    const bloodGroup = donor.bloodType || "N/A";
+
+    const bloodSize =
+      bloodGroup.length <= 3 ? 43 : 34;
+
+    const bloodWidth = boldFont.widthOfTextAtSize(
+      bloodGroup,
+      bloodSize
+    );
+
+    page.drawText(bloodGroup, {
+      x: 18 + (105 - bloodWidth) / 2,
+      y: 108,
+      size: bloodSize,
+      font: boldFont,
+      color: red,
+    });
+
+    const bloodLabel = "BLOOD GROUP";
+    const bloodLabelSize = 7;
+
+    const bloodLabelWidth =
+      boldFont.widthOfTextAtSize(
+        bloodLabel,
+        bloodLabelSize
+      );
+
+    page.drawText(bloodLabel, {
+      x: 18 + (105 - bloodLabelWidth) / 2,
+      y: 91,
+      size: bloodLabelSize,
+      font: boldFont,
+      color: mutedText,
+    });
+
+    // --------------------------------------------------
+    // DONOR INFORMATION
+    // --------------------------------------------------
+
+    const infoX = 138;
+
+    // NAME label
+    page.drawText("NAME", {
+      x: infoX,
+      y: 143,
+      size: 7,
+      font: boldFont,
+      color: mutedText,
+    });
+
+    // Name
+    const name =
+      donor.fullName.length > 26
+        ? donor.fullName.substring(0, 26) + "..."
+        : donor.fullName;
+
+    page.drawText(name, {
+      x: infoX,
+      y: 126,
       size: 13,
       font: boldFont,
-      color: rgb(0.04, 0.45, 0.25),
+      color: darkText,
     });
 
-    page.drawText("Name", {
-      x: left,
-      y: height - 230,
-      size: 10,
+    // DOB
+    page.drawText("DATE OF BIRTH", {
+      x: infoX,
+      y: 103,
+      size: 7,
       font: boldFont,
+      color: mutedText,
     });
 
-    page.drawText(donor.fullName, {
-      x: left + 100,
-      y: height - 230,
-      size: 12,
-      font: regularFont,
-    });
+    let dobText = "N/A";
 
-    page.drawText("Blood Group", {
-      x: left,
-      y: height - 260,
-      size: 10,
-      font: boldFont,
-    });
+    if (donor.dob) {
+      const dob = new Date(donor.dob);
 
-    page.drawText(donor.bloodType, {
-      x: left + 100,
-      y: height - 260,
-      size: 18,
-      font: boldFont,
-      color: rgb(0.75, 0.05, 0.05),
-    });
+      const day = String(dob.getDate()).padStart(2, "0");
+      const month = String(
+        dob.getMonth() + 1
+      ).padStart(2, "0");
+      const year = dob.getFullYear();
 
-    page.drawText("Gender", {
-      x: left,
-      y: height - 295,
-      size: 10,
-      font: boldFont,
-    });
+      dobText = `${day}/${month}/${year}`;
+    }
 
-    page.drawText(donor.gender, {
-      x: left + 100,
-      y: height - 295,
+    page.drawText(dobText, {
+      x: infoX,
+      y: 87,
       size: 11,
       font: regularFont,
+      color: darkText,
     });
 
-    const primaryPhone =
-      donor.phone.find((p) => p.isPrimary) || donor.phone[0];
-
-    page.drawText("Phone", {
-      x: left,
-      y: height - 325,
-      size: 10,
-      font: boldFont,
-    });
-
-    page.drawText(primaryPhone?.number || "N/A", {
-      x: left + 100,
-      y: height - 325,
-      size: 11,
-      font: regularFont,
-    });
-
-    page.drawText("Status", {
-      x: left,
-      y: height - 355,
-      size: 10,
-      font: boldFont,
-    });
-
-    page.drawText(donor.isEligible ? "ELIGIBLE" : "DEFERRED", {
-      x: left + 100,
-      y: height - 355,
-      size: 11,
-      font: boldFont,
-      color: donor.isEligible
-        ? rgb(0.04, 0.45, 0.25)
-        : rgb(0.75, 0.45, 0.05),
-    });
-
-    // ─────────────────────────────────────────────
-    // Donor ID
-    // ─────────────────────────────────────────────
-
-    page.drawText("Donor ID", {
-      x: left,
-      y: height - 390,
-      size: 10,
-      font: boldFont,
-    });
-
-    page.drawText(String(donor.id), {
-      x: left + 100,
-      y: height - 390,
-      size: 11,
-      font: regularFont,
-    });
-
-    // ─────────────────────────────────────────────
-    // QR Code
-    // ─────────────────────────────────────────────
+    // --------------------------------------------------
+    // QR CODE
+    // --------------------------------------------------
 
     const qrImage = await pdfDoc.embedPng(qrBytes);
 
     page.drawImage(qrImage, {
-      x: width - 190,
-      y: height - 410,
-      width: 120,
-      height: 120,
+      x: width - 100,
+      y: 67,
+      width: 75,
+      height: 75,
     });
 
-    page.drawText("Scan to view donor profile", {
-      x: width - 205,
-      y: height - 430,
-      size: 8,
-      font: regularFont,
-      color: rgb(0.35, 0.35, 0.35),
-    });
-
-    // ─────────────────────────────────────────────
-    // Footer
-    // ─────────────────────────────────────────────
+    // --------------------------------------------------
+    // FOOTER LINE
+    // --------------------------------------------------
 
     page.drawLine({
       start: {
-        x: 60,
-        y: 120,
+        x: 18,
+        y: 52,
       },
       end: {
-        x: width - 60,
-        y: 120,
+        x: width - 18,
+        y: 52,
       },
       thickness: 1,
       color: rgb(0.8, 0.8, 0.8),
     });
 
+    // Public verification text
+    page.drawText("SCAN QR TO VERIFY DONOR", {
+      x: 19,
+      y: 38,
+      size: 6.5,
+      font: boldFont,
+      color: green,
+    });
+
+    // Token / card identifier
     page.drawText(
-      "This card is issued for blood donation identification purposes.",
+      `DONOR ID: ${donor.id}`,
       {
-        x: 120,
-        y: 90,
-        size: 8,
+        x: 19,
+        y: 25,
+        size: 6.5,
         font: regularFont,
-        color: rgb(0.4, 0.4, 0.4),
+        color: mutedText,
       }
     );
 
-    page.drawText("Blood Management System", {
-      x: 210,
-      y: 65,
-      size: 9,
-      font: boldFont,
-      color: rgb(0.04, 0.45, 0.25),
-    });
-
-    // ─────────────────────────────────────────────
-    // Save PDF
-    // ─────────────────────────────────────────────
+    // --------------------------------------------------
+    // SAVE PDF
+    // --------------------------------------------------
 
     const pdfBytes = await pdfDoc.save();
 
@@ -299,5 +355,7 @@ export const GET = withAuth(
       },
     });
   },
-  { permission: "donorView" }
+  {
+    permission: "donorView",
+  }
 );
