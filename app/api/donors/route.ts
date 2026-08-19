@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/branch";
+
+import { getBranchDb } from "@/lib/branch-db";
+
 import {
   withAuth,
   writeAuditLog,
@@ -9,26 +11,67 @@ import {
   validationError,
   eligibilityFromDonation,
 } from "@/lib/api-helpers";
+
 import { donorSchema } from "@/features/donors";
 
 export const dynamic = "force-dynamic";
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // GET /api/donors
-// ─────────────────────────────────────────────────────────────────────────────
-// Query params:
-// q           = name / phone search
-// bloodGroup  = blood group
-// eligible    = true / false
-// area        = address search
-// status      = APPROVED / PENDING / REJECTED / all
 //
-// Eligibility is ALWAYS calculated from the latest donation date.
-// Database's old isEligible value is not trusted.
-// ─────────────────────────────────────────────────────────────────────────────
+// IMPORTANT:
+// Donor data is now read from the logged-in user's BRANCH DATABASE.
+//
+// Central DB:
+//   Branch / BranchUser / SuperAdmin
+//
+// Branch DB:
+//   Donor / Phone / Donation / etc.
+// ============================================================================
 
 export const GET = withAuth(
-  async (req: NextRequest) => {
+  async (req: NextRequest, session) => {
+    // ------------------------------------------------------------------------
+    // Get branch ID from authenticated session
+    // ------------------------------------------------------------------------
+
+    const branchId = session.branchId;
+
+    if (
+      typeof branchId !== "number" ||
+      !Number.isInteger(branchId) ||
+      branchId <= 0
+    ) {
+      return apiError(
+        "Your account is not associated with a valid branch",
+        403,
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // Get branch-specific Prisma client
+    // ------------------------------------------------------------------------
+
+    let branchDb;
+
+    try {
+      branchDb = await getBranchDb(branchId);
+    } catch (error) {
+      console.error(
+        `Failed to connect to branch database: ${branchId}`,
+        error,
+      );
+
+      return apiError(
+        "Could not connect to branch database",
+        503,
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // Query parameters
+    // ------------------------------------------------------------------------
+
     const { searchParams } = new URL(req.url);
 
     const q = searchParams.get("q") ?? "";
@@ -37,23 +80,27 @@ export const GET = withAuth(
     const eligibleParam = searchParams.get("eligible");
     const area = searchParams.get("area") ?? "";
 
+    // ------------------------------------------------------------------------
+    // Build donor filter
+    // ------------------------------------------------------------------------
+
     const where: Prisma.DonorWhereInput = {
       isDeleted: false,
     };
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
     // Status
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
 
     if (statusParam && statusParam !== "all") {
-      where.status = statusParam as any;
+      where.status = statusParam as Prisma.DonorWhereInput["status"];
     } else if (!statusParam) {
       where.status = "APPROVED";
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
     // Search
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
 
     if (q) {
       where.OR = [
@@ -75,17 +122,17 @@ export const GET = withAuth(
       ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Blood Group
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
+    // Blood group
+    // ------------------------------------------------------------------------
 
     if (bloodGroup) {
       where.bloodType = bloodGroup;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
     // Area
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
 
     if (area) {
       where.address = {
@@ -94,11 +141,11 @@ export const GET = withAuth(
       };
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Get donors
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
+    // Get donors FROM BRANCH DATABASE
+    // ------------------------------------------------------------------------
 
-    const donors = await prisma.donor.findMany({
+    const donors = await branchDb.donor.findMany({
       where,
       orderBy: {
         fullName: "asc",
@@ -115,25 +162,9 @@ export const GET = withAuth(
       },
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Calculate REAL eligibility
-    // ─────────────────────────────────────────────────────────────────────────
-    //
-    // Example:
-    //
-    // Latest donation = May 10, 2024
-    // Today           = August 19, 2026
-    //
-    // 120 days already passed
-    // => Eligible
-    //
-    // Latest donation = July 1, 2026
-    // Today           = August 19, 2026
-    //
-    // Less than 120 days
-    // => Not Eligible
-    //
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
+    // Calculate real eligibility
+    // ------------------------------------------------------------------------
 
     const now = new Date();
 
@@ -145,10 +176,6 @@ export const GET = withAuth(
         let deferredUntil: Date | null = null;
         let deferralReason: string | null = null;
 
-        // ─────────────────────────────────────────────────────────────────────
-        // If donor has previous donation
-        // ─────────────────────────────────────────────────────────────────────
-
         if (latestDonation) {
           const eligibility = eligibilityFromDonation(
             latestDonation.donationDate,
@@ -156,15 +183,6 @@ export const GET = withAuth(
 
           deferredUntil = eligibility.deferredUntil;
 
-          // IMPORTANT:
-          // Check that deferredUntil exists before comparing.
-          //
-          // If 120 days have passed:
-          //     Eligible
-          //
-          // If 120 days have NOT passed:
-          //     Not Eligible
-          //
           if (deferredUntil && now >= deferredUntil) {
             isEligible = true;
             deferredUntil = null;
@@ -176,9 +194,9 @@ export const GET = withAuth(
           }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Sync calculated eligibility with database
-        // ─────────────────────────────────────────────────────────────────────
+        // --------------------------------------------------------------------
+        // Synchronize calculated eligibility
+        // --------------------------------------------------------------------
 
         const needsUpdate =
           donor.isEligible !== isEligible ||
@@ -187,7 +205,7 @@ export const GET = withAuth(
           donor.deferralReason !== deferralReason;
 
         if (needsUpdate) {
-          await prisma.donor.update({
+          await branchDb.donor.update({
             where: {
               id: donor.id,
             },
@@ -199,10 +217,6 @@ export const GET = withAuth(
           });
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Return donor
-        // ─────────────────────────────────────────────────────────────────────
-
         return {
           id: donor.id,
           fullName: donor.fullName,
@@ -213,21 +227,19 @@ export const GET = withAuth(
           email: donor.email,
           address: donor.address,
 
-          // REAL calculated eligibility
           isEligible,
           deferralReason,
           deferredUntil,
 
-          // Latest donation
           latestDonationDate:
             latestDonation?.donationDate ?? null,
         };
       }),
     );
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Apply eligibility filter AFTER calculation
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
+    // Eligibility filter
+    // ------------------------------------------------------------------------
 
     let filteredDonors = updatedDonors;
 
@@ -235,7 +247,8 @@ export const GET = withAuth(
       const requestedEligibility = eligibleParam === "true";
 
       filteredDonors = updatedDonors.filter(
-        (donor) => donor.isEligible === requestedEligibility,
+        (donor) =>
+          donor.isEligible === requestedEligibility,
       );
     }
 
@@ -247,13 +260,55 @@ export const GET = withAuth(
   },
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // POST /api/donors
-// Register new donor
-// ─────────────────────────────────────────────────────────────────────────────
+//
+// Creates donor inside the logged-in user's BRANCH DATABASE.
+// ============================================================================
 
 export const POST = withAuth(
   async (req: NextRequest, session) => {
+    // ------------------------------------------------------------------------
+    // Validate branch
+    // ------------------------------------------------------------------------
+
+    const branchId = session.branchId;
+
+    if (
+      typeof branchId !== "number" ||
+      !Number.isInteger(branchId) ||
+      branchId <= 0
+    ) {
+      return apiError(
+        "Your account is not associated with a valid branch",
+        403,
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // Get branch database
+    // ------------------------------------------------------------------------
+
+    let branchDb;
+
+    try {
+      branchDb = await getBranchDb(branchId);
+    } catch (error) {
+      console.error(
+        `Failed to connect to branch database: ${branchId}`,
+        error,
+      );
+
+      return apiError(
+        "Could not connect to branch database",
+        503,
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // Parse JSON
+    // ------------------------------------------------------------------------
+
     let body: unknown;
 
     try {
@@ -262,9 +317,9 @@ export const POST = withAuth(
       return apiError("Invalid JSON body", 400);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
     // Validate donor
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
 
     const parsed = donorSchema.safeParse(body);
 
@@ -274,13 +329,22 @@ export const POST = withAuth(
 
     const data = parsed.data;
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
+    // Phone numbers
+    // ------------------------------------------------------------------------
+
+    const phoneNumbers = data.phone.map(
+      (p) => p.number,
+    );
+
+    // ------------------------------------------------------------------------
     // Check duplicate email / phone
-    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // IMPORTANT:
+    // This checks ONLY the current branch database.
+    // ------------------------------------------------------------------------
 
-    const phoneNumbers = data.phone.map((p) => p.number);
-
-    const existing = await prisma.donor.findFirst({
+    const existing = await branchDb.donor.findFirst({
       where: {
         AND: [
           {
@@ -320,9 +384,9 @@ export const POST = withAuth(
       );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
     // Separate phone + last donation
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
 
     const {
       phone: phoneData,
@@ -332,25 +396,24 @@ export const POST = withAuth(
       lastDonationDate?: Date | null;
     };
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Calculate eligibility from previous donation
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
+    // Calculate eligibility
+    // ------------------------------------------------------------------------
 
     let isEligible = true;
     let deferredUntil: Date | null = null;
     let deferralReason: string | null = null;
 
     if (lastDonationDate) {
-      const eligibility = eligibilityFromDonation(
-        lastDonationDate,
-      );
+      const eligibility =
+        eligibilityFromDonation(lastDonationDate);
 
       deferredUntil = eligibility.deferredUntil;
 
-      // If 120 days already passed,
-      // donor is immediately eligible.
-
-      if (deferredUntil && new Date() >= deferredUntil) {
+      if (
+        deferredUntil &&
+        new Date() >= deferredUntil
+      ) {
         isEligible = true;
         deferredUntil = null;
         deferralReason = null;
@@ -361,11 +424,11 @@ export const POST = withAuth(
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Create donor
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
+    // Create donor IN BRANCH DATABASE
+    // ------------------------------------------------------------------------
 
-    const donor = await prisma.donor.create({
+    const donor = await branchDb.donor.create({
       data: {
         ...donorData,
 
@@ -381,10 +444,6 @@ export const POST = withAuth(
           })),
         },
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Save previous donation as history
-        // ─────────────────────────────────────────────────────────────────────
-
         ...(lastDonationDate
           ? {
               donations: {
@@ -395,7 +454,8 @@ export const POST = withAuth(
                   hospitalName:
                     "Not specified",
 
-                  donationDate: lastDonationDate,
+                  donationDate:
+                    lastDonationDate,
 
                   notes:
                     "Recorded from registration form (donor's stated last donation date)",
@@ -406,20 +466,24 @@ export const POST = withAuth(
       },
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ------------------------------------------------------------------------
     // Audit log
-    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // Existing audit helper remains unchanged.
+    // ------------------------------------------------------------------------
 
     await writeAuditLog(
       session.userId,
       "Donor Created",
-      `Registered donor: ${donor.fullName} (${donor.bloodType}) — ID ${donor.id}`,
+      `Registered donor: ${donor.fullName} (${donor.bloodType}) — ID ${donor.id} — Branch ${branchId}`,
     );
 
     return apiSuccess(
       {
-        message: "Donor registered successfully",
+        message:
+          "Donor registered successfully",
         donorId: donor.id,
+        branchId,
       },
       201,
     );
