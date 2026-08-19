@@ -43,15 +43,19 @@ import { DeleteDonorDialog } from "@/features/donors/components/delete-donor-dia
 
 function getWhatsAppUrl(number: string) {
   const cleanNumber = number.replace(/\D/g, "");
+
   if (cleanNumber.startsWith("880")) {
     return `https://wa.me/${cleanNumber}`;
   }
+
   if (cleanNumber.startsWith("0")) {
     return `https://wa.me/880${cleanNumber.substring(1)}`;
   }
+
   if (cleanNumber.startsWith("1")) {
     return `https://wa.me/880${cleanNumber}`;
   }
+
   return `https://wa.me/${cleanNumber}`;
 }
 
@@ -70,15 +74,17 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 export function DonorProfile({ donorId }: { donorId: number }) {
   const { data: session } = useSession();
-  const canView = hasPermission(session?.user, "donorView");
+
   const canEdit = hasPermission(session?.user, "donorEdit");
   const canDelete = hasPermission(session?.user, "donorDelete");
   const canApprove = hasPermission(session?.user, "approveReject");
   const canEditNotes = hasPermission(session?.user, "notesEdit");
+  const canView = hasPermission(session?.user, "donorView");
 
   const { data: donor, isLoading, isError } = useDonor(donorId);
   const recordDonation = useRecordDonation(donorId);
   const updateDonor = useUpdateDonor(donorId);
+
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
   const [showAllPhones, setShowAllPhones] = useState(false);
   const [notes, setNotes] = useState("");
@@ -91,6 +97,8 @@ export function DonorProfile({ donorId }: { donorId: number }) {
   }, [donor]);
 
   const handleDownloadIdCard = () => {
+    if (!donor) return;
+
     window.open(`/api/donors/${donor.id}/card`, "_blank");
   };
 
@@ -158,15 +166,18 @@ export function DonorProfile({ donorId }: { donorId: number }) {
 
   const phones =
     donor.phone && Array.isArray(donor.phone) ? donor.phone : [];
+
   const primaryPhone =
     phones.find((p: any) => p.isPrimary) ||
     (phones.length > 0 ? phones[0] : null);
+
   const secondaryPhones = phones.filter(
     (p: any) => primaryPhone && p.id !== primaryPhone.id
   );
 
   const renderPhoneItem = (p: any, showLabel = true) => {
     if (!p) return null;
+
     const isCopied = copiedNumber === p.number;
 
     return (
@@ -176,11 +187,14 @@ export function DonorProfile({ donorId }: { donorId: number }) {
       >
         <div className="flex items-center gap-3 text-sm">
           <Phone className="h-4 w-4 text-primary shrink-0" />
+
           <span className="font-mono">
             {p.number}
+
             {showLabel && (
               <span className="text-xs text-muted-foreground ml-2">
-                ({p.label}){p.isPrimary && " (Primary)"}
+                ({p.label})
+                {p.isPrimary && " (Primary)"}
               </span>
             )}
           </span>
@@ -249,6 +263,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
             <div className="min-w-0">
               <CardTitle className="text-2xl flex items-center gap-3 flex-wrap">
                 {donor.fullName}
+
                 <Badge
                   variant="outline"
                   className="text-lg px-2 bg-destructive/10 text-destructive border-destructive/20 font-mono"
@@ -275,7 +290,9 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                 {donor.dob && (
                   <>
                     <span>•</span>
-                    <span>DOB: {format(new Date(donor.dob), "PP")}</span>
+                    <span>
+                      DOB: {format(new Date(donor.dob), "PP")}
+                    </span>
                   </>
                 )}
               </div>
@@ -287,7 +304,6 @@ export function DonorProfile({ donorId }: { donorId: number }) {
               <Button
                 variant="outline"
                 onClick={handleDownloadIdCard}
-                title="Download Donor ID Card"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download ID Card
@@ -328,6 +344,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
             )}
 
             {canApprove && <DeferralForm donorId={donor.id} />}
+
             {canDelete && (
               <DeleteDonorDialog
                 donorId={donor.id}
@@ -367,7 +384,9 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setShowAllPhones(!showAllPhones)}
+                      onClick={() =>
+                        setShowAllPhones(!showAllPhones)
+                      }
                       className="text-xs text-primary hover:bg-primary/5 flex items-center gap-1 h-8 px-2 -ml-2"
                     >
                       {showAllPhones ? (
@@ -415,11 +434,15 @@ export function DonorProfile({ donorId }: { donorId: number }) {
               {donor.isEligible ? (
                 <div className="flex items-start gap-3">
                   <Droplet className="h-5 w-5 text-emerald-500 shrink-0" />
+
                   <div>
-                    <p className="font-medium text-sm">Ready to Donate</p>
+                    <p className="font-medium text-sm">
+                      Ready to Donate
+                    </p>
+
                     <p className="text-xs text-muted-foreground mt-1">
-                      This donor has passed the required waiting period and is
-                      eligible for donation.
+                      This donor has passed the required waiting period and
+                      is eligible for donation.
                     </p>
                   </div>
                 </div>
@@ -440,7 +463,10 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                     {donor.deferredUntil && (
                       <p className="text-xs font-semibold mt-2">
                         Eligible again on:{" "}
-                        {format(new Date(donor.deferredUntil), "PP")}
+                        {format(
+                          new Date(donor.deferredUntil),
+                          "PP"
+                        )}
                       </p>
                     )}
                   </div>
@@ -525,7 +551,9 @@ export function DonorProfile({ donorId }: { donorId: number }) {
       {/* History Card */}
       <Card className="bg-card shadow-sm border-muted">
         <CardHeader>
-          <CardTitle className="text-lg">Donation History</CardTitle>
+          <CardTitle className="text-lg">
+            Donation History
+          </CardTitle>
         </CardHeader>
 
         <CardContent>
