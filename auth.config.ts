@@ -32,19 +32,16 @@ export const authConfig = {
         pathname.startsWith("/import") ||
         pathname.startsWith("/audit-logs");
 
-      // Protected routes require authentication
       if (isProtectedRoute && !isLoggedIn) {
         return false;
       }
 
-      // Logged-in users should not access login page
       if (isLoggedIn && isAuthRoute) {
         return Response.redirect(
           new URL("/dashboard", request.nextUrl),
         );
       }
 
-      // Block unknown non-public pages for unauthenticated users
       if (
         !isLoggedIn &&
         !isPublicRoute &&
@@ -57,17 +54,14 @@ export const authConfig = {
     },
 
     jwt: async ({ token, user }) => {
-      // Save user ID
       if (user?.id) {
         token.sub = user.id;
       }
 
-      // Save role
       if (user?.role) {
         token.role = user.role as Role;
       }
 
-      // Save permissions
       if (user && "permissions" in user) {
         const permissions = user.permissions;
 
@@ -83,22 +77,16 @@ export const authConfig = {
 
     session: async ({ session, token }) => {
       if (session.user) {
-        // User ID
-        if (token.sub) {
-          session.user.id = token.sub;
-        }
+        const permissions = Array.isArray(token.permissions)
+          ? token.permissions
+          : [];
 
-        // User role
-        if (token.role) {
-          session.user.role = token.role as Role;
-        }
-
-        // User permissions
-        if (Array.isArray(token.permissions)) {
-          session.user.permissions = token.permissions;
-        } else {
-          session.user.permissions = [];
-        }
+        session.user = {
+          ...session.user,
+          id: token.sub ?? session.user.id,
+          role: token.role as Role | undefined,
+          permissions,
+        } as typeof session.user;
       }
 
       return session;
