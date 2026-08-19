@@ -91,9 +91,6 @@ export default function PublicRegisterPage() {
           <Link href="/" className="inline-block text-white font-bold text-2xl tracking-tight">
             Quantum Blood Donor Pool
           </Link>
-          <p className="text-sm text-rose-100/70">
-            Save a life by donating blood — register as a voluntary donor
-          </p>
         </div>
 
         <Card className="w-full max-w-xl shadow-2xl border-0 bg-white">
