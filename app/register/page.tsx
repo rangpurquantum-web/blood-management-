@@ -127,9 +127,7 @@ export default function PublicRegisterPage() {
                 <CardTitle className="text-xl">
                   Voluntary Blood Donor Registration
                 </CardTitle>
-                <CardDescription>
-                  Fill in your accurate information below to submit your application.
-                </CardDescription>
+                
               </CardHeader>
 
               <CardContent className="pt-6">
