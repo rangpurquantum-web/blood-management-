@@ -19,7 +19,8 @@ export const authConfig = {
         pathname === "/" ||
         isAuthRoute ||
         pathname.startsWith("/register") ||
-        pathname.startsWith("/check-donation");
+        pathname.startsWith("/check-donation") ||
+        pathname.startsWith("/d/");
       const isProtectedRoute =
         pathname.startsWith("/dashboard") ||
         pathname.startsWith("/donors") ||
