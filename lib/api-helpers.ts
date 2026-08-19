@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Role } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { Role } from "@prisma/client";
 import { connectMongo } from "@/lib/mongodb";
 import { AuditLog } from "@/lib/models/AuditLog";
 import {
@@ -14,20 +14,27 @@ import type { ZodError } from "zod";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type RouteParams = Record<string, string>;
-
-type RouteSession = {
+export type AuthSession = {
   userId: number;
   role: Role;
   branchId: number | null;
   branchSlug: string | null;
 };
 
+export type RouteContext = {
+  params: Promise<Record<string, string>>;
+};
+
 type RouteHandler = (
   req: NextRequest,
-  session: RouteSession,
-  params?: RouteParams,
+  session: AuthSession,
+  params?: Record<string, string>,
 ) => Promise<NextResponse>;
+
+type WithAuthOptions = {
+  roles?: Role[];
+  permission?: PermissionKey;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth Guard
@@ -36,46 +43,49 @@ type RouteHandler = (
 /**
  * Wraps a Route Handler with Auth.js session verification.
  *
- * Supports:
- * - Authentication
- * - Role-based authorization
- * - Permission-based authorization
- * - Branch information
- * - Next.js 15 dynamic route params
- *
  * Examples:
  *
- * export const GET = withAuth(handler);
+ * export const GET = withAuth(async (req, session) => {
+ *   return NextResponse.json({
+ *     userId: session.userId,
+ *   });
+ * });
  *
  * export const DELETE = withAuth(
- *   handler,
- *   { roles: [Role.ADMIN] },
+ *   async (req, session) => {
+ *     ...
+ *   },
+ *   {
+ *     roles: [Role.ADMIN],
+ *   },
  * );
  *
- * export const PATCH = withAuth(
- *   handler,
- *   { permission: "donorEdit" },
+ * export const POST = withAuth(
+ *   async (req, session) => {
+ *     ...
+ *   },
+ *   {
+ *     permission: "donorAdd",
+ *   },
  * );
  */
 export function withAuth(
   handler: RouteHandler,
-  options: {
-    roles?: Role[];
-    permission?: PermissionKey;
-  } = {},
-) {
+  options: WithAuthOptions = {},
+): (
+  req: NextRequest,
+  context: RouteContext,
+) => Promise<NextResponse> {
   return async (
     req: NextRequest,
-    context: {
-      params: Promise<RouteParams>;
-    },
+    context: RouteContext,
   ): Promise<NextResponse> => {
     try {
-      // ───────────────────────────────────────────────────────────────────────
-      // Get authenticated session
-      // ───────────────────────────────────────────────────────────────────────
-
       const session = await auth();
+
+      // ───────────────────────────────────────────────────────────────────────
+      // Authentication
+      // ───────────────────────────────────────────────────────────────────────
 
       if (!session?.user) {
         return apiError(
@@ -94,20 +104,24 @@ export function withAuth(
 
       if (!Number.isInteger(userId) || userId <= 0) {
         return apiError(
-          "Invalid user session",
+          "Invalid authenticated user",
           401,
         );
       }
 
       // ───────────────────────────────────────────────────────────────────────
-      // User role
+      // Role
       // ───────────────────────────────────────────────────────────────────────
 
-      const userRole =
-        session.user.role as Role | undefined;
+      const sessionRole = session.user.role;
+
+      const userRole: Role =
+        sessionRole === Role.ADMIN
+          ? Role.ADMIN
+          : Role.VOLUNTEER;
 
       // ───────────────────────────────────────────────────────────────────────
-      // Branch information
+      // Branch
       // ───────────────────────────────────────────────────────────────────────
 
       const branchId =
@@ -119,6 +133,13 @@ export function withAuth(
         typeof session.user.branchSlug === "string"
           ? session.user.branchSlug
           : null;
+
+      const authSession: AuthSession = {
+        userId,
+        role: userRole,
+        branchId,
+        branchSlug,
+      };
 
       // ───────────────────────────────────────────────────────────────────────
       // Permission check
@@ -153,12 +174,10 @@ export function withAuth(
       // Role check
       // ───────────────────────────────────────────────────────────────────────
 
-      else if (
+      if (
         options.roles &&
-        (
-          !userRole ||
-          !options.roles.includes(userRole)
-        )
+        options.roles.length > 0 &&
+        !options.roles.includes(userRole)
       ) {
         return apiError(
           "Forbidden — insufficient permissions",
@@ -167,26 +186,22 @@ export function withAuth(
       }
 
       // ───────────────────────────────────────────────────────────────────────
-      // Next.js 15 route params
+      // Dynamic route params
       // ───────────────────────────────────────────────────────────────────────
 
-      const params = context?.params
-        ? await context.params
-        : undefined;
+      let params: Record<string, string> | undefined;
+
+      if (context?.params) {
+        params = await context.params;
+      }
 
       // ───────────────────────────────────────────────────────────────────────
-      // Execute protected handler
+      // Execute actual route handler
       // ───────────────────────────────────────────────────────────────────────
 
       return await handler(
         req,
-        {
-          userId,
-          role:
-            userRole ?? Role.VOLUNTEER,
-          branchId,
-          branchSlug,
-        },
+        authSession,
         params,
       );
     } catch (error) {
@@ -210,41 +225,58 @@ export function withAuth(
 /**
  * Inserts an immutable audit log record into MongoDB.
  *
- * User information is denormalized into the audit document
- * at write time.
+ * User information is copied into the audit log
+ * at write time so the audit history remains readable
+ * even if the user is later changed or deleted.
  */
 export async function writeAuditLog(
   userId: number | null,
   action: string,
   details: string,
 ): Promise<void> {
-  await connectMongo();
+  try {
+    await connectMongo();
 
-  let userName: string | null = null;
-  let userEmail: string | null = null;
+    let userName: string | null = null;
+    let userEmail: string | null = null;
 
-  if (userId) {
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      select: {
-        name: true,
-        email: true,
-      },
+    // ─────────────────────────────────────────────────────────────────────────
+    // Get user information from PostgreSQL
+    // ─────────────────────────────────────────────────────────────────────────
+
+    if (userId !== null) {
+      const user = await prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          name: true,
+          email: true,
+        },
+      });
+
+      userName = user?.name ?? null;
+      userEmail = user?.email ?? null;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Write audit log to MongoDB
+    // ─────────────────────────────────────────────────────────────────────────
+
+    await AuditLog.create({
+      userId,
+      userName,
+      userEmail,
+      action,
+      details,
     });
-
-    userName = user?.name ?? null;
-    userEmail = user?.email ?? null;
+  } catch (error) {
+    // Audit logging should never crash the main operation.
+    console.error(
+      "Failed to write audit log:",
+      error,
+    );
   }
-
-  await AuditLog.create({
-    userId: userId || null,
-    userName,
-    userEmail,
-    action,
-    details,
-  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -252,7 +284,7 @@ export async function writeAuditLog(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Returns a standardized JSON error response.
+ * Standard API error response.
  */
 export function apiError(
   message: string,
@@ -276,7 +308,7 @@ export function apiError(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Returns a standardized JSON success response.
+ * Standard API success response.
  */
 export function apiSuccess(
   data: Record<string, unknown>,
@@ -298,20 +330,20 @@ export function apiSuccess(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Number of days a donor must wait after donation.
+ * Number of days a donor must wait after donating blood.
  */
 const DEFERRAL_DAYS = 120;
 
 /**
- * Calculates donor eligibility from donation date.
+ * Calculates donor eligibility from the latest donation date.
  *
  * Rules:
  *
- * Less than 120 days
- *     → Not eligible
+ * Donation + 120 days <= today
+ *     => Eligible
  *
- * 120 days or more
- *     → Eligible
+ * Donation + 120 days > today
+ *     => Not eligible
  */
 export function eligibilityFromDonation(
   donationDate: Date,
@@ -319,11 +351,12 @@ export function eligibilityFromDonation(
   isEligible: boolean;
   deferredUntil: Date | null;
 } {
+  // Create a new Date so the original object is never modified.
   const deferredUntil = new Date(
-    donationDate,
+    donationDate.getTime(),
   );
 
-  // Remove time-of-day differences.
+  // Ignore time-of-day.
   deferredUntil.setHours(
     0,
     0,
@@ -331,13 +364,13 @@ export function eligibilityFromDonation(
     0,
   );
 
-  // Add 120-day waiting period.
+  // Add 120 days.
   deferredUntil.setDate(
     deferredUntil.getDate() +
       DEFERRAL_DAYS,
   );
 
-  // Today's date without time.
+  // Today without time-of-day.
   const today = new Date();
 
   today.setHours(
@@ -348,7 +381,8 @@ export function eligibilityFromDonation(
   );
 
   const isEligible =
-    today >= deferredUntil;
+    today.getTime() >=
+    deferredUntil.getTime();
 
   return {
     isEligible,
@@ -364,7 +398,7 @@ export function eligibilityFromDonation(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Formats a ZodError into a standard API response.
+ * Converts a ZodError into a standard API response.
  */
 export function validationError(
   error: ZodError,
