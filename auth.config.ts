@@ -15,7 +15,11 @@ export const authConfig = {
       const pathname = request.nextUrl.pathname;
       const isLoggedIn = !!auth?.user;
       const isAuthRoute = pathname.startsWith("/login");
-      const isPublicRoute = pathname === "/" || isAuthRoute || pathname.startsWith("/register");
+      const isPublicRoute =
+        pathname === "/" ||
+        isAuthRoute ||
+        pathname.startsWith("/register") ||
+        pathname.startsWith("/check-donation");
       const isProtectedRoute =
         pathname.startsWith("/dashboard") ||
         pathname.startsWith("/donors") ||
