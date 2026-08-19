@@ -1,422 +1,222 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/db";
-import { Role } from "@prisma/client";
-import { connectMongo } from "@/lib/mongodb";
-import { AuditLog } from "@/lib/models/AuditLog";
 import {
-  hasPermission,
-  PermissionKey,
-} from "@/lib/permissions";
-import type { ZodError } from "zod";
+  NextRequest,
+  NextResponse,
+} from "next/server";
+
+import { Role } from "@prisma/client";
+
+import {
+  withAuth,
+  apiError,
+} from "@/lib/api-helpers";
+
+import {
+  connectMongo,
+} from "@/lib/mongodb";
+
+import {
+  AuditLog,
+} from "@/lib/models/AuditLog";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Types
+// GET /api/audit-logs
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin only.
+//
+// Query parameters:
+// ?userId=123
+// ?page=1
+// ?pageSize=50
+//
+// Example:
+// /api/audit-logs?page=1&pageSize=50
+// /api/audit-logs?userId=123&page=1&pageSize=50
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type RouteParams = Record<string, string>;
-
-export type RouteSession = {
-  userId: number;
-  role: Role;
-  branchId: number | null;
-  branchSlug: string | null;
-};
-
-type RouteHandler = (
+export async function GET(
   req: NextRequest,
-  session: RouteSession,
-  params?: RouteParams,
-) => Promise<NextResponse>;
+): Promise<NextResponse> {
+  return withAuth(
+    req,
 
-// Next.js 15 route context.
-// `params` is a Promise in Next.js 15.
-type RouteContext = {
-  params: Promise<RouteParams>;
-};
+    async (request) => {
+      try {
+        // ───────────────────────────────────────────────────────────────────
+        // Connect MongoDB
+        // ───────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Auth Guard
-// ─────────────────────────────────────────────────────────────────────────────
+        await connectMongo();
 
-/**
- * Authentication + authorization wrapper for API routes.
- *
- * Supports:
- *
- * 1. Login/session verification
- * 2. Role authorization
- * 3. Permission authorization
- * 4. Branch information
- * 5. Next.js 15 dynamic route params
- *
- * Examples:
- *
- * export const GET = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- * );
- *
- * export const GET = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- *   {
- *     roles: [Role.ADMIN],
- *   },
- * );
- *
- * export const POST = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- *   {
- *     permission: "donorAdd",
- *   },
- * );
- */
-export function withAuth(
-  handler: RouteHandler,
-  options: {
-    roles?: Role[];
-    permission?: PermissionKey;
-  } = {},
-) {
-  return async (
-    req: NextRequest,
-    context: RouteContext,
-  ): Promise<NextResponse> => {
-    try {
-      // ───────────────────────────────────────────────────────────────────────
-      // Authentication
-      // ───────────────────────────────────────────────────────────────────────
+        // ───────────────────────────────────────────────────────────────────
+        // Query parameters
+        // ───────────────────────────────────────────────────────────────────
 
-      const session = await auth();
+        const { searchParams } =
+          new URL(request.url);
 
-      if (!session?.user) {
-        return apiError(
-          "Unauthorized — please log in",
-          401,
-        );
-      }
+        const userIdParam =
+          searchParams.get("userId");
 
-      // ───────────────────────────────────────────────────────────────────────
-      // User ID
-      // ───────────────────────────────────────────────────────────────────────
+        const pageParam =
+          searchParams.get("page") ?? "1";
 
-      const userId = session.user.id
-        ? Number(session.user.id)
-        : 0;
+        const pageSizeParam =
+          searchParams.get("pageSize") ?? "50";
 
-      if (
-        !Number.isInteger(userId) ||
-        userId <= 0
-      ) {
-        return apiError(
-          "Invalid user session",
-          401,
-        );
-      }
+        // ───────────────────────────────────────────────────────────────────
+        // Parse page
+        // ───────────────────────────────────────────────────────────────────
 
-      // ───────────────────────────────────────────────────────────────────────
-      // User Role
-      // ───────────────────────────────────────────────────────────────────────
+        const parsedPage =
+          Number(pageParam);
 
-      const userRole =
-        session.user.role as Role | undefined;
+        const page =
+          Number.isFinite(parsedPage)
+            ? Math.max(
+                1,
+                Math.floor(parsedPage),
+              )
+            : 1;
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Branch Information
-      // ───────────────────────────────────────────────────────────────────────
+        // ───────────────────────────────────────────────────────────────────
+        // Parse page size
+        // ───────────────────────────────────────────────────────────────────
 
-      const branchId =
-        typeof session.user.branchId === "number"
-          ? session.user.branchId
-          : null;
+        const parsedPageSize =
+          Number(pageSizeParam);
 
-      const branchSlug =
-        typeof session.user.branchSlug === "string"
-          ? session.user.branchSlug
-          : null;
+        const pageSize =
+          Number.isFinite(parsedPageSize)
+            ? Math.min(
+                100,
+                Math.max(
+                  1,
+                  Math.floor(
+                    parsedPageSize,
+                  ),
+                ),
+              )
+            : 50;
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Permission Check
-      // ───────────────────────────────────────────────────────────────────────
+        // ───────────────────────────────────────────────────────────────────
+        // Build MongoDB filter
+        // ───────────────────────────────────────────────────────────────────
 
-      if (options.permission) {
-        const dbUser =
-          await prisma.user.findUnique({
-            where: {
-              id: userId,
-            },
-            select: {
-              role: true,
-              permissions: true,
-            },
-          });
+        const filter: {
+          userId?: number;
+        } = {};
 
-        if (
-          !dbUser ||
-          !hasPermission(
-            dbUser,
-            options.permission,
-          )
-        ) {
-          return apiError(
-            "Forbidden — insufficient permissions",
-            403,
-          );
+        if (userIdParam) {
+          const userId =
+            Number(userIdParam);
+
+          if (
+            !Number.isInteger(userId) ||
+            userId <= 0
+          ) {
+            return apiError(
+              "Invalid userId filter",
+              400,
+            );
+          }
+
+          filter.userId = userId;
         }
-      }
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Role Check
-      // ───────────────────────────────────────────────────────────────────────
+        // ───────────────────────────────────────────────────────────────────
+        // Pagination
+        // ───────────────────────────────────────────────────────────────────
 
-      if (
-        options.roles &&
-        (
-          !userRole ||
-          !options.roles.includes(userRole)
-        )
-      ) {
+        const skip =
+          (page - 1) * pageSize;
+
+        // ───────────────────────────────────────────────────────────────────
+        // Fetch logs + total
+        // ───────────────────────────────────────────────────────────────────
+
+        const [logs, total] =
+          await Promise.all([
+            AuditLog.find(filter)
+              .sort({
+                timestamp: -1,
+              })
+              .skip(skip)
+              .limit(pageSize)
+              .lean(),
+
+            AuditLog.countDocuments(
+              filter,
+            ),
+          ]);
+
+        // ───────────────────────────────────────────────────────────────────
+        // Format response
+        // ───────────────────────────────────────────────────────────────────
+
+        const formatted = logs.map(
+          (log) => ({
+            id: String(log._id),
+
+            userId:
+              log.userId ?? null,
+
+            userFullName:
+              log.userName ?? null,
+
+            userEmail:
+              log.userEmail ?? null,
+
+            action:
+              log.action,
+
+            details:
+              log.details,
+
+            timestamp:
+              log.timestamp,
+          }),
+        );
+
+        // ───────────────────────────────────────────────────────────────────
+        // Return response
+        // ───────────────────────────────────────────────────────────────────
+
+        return NextResponse.json(
+          {
+            success: true,
+
+            data: formatted,
+
+            meta: {
+              total,
+              page,
+              pageSize,
+
+              totalPages:
+                Math.ceil(
+                  total / pageSize,
+                ),
+            },
+          },
+          {
+            status: 200,
+          },
+        );
+      } catch (error) {
+        console.error(
+          "[GET /api/audit-logs] Error:",
+          error,
+        );
+
         return apiError(
-          "Forbidden — insufficient permissions",
-          403,
+          "Failed to load audit logs",
+          500,
         );
       }
-
-      // ───────────────────────────────────────────────────────────────────────
-      // Dynamic Route Parameters
-      // ───────────────────────────────────────────────────────────────────────
-
-      let params: RouteParams | undefined;
-
-      if (context?.params) {
-        params = await context.params;
-      }
-
-      // ───────────────────────────────────────────────────────────────────────
-      // Execute Protected Handler
-      // ───────────────────────────────────────────────────────────────────────
-
-      return await handler(
-        req,
-        {
-          userId,
-          role:
-            userRole ?? Role.VOLUNTEER,
-          branchId,
-          branchSlug,
-        },
-        params,
-      );
-    } catch (error) {
-      console.error(
-        "withAuth error:",
-        error,
-      );
-
-      return apiError(
-        "Internal server error",
-        500,
-      );
-    }
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Audit Log Writer
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Writes an immutable audit log record to MongoDB.
- *
- * User name/email are copied into the audit log
- * at the time of creation.
- */
-export async function writeAuditLog(
-  userId: number | null,
-  action: string,
-  details: string,
-): Promise<void> {
-  await connectMongo();
-
-  let userName: string | null = null;
-  let userEmail: string | null = null;
-
-  if (userId) {
-    const user =
-      await prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          name: true,
-          email: true,
-        },
-      });
-
-    userName =
-      user?.name ?? null;
-
-    userEmail =
-      user?.email ?? null;
-  }
-
-  await AuditLog.create({
-    userId: userId ?? null,
-    userName,
-    userEmail,
-    action,
-    details,
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// API Error
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Standard API error response.
- */
-export function apiError(
-  message: string,
-  status: number,
-  extra?: Record<string, unknown>,
-): NextResponse {
-  return NextResponse.json(
-    {
-      success: false,
-      error: message,
-      ...extra,
     },
+
     {
-      status,
-    },
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// API Success
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Standard API success response.
- */
-export function apiSuccess(
-  data: Record<string, unknown>,
-  status = 200,
-): NextResponse {
-  return NextResponse.json(
-    {
-      success: true,
-      ...data,
-    },
-    {
-      status,
-    },
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Donor Eligibility
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Number of days a donor must wait after donating.
- */
-const DEFERRAL_DAYS = 120;
-
-/**
- * Calculates donor eligibility from the latest donation date.
- *
- * Rules:
- *
- * < 120 days
- *   → Not eligible
- *
- * >= 120 days
- *   → Eligible
- */
-export function eligibilityFromDonation(
-  donationDate: Date,
-): {
-  isEligible: boolean;
-  deferredUntil: Date | null;
-} {
-  // Clone date so the original Date object
-  // is never modified.
-  const deferredUntil =
-    new Date(donationDate);
-
-  // Ignore time-of-day.
-  deferredUntil.setHours(
-    0,
-    0,
-    0,
-    0,
-  );
-
-  // Add 120 days.
-  deferredUntil.setDate(
-    deferredUntil.getDate() +
-      DEFERRAL_DAYS,
-  );
-
-  // Today without time-of-day.
-  const today = new Date();
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0,
-  );
-
-  const isEligible =
-    today >= deferredUntil;
-
-  return {
-    isEligible,
-
-    deferredUntil: isEligible
-      ? null
-      : deferredUntil,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Zod Validation Error
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Converts Zod validation errors
- * into a standardized API response.
- */
-export function validationError(
-  error: ZodError,
-): NextResponse {
-  const issues = error.issues.map(
-    (issue) => ({
-      field:
-        issue.path.length > 0
-          ? issue.path.join(".")
-          : "general",
-
-      message: issue.message,
-    }),
-  );
-
-  return NextResponse.json(
-    {
-      success: false,
-      error: "Validation failed",
-      issues,
-    },
-    {
-      status: 400,
+      roles: [Role.ADMIN],
     },
   );
 }
