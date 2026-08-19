@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/branch"
 }
 
 datasource db {
@@ -8,7 +9,6 @@ datasource db {
 }
 
 enum Role {
-  SUPER_ADMIN
   ADMIN
   VOLUNTEER
 }
@@ -19,32 +19,18 @@ enum DonorStatus {
   REJECTED
 }
 
-model Branch {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  location  String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  users     User[]
-  donors    Donor[]
-}
-
 model User {
-  id           Int        @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   name         String
-  email        String     @unique
+  email        String    @unique
   passwordHash String
-  role         Role       @default(VOLUNTEER)
+  role         Role      @default(VOLUNTEER)
   permissions  Json?
-  branchId     Int?
-  branch       Branch?    @relation(fields: [branchId], references: [id])
-  isActive     Boolean    @default(true)
-  isDeleted    Boolean    @default(false)
+  isActive     Boolean   @default(true)
+  isDeleted    Boolean   @default(false)
   deletedAt    DateTime?
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime  @default(now())
   auditLogs    AuditLog[]
-
-  @@index([branchId])
 }
 
 model Donor {
@@ -66,13 +52,10 @@ model Donor {
   deletedAt      DateTime?
   notes          String?
   donations      DonationHistory[]
-  branchId       Int?
-  branch         Branch?           @relation(fields: [branchId], references: [id])
 
   @@index([fullName])
   @@index([isDeleted])
   @@index([status])
-  @@index([branchId])
   @@index([publicToken])
 }
 
