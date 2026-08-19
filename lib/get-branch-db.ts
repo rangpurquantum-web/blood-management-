@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { prisma as centralPrisma } from "@/lib/central-db";
+import { centralPrisma } from "@/lib/central-db";
 import { PrismaClient } from "@/generated/branch";
 
 const globalForBranchPrisma = globalThis as unknown as {
