@@ -1,27 +1,28 @@
 import { DefaultSession } from "next-auth";
 
-type Role = "SUPER_ADMIN" | "ADMIN" | "VOLUNTEER";
-
 declare module "next-auth" {
   interface Session {
     user: {
-      role?: Role;
-      permissions?: any;
+      id: string;
+      role?: string;
       branchId?: number | null;
+      branchSlug?: string | null;
     } & DefaultSession["user"];
   }
 
   interface User {
-    role?: Role;
-    permissions?: any;
+    id?: string;
+    role?: string;
     branchId?: number | null;
+    branchSlug?: string | null;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: Role;
-    permissions?: any;
+    userId?: string;
+    role?: string;
     branchId?: number | null;
+    branchSlug?: string | null;
   }
 }
