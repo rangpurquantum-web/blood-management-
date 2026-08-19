@@ -1,20 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/central"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CENTRAL_DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Branch
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Branch {
+  id                Int          @id @default(autoincrement())
+  name              String       @unique
+  slug              String       @unique
+  location          String?
+  databaseUrlSecret String
+  isActive          Boolean      @default(true)
+
+  users             BranchUser[]
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Super Admin
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SuperAdmin {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  isActive     Boolean   @default(true)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Branch User
+//
+// These users belong to a specific branch.
+// Their branchId determines which branch database they can access.
+// ─────────────────────────────────────────────────────────────────────────────
+
 model BranchUser {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
 
   name         String
-  email        String   @unique
+  email        String    @unique
   passwordHash String
 
-  role         String   @default("VOLUNTEER")
+  role         String    @default("VOLUNTEER")
 
   branchId     Int
-  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch       Branch    @relation(
+    fields: [branchId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  isActive     Boolean  @default(true)
+  isActive     Boolean   @default(true)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([branchId])
-  @@index([email])
 }
