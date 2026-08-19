@@ -21,6 +21,9 @@ import {
   Loader2,
   Save,
   Download,
+  MoreVertical,
+  ShieldAlert,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,6 +33,13 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { DonationForm } from "@/features/donations/components/donation-form";
 import { DonationTimeline } from "@/features/donations/components/donation-timeline";
@@ -299,57 +309,108 @@ export function DonorProfile({ donorId }: { donorId: number }) {
             </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap justify-start sm:justify-end w-full sm:w-auto">
+          {/* ── Actions: 2 primary buttons + a "More" dropdown for the rest ── */}
+          <div className="flex gap-2 justify-start sm:justify-end w-full sm:w-auto">
             {canView && (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleDownloadIdCard}
               >
                 <Download className="mr-2 h-4 w-4" />
-                Download ID Card
+                ID Card
               </Button>
             )}
 
             {canEdit && (
-              <>
-                <Button
-                  variant="default"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  disabled={!donor.isEligible || recordDonation.isPending}
-                  onClick={handleDonatedToday}
-                >
-                  {recordDonation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Droplet className="mr-2 h-4 w-4" />
-                  )}
-                  Donated Today
-                </Button>
-
-                <DonorForm
-                  donor={donor}
-                  trigger={
-                    <Button variant="outline">
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit Profile
-                    </Button>
-                  }
-                />
-
-                <DonationForm
-                  donorId={donor.id}
-                  disabled={!donor.isEligible}
-                />
-              </>
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={!donor.isEligible || recordDonation.isPending}
+                onClick={handleDonatedToday}
+              >
+                {recordDonation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Droplet className="mr-2 h-4 w-4" />
+                )}
+                Donated Today
+              </Button>
             )}
 
-            {canApprove && <DeferralForm donorId={donor.id} />}
+            {(canEdit || canApprove || canDelete) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
 
-            {canDelete && (
-              <DeleteDonorDialog
-                donorId={donor.id}
-                donorName={donor.fullName}
-              />
+                <DropdownMenuContent align="end" className="w-56">
+                  {canEdit && (
+                    <DonorForm
+                      donor={donor}
+                      trigger={
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Profile
+                        </DropdownMenuItem>
+                      }
+                    />
+                  )}
+
+                  {canEdit && (
+                    <DonationForm
+                      donorId={donor.id}
+                      disabled={!donor.isEligible}
+                      trigger={
+                        <DropdownMenuItem
+                          disabled={!donor.isEligible}
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <Droplet className="mr-2 h-4 w-4" />
+                          Record Donation
+                        </DropdownMenuItem>
+                      }
+                    />
+                  )}
+
+                  {canApprove && (
+                    <DeferralForm
+                      donorId={donor.id}
+                      trigger={
+                        <DropdownMenuItem
+                          className="text-amber-600 focus:text-amber-700 focus:bg-amber-50"
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <ShieldAlert className="mr-2 h-4 w-4" />
+                          Manual Deferral
+                        </DropdownMenuItem>
+                      }
+                    />
+                  )}
+
+                  {canDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DeleteDonorDialog
+                        donorId={donor.id}
+                        donorName={donor.fullName}
+                        trigger={
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Donor
+                          </DropdownMenuItem>
+                        }
+                      />
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </CardHeader>
