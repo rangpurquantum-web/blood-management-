@@ -25,9 +25,6 @@ export default function HomePage() {
           <h1 className="text-3xl font-bold tracking-tight text-white mb-3">
             Quantum Blood Donor Pool
           </h1>
-          <p className="text-sm text-rose-100/70">
-            প্রতিটি রক্তদান একটি জীবন বাঁচাতে পারে
-          </p>
         </div>
 
         <div className="w-full max-w-sm space-y-4">
