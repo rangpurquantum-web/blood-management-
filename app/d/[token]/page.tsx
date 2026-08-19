@@ -23,17 +23,32 @@ export default async function PublicDonorPage({
       status: "APPROVED",
     },
     select: {
+      id: true,
       fullName: true,
       bloodType: true,
       dob: true,
       publicToken: true,
       isEligible: true,
+
+      donations: {
+        orderBy: {
+          donationDate: "desc",
+        },
+        take: 1,
+        select: {
+          donationDate: true,
+        },
+      },
     },
   });
 
   if (!donor) {
     notFound();
   }
+
+  // -----------------------------
+  // Date of Birth
+  // -----------------------------
 
   let dobText = "Not available";
 
@@ -49,11 +64,39 @@ export default async function PublicDonorPage({
     dobText = `${day}/${month}/${year}`;
   }
 
+  // -----------------------------
+  // Last Donation Date
+  // -----------------------------
+
+  let lastDonationText = "No donation recorded";
+
+  const lastDonation = donor.donations[0];
+
+  if (lastDonation?.donationDate) {
+    const donationDate = new Date(
+      lastDonation.donationDate
+    );
+
+    const day = String(
+      donationDate.getDate()
+    ).padStart(2, "0");
+
+    const month = String(
+      donationDate.getMonth() + 1
+    ).padStart(2, "0");
+
+    const year = donationDate.getFullYear();
+
+    lastDonationText = `${day}/${month}/${year}`;
+  }
+
   return (
     <main className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+
         {/* Card */}
         <div className="overflow-hidden rounded-2xl border bg-white shadow-xl">
+
           {/* Header */}
           <div className="bg-emerald-800 px-6 py-7 text-center text-white">
             <h1 className="text-lg font-bold tracking-wide">
@@ -80,7 +123,10 @@ export default async function PublicDonorPage({
 
           {/* Information */}
           <div className="px-6 py-7">
+
             <div className="space-y-5">
+
+              {/* Name */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Donor Name
@@ -91,6 +137,7 @@ export default async function PublicDonorPage({
                 </p>
               </div>
 
+              {/* Blood Group */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Blood Group
@@ -101,6 +148,7 @@ export default async function PublicDonorPage({
                 </p>
               </div>
 
+              {/* DOB */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Date of Birth
@@ -110,10 +158,23 @@ export default async function PublicDonorPage({
                   {dobText}
                 </p>
               </div>
+
+              {/* Last Donation */}
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-red-700">
+                  Last Donation Date
+                </p>
+
+                <p className="mt-1 text-xl font-black text-red-600">
+                  {lastDonationText}
+                </p>
+              </div>
+
             </div>
 
             {/* Verification */}
             <div className="mt-7 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+
               <p className="text-sm font-bold text-emerald-800">
                 VERIFIED DONOR
               </p>
@@ -122,15 +183,20 @@ export default async function PublicDonorPage({
                 This donor record is verified by Quantum Voluntary Blood
                 Donation Programme.
               </p>
+
             </div>
+
           </div>
 
           {/* Footer */}
           <div className="border-t bg-slate-50 px-6 py-4 text-center">
+
             <p className="text-xs text-slate-500">
-              Donor ID: {donor.publicToken}
+              Donor ID: {donor.id}
             </p>
+
           </div>
+
         </div>
       </div>
     </main>
