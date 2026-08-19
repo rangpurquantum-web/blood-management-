@@ -29,7 +29,7 @@ import {
 
 export function DonationForm({
   donorId,
-  disabled,
+  disabled = false,
   trigger,
 }: {
   donorId: number;
@@ -40,42 +40,67 @@ export function DonationForm({
 
   const recordDonation = useRecordDonation(donorId);
 
+  const today = new Date();
+  const todayString = today.toISOString().split("T")[0];
+
   const form = useForm<DonationInput>({
     resolver: zodResolver(donationSchema),
 
     defaultValues: {
       patientName: "",
       hospitalName: "",
-      donationDate: new Date(),
+      donationDate: today,
       notes: "",
     },
   });
 
   const onSubmit = (data: DonationInput) => {
-    recordDonation.mutate(data, {
-      onSuccess: () => {
-        toast.success(
-          "Donation history recorded. Donor is now deferred for 120 days.",
-        );
+    // Make absolutely sure the date sent to the API is a Date.
+    const donationDate =
+      data.donationDate instanceof Date
+        ? data.donationDate
+        : new Date(data.donationDate);
 
-        form.reset({
-          patientName: "",
-          hospitalName: "",
-          donationDate: new Date(),
-          notes: "",
-        });
+    if (Number.isNaN(donationDate.getTime())) {
+      toast.error("Invalid donation date");
+      return;
+    }
 
-        setOpen(false);
+    if (donationDate > new Date()) {
+      toast.error("Donation date cannot be in the future");
+      return;
+    }
+
+    recordDonation.mutate(
+      {
+        ...data,
+        donationDate: donationDate.toISOString(),
       },
+      {
+        onSuccess: () => {
+          toast.success(
+            "Donation history recorded successfully. Donor will be deferred for 120 days.",
+          );
 
-      onError: (err: any) => {
-        toast.error(
-          err?.error ||
-            err?.message ||
-            "Failed to record donation",
-        );
+          form.reset({
+            patientName: "",
+            hospitalName: "",
+            donationDate: new Date(),
+            notes: "",
+          });
+
+          setOpen(false);
+        },
+
+        onError: (err: any) => {
+          toast.error(
+            err?.error ||
+              err?.message ||
+              "Failed to record donation",
+          );
+        },
       },
-    });
+    );
   };
 
   return (
@@ -95,8 +120,9 @@ export function DonationForm({
           </DialogTitle>
 
           <DialogDescription>
-            Logging a donation will automatically mark the
-            donor as deferred for 120 days.
+            Recording a donation will automatically calculate
+            the donor's eligibility using the 120-day waiting
+            period.
           </DialogDescription>
         </DialogHeader>
 
@@ -104,7 +130,7 @@ export function DonationForm({
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid gap-4 py-4"
         >
-          {/* Patient Name */}
+          {/* Patient */}
           <div className="grid gap-2">
             <Label htmlFor="patientName">
               Patient Name
@@ -112,6 +138,7 @@ export function DonationForm({
 
             <Input
               id="patientName"
+              placeholder="Enter patient name"
               {...form.register("patientName")}
             />
 
@@ -125,7 +152,7 @@ export function DonationForm({
             )}
           </div>
 
-          {/* Hospital Name */}
+          {/* Hospital */}
           <div className="grid gap-2">
             <Label htmlFor="hospitalName">
               Hospital Name
@@ -133,6 +160,7 @@ export function DonationForm({
 
             <Input
               id="hospitalName"
+              placeholder="Enter hospital name"
               {...form.register("hospitalName")}
             />
 
@@ -155,9 +183,10 @@ export function DonationForm({
             <Input
               id="donationDate"
               type="date"
+              max={todayString}
               {...form.register("donationDate", {
                 setValueAs: (value) =>
-                  value ? new Date(value) : undefined,
+                  value ? new Date(`${value}T00:00:00`) : value,
               })}
             />
 
@@ -179,15 +208,13 @@ export function DonationForm({
 
             <Textarea
               id="notes"
+              placeholder="Optional notes..."
               {...form.register("notes")}
             />
 
             {form.formState.errors.notes && (
               <span className="text-xs text-destructive">
-                {
-                  form.formState.errors.notes
-                    .message
-                }
+                {form.formState.errors.notes.message}
               </span>
             )}
           </div>
