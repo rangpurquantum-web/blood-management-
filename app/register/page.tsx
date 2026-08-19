@@ -262,7 +262,7 @@ export default function PublicRegisterPage() {
                             </div>
 
                             <div className="grid gap-1 sm:w-[140px]">
-                              <Label className="text-xs text-muted-foreground">Label (optional)</Label>
+                              <Label className="text-xs text-muted-foreground">Label</Label>
                               <Input
                                 placeholder="e.g. Personal"
                                 {...form.register(`phone.${index}.label` as const)}
