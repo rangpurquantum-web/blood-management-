@@ -3,6 +3,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 import { centralPrisma } from "@/lib/central-db";
+import { getBranchDb } from "@/lib/branch-db";
 
 import { authConfig } from "./auth.config";
 
@@ -32,9 +33,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(credentials.email).trim().toLowerCase();
         const password = String(credentials.password);
 
-        // ─────────────────────────────────────────────────────────────
-        // 1. Check SuperAdmin
-        // ─────────────────────────────────────────────────────────────
+        // ============================================================
+        // 1. Check SuperAdmin in CENTRAL database
+        // ============================================================
 
         const superAdmin = await centralPrisma.superAdmin.findUnique({
           where: {
@@ -57,7 +58,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           return {
-            id: String(superAdmin.id),
+            id: `superadmin:${superAdmin.id}`,
             email: superAdmin.email,
             name: superAdmin.name,
             role: "ADMIN",
@@ -67,9 +68,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // 2. Check Branch User
-        // ─────────────────────────────────────────────────────────────
+        // ============================================================
+        // 2. Find BranchUser in CENTRAL database
+        // ============================================================
 
         const branchUser = await centralPrisma.branchUser.findUnique({
           where: {
@@ -84,6 +85,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        // ============================================================
+        // 3. Check branch status
+        // ============================================================
+
         if (!branchUser.isActive) {
           throw new Error("ACCOUNT_INACTIVE");
         }
@@ -91,6 +96,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!branchUser.branch.isActive) {
           throw new Error("BRANCH_INACTIVE");
         }
+
+        // ============================================================
+        // 4. Verify password
+        // ============================================================
 
         const passwordMatch = await bcrypt.compare(
           password,
@@ -101,8 +110,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        // ============================================================
+        // 5. Verify branch database is accessible
+        // ============================================================
+
+        try {
+          const branchDb = await getBranchDb(branchUser.branchId);
+
+          await branchDb.$queryRaw`SELECT 1`;
+        } catch (error) {
+          console.error(
+            `Branch database connection failed for branch ${branchUser.branchId}:`,
+            error,
+          );
+
+          throw new Error("BRANCH_DATABASE_UNAVAILABLE");
+        }
+
+        // ============================================================
+        // 6. Return branch-aware session user
+        // ============================================================
+
         return {
-          id: String(branchUser.id),
+          id: `branchuser:${branchUser.id}`,
           email: branchUser.email,
           name: branchUser.name,
           role: branchUser.role,
