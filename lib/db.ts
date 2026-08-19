@@ -1,1 +1,15 @@
-export { getDatabaseForCurrentBranch as getDb } from "@/lib/get-branch-db";
+import { PrismaClient } from "@/generated/branch";
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: ["error"],
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
