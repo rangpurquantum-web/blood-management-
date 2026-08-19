@@ -3,16 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { centralPrisma } from "@/lib/central-db";
 
-type CreateBranchBody = {
-  name?: string;
-  slug?: string;
-  location?: string;
-  databaseUrlSecret?: string;
-};
-
-function isAdmin(session: Awaited<ReturnType<typeof auth>>) {
-  return session?.user?.role === "ADMIN";
-}
+// ============================================================================
+// GET /api/branches
+// List all branches
+// ADMIN only
+// ============================================================================
 
 export async function GET() {
   try {
@@ -20,14 +15,20 @@ export async function GET() {
 
     if (!session?.user) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        {
+          success: false,
+          error: "Unauthorized",
+        },
         { status: 401 },
       );
     }
 
-    if (!isAdmin(session)) {
+    if (session.user.role !== "ADMIN") {
       return NextResponse.json(
-        { success: false, error: "Forbidden" },
+        {
+          success: false,
+          error: "Forbidden",
+        },
         { status: 403 },
       );
     }
@@ -36,6 +37,7 @@ export async function GET() {
       orderBy: {
         createdAt: "desc",
       },
+
       select: {
         id: true,
         name: true,
@@ -44,6 +46,7 @@ export async function GET() {
         isActive: true,
         createdAt: true,
         updatedAt: true,
+
         _count: {
           select: {
             users: true,
@@ -69,41 +72,82 @@ export async function GET() {
   }
 }
 
+// ============================================================================
+// POST /api/branches
+// Create a new branch
+// ADMIN only
+//
+// NOTE:
+// This endpoint creates the branch record in the CENTRAL database.
+// Database provisioning will be handled in the next step.
+// ============================================================================
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        {
+          success: false,
+          error: "Unauthorized",
+        },
         { status: 401 },
       );
     }
 
-    if (!isAdmin(session)) {
+    if (session.user.role !== "ADMIN") {
       return NextResponse.json(
-        { success: false, error: "Forbidden" },
+        {
+          success: false,
+          error: "Forbidden",
+        },
         { status: 403 },
       );
     }
 
-    const body = (await req.json()) as CreateBranchBody;
+    const body = await req.json();
 
-    const name = body.name?.trim();
-    const slug = body.slug?.trim().toLowerCase();
-    const location = body.location?.trim() || null;
-    const databaseUrlSecret = body.databaseUrlSecret?.trim();
+    const name =
+      typeof body.name === "string"
+        ? body.name.trim()
+        : "";
+
+    const slug =
+      typeof body.slug === "string"
+        ? body.slug.trim().toLowerCase()
+        : "";
+
+    const location =
+      typeof body.location === "string"
+        ? body.location.trim()
+        : null;
+
+    const databaseUrlSecret =
+      typeof body.databaseUrlSecret === "string"
+        ? body.databaseUrlSecret.trim()
+        : "";
+
+    // ------------------------------------------------------------------------
+    // Validation
+    // ------------------------------------------------------------------------
 
     if (!name) {
       return NextResponse.json(
-        { success: false, error: "Branch name is required" },
+        {
+          success: false,
+          error: "Branch name is required",
+        },
         { status: 400 },
       );
     }
 
     if (!slug) {
       return NextResponse.json(
-        { success: false, error: "Branch slug is required" },
+        {
+          success: false,
+          error: "Branch slug is required",
+        },
         { status: 400 },
       );
     }
@@ -113,7 +157,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error:
-            "Slug may contain only lowercase letters, numbers, and hyphens",
+            "Slug can only contain lowercase letters, numbers and hyphens",
         },
         { status: 400 },
       );
@@ -129,7 +173,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existing = await centralPrisma.branch.findFirst({
+    // ------------------------------------------------------------------------
+    // Check duplicate branch
+    // ------------------------------------------------------------------------
+
+    const existingBranch = await centralPrisma.branch.findFirst({
       where: {
         OR: [
           {
@@ -140,6 +188,7 @@ export async function POST(req: NextRequest) {
           },
         ],
       },
+
       select: {
         id: true,
         name: true,
@@ -147,18 +196,22 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (existing) {
+    if (existingBranch) {
       return NextResponse.json(
         {
           success: false,
           error:
-            existing.name === name
+            existingBranch.name === name
               ? "A branch with this name already exists"
               : "A branch with this slug already exists",
         },
         { status: 409 },
       );
     }
+
+    // ------------------------------------------------------------------------
+    // Create branch
+    // ------------------------------------------------------------------------
 
     const branch = await centralPrisma.branch.create({
       data: {
@@ -168,6 +221,7 @@ export async function POST(req: NextRequest) {
         databaseUrlSecret,
         isActive: true,
       },
+
       select: {
         id: true,
         name: true,
