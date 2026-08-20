@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/branch";
 import { getBranchDb } from "@/lib/branch-db";
 import {
   withAuth,
