@@ -54,7 +54,6 @@ export const POST = withAuth(
     const parsed = importBodySchema.safeParse(body);
 
     if (!parsed.success) {
-      // Return row-level validation errors
       const validationErrors = parsed.error.errors.map((e) => ({
         row: e.path[0] === "donors" && typeof e.path[1] === "number" ? e.path[1] + 1 : "?",
         column: e.path.slice(2).join(".") || e.path[1] || e.path[0],
