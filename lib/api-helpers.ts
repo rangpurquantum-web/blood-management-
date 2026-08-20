@@ -9,7 +9,7 @@ import {
   hasPermission,
   PermissionKey,
 } from "@/lib/permissions";
-import { ACTIVE_BRANCH_COOKIE } from "@/app/api/branches/switch/route";
+import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 import type { ZodError } from "zod";
 
 // ─────────────────────────────────────────────────────────────────────────────
