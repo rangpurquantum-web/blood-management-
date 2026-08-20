@@ -29,10 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const email = String(credentials.email)
-          .trim()
-          .toLowerCase();
-
+        const email = String(credentials.email).trim().toLowerCase();
         const password = String(credentials.password);
 
         // ─────────────────────────────────────────────
@@ -40,9 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // ─────────────────────────────────────────────
 
         const superAdmin = await centralPrisma.superAdmin.findUnique({
-          where: {
-            email,
-          },
+          where: { email },
         });
 
         if (superAdmin) {
@@ -60,7 +55,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           return {
-            id: `superadmin:${superAdmin.id}`,
+            id: String(superAdmin.id),
             email: superAdmin.email,
             name: superAdmin.name,
             role: "ADMIN",
@@ -75,9 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // ─────────────────────────────────────────────
 
         const branchUser = await centralPrisma.branchUser.findUnique({
-          where: {
-            email,
-          },
+          where: { email },
           include: {
             branch: {
               select: {
@@ -111,7 +104,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         return {
-          id: `branchuser:${branchUser.id}`,
+          id: String(branchUser.id),
           email: branchUser.email,
           name: branchUser.name,
           role: branchUser.role,
