@@ -135,7 +135,9 @@ export const authConfig = {
         : [];
 
       // Super Admin flag
-      session.user.isSuperAdmin = Boolean(token.isSuperAdmin);
+      (session.user as { isSuperAdmin?: boolean }).isSuperAdmin = Boolean(
+        token.isSuperAdmin,
+      );
 
       return session;
     },
