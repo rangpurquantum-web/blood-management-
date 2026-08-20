@@ -66,6 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: "ADMIN",
             branchId: null,
             branchSlug: null,
+            isSuperAdmin: true,
           };
         }
 
@@ -116,6 +117,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: branchUser.role,
           branchId: branchUser.branch.id,
           branchSlug: branchUser.branch.slug,
+          isSuperAdmin: false,
         };
       },
     }),
