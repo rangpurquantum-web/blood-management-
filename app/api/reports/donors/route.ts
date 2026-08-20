@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Role } from "@/generated/branch";
 import { prisma } from "@/lib/db";
 import { withAuth, apiError } from "@/lib/api-helpers";
 import { Role } from "@prisma/client";
