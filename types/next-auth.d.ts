@@ -8,6 +8,7 @@ declare module "next-auth" {
       branchId?: number | null;
       branchSlug?: string | null;
       permissions?: string[];
+      isSuperAdmin?: boolean;
     } & DefaultSession["user"];
   }
 
@@ -17,6 +18,7 @@ declare module "next-auth" {
     branchId?: number | null;
     branchSlug?: string | null;
     permissions?: string[];
+    isSuperAdmin?: boolean;
   }
 }
 
@@ -27,5 +29,6 @@ declare module "next-auth/jwt" {
     branchId?: number | null;
     branchSlug?: string | null;
     permissions?: string[];
+    isSuperAdmin?: boolean;
   }
 }
