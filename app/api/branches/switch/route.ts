@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Valid branchId is required" }, { status: 400 });
   }
 
-  const branch = await prisma.branch.findUnique({
+  const branch = await centralPrisma.branch.findUnique({
     where: { id: numericBranchId },
     select: { id: true, slug: true },
   });
