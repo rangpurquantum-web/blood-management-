@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getBranchDb } from "@/lib/branch-db";
 import {
   withAuth,
   writeAuditLog,
@@ -10,17 +10,52 @@ import {
 } from "@/lib/api-helpers";
 import { donorUpdateSchema } from "@/features/donors";
 
+// ─── Helper: validate branch + get branch DB ─────────────────────────────────
+
+async function getValidatedBranchDb(branchId: number | null) {
+  if (
+    typeof branchId !== "number" ||
+    !Number.isInteger(branchId) ||
+    branchId <= 0
+  ) {
+    return {
+      branchDb: null,
+      error: apiError(
+        "Your account is not associated with a valid branch",
+        403,
+      ),
+    };
+  }
+
+  try {
+    const branchDb = await getBranchDb(branchId);
+    return { branchDb, error: null };
+  } catch (error) {
+    console.error(`Failed to connect to branch database: ${branchId}`, error);
+    return {
+      branchDb: null,
+      error: apiError("Could not connect to branch database", 503),
+    };
+  }
+}
+
 // ─── GET /api/donors/[id] ─────────────────────────────────────────────────────
 
 export const GET = withAuth(
-  async (_req: NextRequest, _session, params) => {
+  async (_req: NextRequest, session, params) => {
     const id = Number(params?.id);
 
     if (isNaN(id)) {
       return apiError("Invalid donor ID", 400);
     }
 
-    const donor = await prisma.donor.findFirst({
+    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
+
+    if (error) {
+      return error;
+    }
+
+    const donor = await branchDb!.donor.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -72,7 +107,7 @@ export const GET = withAuth(
         deferredUntil?.getTime() ||
       donor.deferralReason !== deferralReason
     ) {
-      await prisma.donor.update({
+      await branchDb!.donor.update({
         where: {
           id,
         },
@@ -105,6 +140,12 @@ export const PATCH = withAuth(
       return apiError("Invalid donor ID", 400);
     }
 
+    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
+
+    if (error) {
+      return error;
+    }
+
     let body: unknown;
 
     try {
@@ -119,7 +160,7 @@ export const PATCH = withAuth(
       return validationError(parsed.error);
     }
 
-    const existing = await prisma.donor.findFirst({
+    const existing = await branchDb!.donor.findFirst({
       where: {
         id,
         isDeleted: false,
@@ -132,6 +173,7 @@ export const PATCH = withAuth(
 
     // ─────────────────────────────────────────────────────────────────────────
     // Check uniqueness if phone or email are being updated
+    // (scoped to this branch's database only)
     // ─────────────────────────────────────────────────────────────────────────
 
     const data = parsed.data;
@@ -141,7 +183,7 @@ export const PATCH = withAuth(
         ? data.phone.map((p) => p.number)
         : [];
 
-      const conflict = await prisma.donor.findFirst({
+      const conflict = await branchDb!.donor.findFirst({
         where: {
           AND: [
             {
@@ -202,10 +244,10 @@ export const PATCH = withAuth(
     } = data;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Update donor
+    // Update donor (inside branch DB transaction)
     // ─────────────────────────────────────────────────────────────────────────
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await branchDb!.$transaction(async (tx) => {
       if (phoneData) {
         await tx.donorPhone.deleteMany({
           where: {
@@ -242,7 +284,7 @@ export const PATCH = withAuth(
     await writeAuditLog(
       session.userId,
       "Donor Updated",
-      `Updated donor: ${updated.fullName} — ID ${updated.id}`,
+      `Updated donor: ${updated.fullName} — ID ${updated.id} — Branch ${session.branchId}`,
     );
 
     return apiSuccess({
@@ -263,7 +305,13 @@ export const DELETE = withAuth(
       return apiError("Invalid donor ID", 400);
     }
 
-    const existing = await prisma.donor.findFirst({
+    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
+
+    if (error) {
+      return error;
+    }
+
+    const existing = await branchDb!.donor.findFirst({
       where: {
         id,
       },
@@ -276,7 +324,7 @@ export const DELETE = withAuth(
     // Permanently delete donor.
     // Related DonorPhone and DonationHistory records
     // are removed via onDelete: Cascade.
-    await prisma.donor.delete({
+    await branchDb!.donor.delete({
       where: {
         id,
       },
@@ -285,7 +333,7 @@ export const DELETE = withAuth(
     await writeAuditLog(
       session.userId,
       "Donor Deleted",
-      `Permanently deleted donor: ${existing.fullName} (${existing.bloodType}) — ID ${id}`,
+      `Permanently deleted donor: ${existing.fullName} (${existing.bloodType}) — ID ${id} — Branch ${session.branchId}`,
     );
 
     return apiSuccess({
