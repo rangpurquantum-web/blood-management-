@@ -8,7 +8,7 @@ import { ProfileDropdown } from "@/components/layout/profile-dropdown";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { SignOutButton } from "@/components/layout/signout-button";
-import { BranchSwitcher } from "@/components/layout/branch-switcher";
+import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 import { hasPermission } from "@/lib/permissions";
 import { ACTIVE_BRANCH_COOKIE } from "@/app/api/branches/switch/route";
 
