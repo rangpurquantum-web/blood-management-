@@ -1,140 +1,116 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { Role } from "@prisma/client";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
+import { requireRole, apiError } from "@/lib/api-helpers";
+import { connectMongo } from "@/lib/mongodb";
+import { AuditLog } from "@/lib/models/AuditLog";
 
-export type AuthSession = {
-  user?: {
-    id?: string;
-    name?: string | null;
-    email?: string | null;
-    role?: Role | string | null;
-  };
-};
-
-export type AuthOptions = {
-  roles?: Role[];
-};
-
-export type ApiHandler = (
-  req: NextRequest,
-  session: AuthSession,
-) => Promise<NextResponse> | NextResponse;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// API Error Helper
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function apiError(
-  message: string,
-  status: number = 500,
-  details?: unknown,
-): NextResponse {
-  return NextResponse.json(
-    {
-      error: message,
-      ...(details !== undefined ? { details } : {}),
-    },
-    { status },
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// API Success Helper
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function apiSuccess<T>(
-  data: T,
-  status: number = 200,
-): NextResponse {
-  return NextResponse.json(
-    {
-      data,
-    },
-    { status },
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Authentication
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function getAuthSession(): Promise<AuthSession | null> {
+// GET /api/audit-logs
+// Admin only
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
+    // ─────────────────────────────────────────────
+    // Authentication + Admin role
+    // ─────────────────────────────────────────────
 
-    if (!session) {
-      return null;
+    const { session, error } = await requireRole([Role.ADMIN]);
+
+    if (error) {
+      return error;
     }
 
-    return session as AuthSession;
+    // Prevent unused-variable issue if session isn't needed
+    void session;
+
+    // ─────────────────────────────────────────────
+    // MongoDB
+    // ─────────────────────────────────────────────
+
+    await connectMongo();
+
+    const { searchParams } = new URL(req.url);
+
+    // ─────────────────────────────────────────────
+    // Query parameters
+    // ─────────────────────────────────────────────
+
+    const userIdParam = searchParams.get("userId");
+
+    const rawPage = Number(
+      searchParams.get("page") ?? "1"
+    );
+
+    const rawPageSize = Number(
+      searchParams.get("pageSize") ?? "50"
+    );
+
+    const page = Number.isFinite(rawPage)
+      ? Math.max(1, Math.floor(rawPage))
+      : 1;
+
+    const pageSize = Number.isFinite(rawPageSize)
+      ? Math.min(100, Math.max(1, Math.floor(rawPageSize)))
+      : 50;
+
+    // ─────────────────────────────────────────────
+    // MongoDB filter
+    // ─────────────────────────────────────────────
+
+    const filter: Record<string, unknown> = {};
+
+    if (userIdParam) {
+      const userId = Number(userIdParam);
+
+      if (!Number.isFinite(userId)) {
+        return apiError("Invalid userId filter", 400);
+      }
+
+      filter.userId = userId;
+    }
+
+    // ─────────────────────────────────────────────
+    // Fetch logs + total
+    // ─────────────────────────────────────────────
+
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter)
+        .sort({ timestamp: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .lean(),
+
+      AuditLog.countDocuments(filter),
+    ]);
+
+    // ─────────────────────────────────────────────
+    // Format response
+    // ─────────────────────────────────────────────
+
+    const formatted = logs.map((log) => ({
+      id: String(log._id),
+      userId: log.userId,
+      userFullName: log.userName ?? null,
+      action: log.action,
+      details: log.details,
+      timestamp: log.timestamp,
+    }));
+
+    // ─────────────────────────────────────────────
+    // Response
+    // ─────────────────────────────────────────────
+
+    return NextResponse.json({
+      data: formatted,
+
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (error) {
-    console.error("Authentication error:", error);
-    return null;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Role Check
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function hasRequiredRole(
-  session: AuthSession,
-  roles?: Role[],
-): boolean {
-  if (!roles || roles.length === 0) {
-    return true;
-  }
-
-  const userRole = session.user?.role;
-
-  if (!userRole) {
-    return false;
-  }
-
-  return roles.some(
-    (role) => String(role) === String(userRole),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Authentication Wrapper
-//
-// IMPORTANT:
-// This helper is intentionally NOT exported as a Next.js route handler.
-// Use it INSIDE the exported GET/POST/etc. function.
-//
-// Example:
-//
-// export async function GET(req: NextRequest) {
-//   return withAuth(req, async (req, session) => {
-//     ...
-//   }, { roles: [Role.ADMIN] });
-// }
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function withAuth(
-  req: NextRequest,
-  handler: ApiHandler,
-  options?: AuthOptions,
-): Promise<NextResponse> {
-  try {
-    const session = await getAuthSession();
-
-    if (!session?.user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    if (!hasRequiredRole(session, options?.roles)) {
-      return apiError("Forbidden", 403);
-    }
-
-    return await handler(req, session);
-  } catch (error) {
-    console.error("API handler error:", error);
+    console.error("GET /api/audit-logs error:", error);
 
     return apiError(
       "Internal server error",
@@ -143,62 +119,7 @@ export async function withAuth(
         ? error instanceof Error
           ? error.message
           : String(error)
-        : undefined,
+        : undefined
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Optional utility: require authentication
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function requireAuth(): Promise<
-  | { session: AuthSession; error: null }
-  | { session: null; error: NextResponse }
-> {
-  const session = await getAuthSession();
-
-  if (!session?.user) {
-    return {
-      session: null,
-      error: apiError("Unauthorized", 401),
-    };
-  }
-
-  return {
-    session,
-    error: null,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Optional utility: require specific roles
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function requireRole(
-  roles: Role[],
-): Promise<
-  | { session: AuthSession; error: null }
-  | { session: null; error: NextResponse }
-> {
-  const session = await getAuthSession();
-
-  if (!session?.user) {
-    return {
-      session: null,
-      error: apiError("Unauthorized", 401),
-    };
-  }
-
-  if (!hasRequiredRole(session, roles)) {
-    return {
-      session: null,
-      error: apiError("Forbidden", 403),
-    };
-  }
-
-  return {
-    session,
-    error: null,
-  };
 }
