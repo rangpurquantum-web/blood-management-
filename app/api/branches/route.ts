@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { centralPrisma } from "@/lib/central-db";
+import { PrismaClient } from "@/generated/branch";
 
 // ============================================================================
 // GET /api/branches
@@ -78,8 +79,9 @@ export async function GET() {
 // ADMIN only
 //
 // NOTE:
-// This endpoint creates the branch record in the CENTRAL database.
-// Database provisioning will be handled in the next step.
+// This endpoint creates the branch record in the CENTRAL database,
+// after first verifying that the given database URL is reachable
+// and already has the branch schema applied (Donor table exists).
 // ============================================================================
 
 export async function POST(req: NextRequest) {
@@ -207,6 +209,43 @@ export async function POST(req: NextRequest) {
         },
         { status: 409 },
       );
+    }
+
+    // ------------------------------------------------------------------------
+    // Verify the database is reachable and has the branch schema applied
+    // ------------------------------------------------------------------------
+
+    let testClient: PrismaClient | null = null;
+
+    try {
+      testClient = new PrismaClient({
+        datasources: {
+          db: {
+            url: databaseUrlSecret,
+          },
+        },
+      });
+
+      // Simple query against a table that must exist in the
+      // branch schema (Donor). If this fails, the database is
+      // unreachable OR the schema hasn't been applied yet.
+      await testClient.donor.count();
+    } catch (error) {
+      console.error("Branch database verification failed:", error);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Could not connect to this database, or the branch schema hasn't been applied yet. " +
+            "Please make sure the database URL is correct and the schema (Donor, DonationHistory, etc.) already exists there.",
+        },
+        { status: 400 },
+      );
+    } finally {
+      if (testClient) {
+        await testClient.$disconnect();
+      }
     }
 
     // ------------------------------------------------------------------------
