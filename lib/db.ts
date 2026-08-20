@@ -1,4 +1,4 @@
-import { Role } from "@/generated/branch";
+import { PrismaClient } from "@/generated/branch";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
