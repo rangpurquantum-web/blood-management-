@@ -43,14 +43,6 @@ type RouteContext = {
 // Effective Branch Resolver (SuperAdmin aware)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Resolves the branchId/branchSlug that should actually be used
- * for this request.
- *
- * - Normal BranchUser: uses their own session branchId/branchSlug.
- * - SuperAdmin: has no fixed branchId, so we read the branch they
- *   selected via the branch-switcher, stored in a cookie.
- */
 async function resolveEffectiveBranch(
   isSuperAdmin: boolean,
   sessionBranchId: number | null,
@@ -82,9 +74,9 @@ async function resolveEffectiveBranch(
   }
 
   const branch = await centralPrisma.branch.findUnique({
-  where: { id: effectiveBranchId },
-  select: { slug: true },
-});
+    where: { id: effectiveBranchId },
+    select: { slug: true },
+  });
 
   if (!branch) {
     return {
@@ -104,43 +96,6 @@ async function resolveEffectiveBranch(
 // Auth Guard
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Authentication + authorization wrapper for API routes.
- *
- * Supports:
- *
- * 1. Login/session verification
- * 2. Role authorization
- * 3. Permission authorization
- * 4. Branch information (including SuperAdmin branch-switcher)
- * 5. Next.js 15 dynamic route params
- *
- * Examples:
- *
- * export const GET = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- * );
- *
- * export const GET = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- *   {
- *     roles: [Role.ADMIN],
- *   },
- * );
- *
- * export const POST = withAuth(
- *   async (req, session) => {
- *     ...
- *   },
- *   {
- *     permission: "donorAdd",
- *   },
- * );
- */
 export function withAuth(
   handler: RouteHandler,
   options: {
@@ -153,50 +108,36 @@ export function withAuth(
     context: RouteContext,
   ): Promise<NextResponse> => {
     try {
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
       // Authentication
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
 
       const session = await auth();
 
       if (!session?.user) {
-        return apiError(
-          "Unauthorized — please log in",
-          401,
-        );
+        return apiError("Unauthorized — please log in", 401);
       }
 
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
       // User ID
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
 
-      const userId = session.user.id
-        ? Number(session.user.id)
-        : 0;
+      const userId = session.user.id ? Number(session.user.id) : 0;
 
-      if (
-        !Number.isInteger(userId) ||
-        userId <= 0
-      ) {
-        return apiError(
-          "Invalid user session",
-          401,
-        );
+      if (!Number.isInteger(userId) || userId <= 0) {
+        return apiError("Invalid user session", 401);
       }
 
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
       // User Role
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
 
-      const userRole =
-        session.user.role as Role | undefined;
+      const userRole = session.user.role as Role | undefined;
+      const isSuperAdmin = session.user.isSuperAdmin === true;
 
-      const isSuperAdmin =
-        session.user.isSuperAdmin === true;
-
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
       // Branch Information (SuperAdmin-aware)
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
 
       const sessionBranchId =
         typeof session.user.branchId === "number"
@@ -221,56 +162,36 @@ export function withAuth(
       const branchId = branchResult.branchId;
       const branchSlug = branchResult.branchSlug;
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Permission Check
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
+      // Permission Check (SuperAdmin bypasses)
+      // ─────────────────────────────────────────────
 
-      if (options.permission) {
-        const dbUser =
-          await prisma.user.findUnique({
-            where: {
-              id: userId,
-            },
-            select: {
-              role: true,
-              permissions: true,
-            },
-          });
+      if (options.permission && !isSuperAdmin) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { role: true, permissions: true },
+        });
 
-        if (
-          !dbUser ||
-          !hasPermission(
-            dbUser,
-            options.permission,
-          )
-        ) {
-          return apiError(
-            "Forbidden — insufficient permissions",
-            403,
-          );
+        if (!dbUser || !hasPermission(dbUser, options.permission)) {
+          return apiError("Forbidden — insufficient permissions", 403);
         }
       }
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Role Check
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
+      // Role Check (SuperAdmin bypasses)
+      // ─────────────────────────────────────────────
 
       if (
         options.roles &&
-        (
-          !userRole ||
-          !options.roles.includes(userRole)
-        )
+        !isSuperAdmin &&
+        (!userRole || !options.roles.includes(userRole))
       ) {
-        return apiError(
-          "Forbidden — insufficient permissions",
-          403,
-        );
+        return apiError("Forbidden — insufficient permissions", 403);
       }
 
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
       // Dynamic Route Parameters
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
 
       let params: RouteParams | undefined;
 
@@ -278,16 +199,15 @@ export function withAuth(
         params = await context.params;
       }
 
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
       // Execute Protected Handler
-      // ───────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────
 
       return await handler(
         req,
         {
           userId,
-          role:
-            userRole ?? Role.VOLUNTEER,
+          role: userRole ?? Role.VOLUNTEER,
           branchId,
           branchSlug,
           isSuperAdmin,
@@ -295,15 +215,8 @@ export function withAuth(
         params,
       );
     } catch (error) {
-      console.error(
-        "withAuth error:",
-        error,
-      );
-
-      return apiError(
-        "Internal server error",
-        500,
-      );
+      console.error("withAuth error:", error);
+      return apiError("Internal server error", 500);
     }
   };
 }
@@ -312,10 +225,6 @@ export function withAuth(
 // Require Role (for routes without dynamic params)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Standalone auth + role check for routes that
- * don't use the withAuth wrapper (e.g. no dynamic params).
- */
 export async function requireRole(
   roles: Role[],
 ): Promise<{
@@ -341,15 +250,14 @@ export async function requireRole(
   }
 
   const userRole = session.user.role as Role | undefined;
+  const isSuperAdmin = session.user.isSuperAdmin === true;
 
-  if (!userRole || !roles.includes(userRole)) {
+  if (!isSuperAdmin && (!userRole || !roles.includes(userRole))) {
     return {
       session: null,
       error: apiError("Forbidden — insufficient permissions", 403),
     };
   }
-
-  const isSuperAdmin = session.user.isSuperAdmin === true;
 
   const sessionBranchId =
     typeof session.user.branchId === "number"
@@ -377,7 +285,7 @@ export async function requireRole(
   return {
     session: {
       userId,
-      role: userRole,
+      role: userRole ?? Role.VOLUNTEER,
       branchId: branchResult.branchId,
       branchSlug: branchResult.branchSlug,
       isSuperAdmin,
@@ -390,15 +298,6 @@ export async function requireRole(
 // Audit Log Writer
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Writes an immutable audit log record to MongoDB.
- *
- * User name/email are copied into the audit log
- * at the time of creation.
- *
- * branchId/branchSlug are optional so existing call sites
- * (without branch info) keep working unchanged.
- */
 export async function writeAuditLog(
   userId: number | null,
   action: string,
@@ -412,22 +311,13 @@ export async function writeAuditLog(
   let userEmail: string | null = null;
 
   if (userId) {
-    const user =
-      await prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          name: true,
-          email: true,
-        },
-      });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
 
-    userName =
-      user?.name ?? null;
-
-    userEmail =
-      user?.email ?? null;
+    userName = user?.name ?? null;
+    userEmail = user?.email ?? null;
   }
 
   await AuditLog.create({
@@ -442,115 +332,51 @@ export async function writeAuditLog(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// API Error
+// API Error / Success
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Standard API error response.
- */
 export function apiError(
   message: string,
   status: number,
   extra?: Record<string, unknown>,
 ): NextResponse {
   return NextResponse.json(
-    {
-      success: false,
-      error: message,
-      ...extra,
-    },
-    {
-      status,
-    },
+    { success: false, error: message, ...extra },
+    { status },
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// API Success
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Standard API success response.
- */
 export function apiSuccess(
   data: Record<string, unknown>,
   status = 200,
 ): NextResponse {
-  return NextResponse.json(
-    {
-      success: true,
-      ...data,
-    },
-    {
-      status,
-    },
-  );
+  return NextResponse.json({ success: true, ...data }, { status });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Donor Eligibility
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Number of days a donor must wait after donating.
- */
 const DEFERRAL_DAYS = 120;
 
-/**
- * Calculates donor eligibility from the latest donation date.
- *
- * Rules:
- *
- * < 120 days
- *   → Not eligible
- *
- * >= 120 days
- *   → Eligible
- */
 export function eligibilityFromDonation(
   donationDate: Date,
 ): {
   isEligible: boolean;
   deferredUntil: Date | null;
 } {
-  // Clone date so the original Date object
-  // is never modified.
-  const deferredUntil =
-    new Date(donationDate);
+  const deferredUntil = new Date(donationDate);
+  deferredUntil.setHours(0, 0, 0, 0);
+  deferredUntil.setDate(deferredUntil.getDate() + DEFERRAL_DAYS);
 
-  // Ignore time-of-day.
-  deferredUntil.setHours(
-    0,
-    0,
-    0,
-    0,
-  );
-
-  // Add 120 days.
-  deferredUntil.setDate(
-    deferredUntil.getDate() +
-      DEFERRAL_DAYS,
-  );
-
-  // Today without time-of-day.
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  today.setHours(
-    0,
-    0,
-    0,
-    0,
-  );
-
-  const isEligible =
-    today >= deferredUntil;
+  const isEligible = today >= deferredUntil;
 
   return {
     isEligible,
-
-    deferredUntil: isEligible
-      ? null
-      : deferredUntil,
+    deferredUntil: isEligible ? null : deferredUntil,
   };
 }
 
@@ -558,32 +384,14 @@ export function eligibilityFromDonation(
 // Zod Validation Error
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Converts Zod validation errors
- * into a standardized API response.
- */
-export function validationError(
-  error: ZodError,
-): NextResponse {
-  const issues = error.issues.map(
-    (issue) => ({
-      field:
-        issue.path.length > 0
-          ? issue.path.join(".")
-          : "general",
-
-      message: issue.message,
-    }),
-  );
+export function validationError(error: ZodError): NextResponse {
+  const issues = error.issues.map((issue) => ({
+    field: issue.path.length > 0 ? issue.path.join(".") : "general",
+    message: issue.message,
+  }));
 
   return NextResponse.json(
-    {
-      success: false,
-      error: "Validation failed",
-      issues,
-    },
-    {
-      status: 400,
-    },
+    { success: false, error: "Validation failed", issues },
+    { status: 400 },
   );
 }
