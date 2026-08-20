@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Role } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { getBranchDb } from "@/lib/branch-db";
 import {
   withAuth,
   writeAuditLog,
@@ -22,6 +22,28 @@ const importBodySchema = z.object({
 
 export const POST = withAuth(
   async (req: NextRequest, session) => {
+    const branchId = session.branchId;
+
+    if (
+      typeof branchId !== "number" ||
+      !Number.isInteger(branchId) ||
+      branchId <= 0
+    ) {
+      return apiError(
+        "Your account is not associated with a valid branch",
+        403,
+      );
+    }
+
+    let branchDb;
+
+    try {
+      branchDb = await getBranchDb(branchId);
+    } catch (error) {
+      console.error(`Failed to connect to branch database: ${branchId}`, error);
+      return apiError("Could not connect to branch database", 503);
+    }
+
     let body: unknown;
     try {
       body = await req.json();
@@ -52,7 +74,7 @@ export const POST = withAuth(
 
     for (const row of rows) {
       const phoneNumbers = row.phone.map((p) => p.number);
-      const existing = await prisma.donor.findFirst({
+      const existing = await branchDb.donor.findFirst({
         where: {
           AND: [
             { isDeleted: false },
@@ -78,7 +100,7 @@ export const POST = withAuth(
       }
 
       const { phone: phoneData, ...donorData } = row;
-      await prisma.donor.create({
+      await branchDb.donor.create({
         data: {
           ...donorData,
           isEligible: true,
@@ -98,7 +120,7 @@ export const POST = withAuth(
     await writeAuditLog(
       session.userId,
       "Donor Bulk Import",
-      `Imported ${importedCount} donors; skipped ${ignoredOrUpdatedCount} duplicates from spreadsheet upload`,
+      `Imported ${importedCount} donors; skipped ${ignoredOrUpdatedCount} duplicates from spreadsheet upload — Branch ${branchId}`,
     );
 
     return apiSuccess({
