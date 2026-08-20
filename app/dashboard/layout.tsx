@@ -36,7 +36,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } | null = null;
 
   if (isSuperAdmin) {
-    const branches = await prisma.branch.findMany({
+    const branches = await centralPrisma.branch.findMany({
       where: { isActive: true },
       select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },
