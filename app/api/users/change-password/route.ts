@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withAuth, apiError, apiSuccess, writeAuditLog } from "@/lib/api-helpers";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/branch";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 
