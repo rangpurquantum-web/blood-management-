@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/db";
+import { centralPrisma } from "@/lib/central-db";
 import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 
 export async function POST(req: NextRequest) {
