@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/branch";
 import { DonorReportBuilder } from "@/features/reports/components/donor-report-builder";
 
 export const metadata: Metadata = {
