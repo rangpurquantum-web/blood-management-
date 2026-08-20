@@ -89,7 +89,7 @@ export const authConfig = {
           ? user.permissions
           : [];
 
-        token.isSuperAdmin = Boolean(user.isSuperAdmin);
+        token.isSuperAdmin = Boolean((user as { isSuperAdmin?: boolean }).isSuperAdmin);
       }
 
       return token;
