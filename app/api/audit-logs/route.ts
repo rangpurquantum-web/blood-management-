@@ -16,7 +16,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const userIdParam = searchParams.get("userId");
 
       const rawPage = Number(searchParams.get("page") ?? "1");
-      const rawPageSize = Number(searchParams.get("pageSize") ?? "50");
+      const rawPageSize = Number(
+        searchParams.get("pageSize") ?? "50",
+      );
 
       const page = Number.isFinite(rawPage)
         ? Math.max(1, Math.floor(rawPage))
