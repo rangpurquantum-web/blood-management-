@@ -194,7 +194,7 @@ export function BranchTable() {
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogHeader>
+        </AlertDialogContent>
       </AlertDialog>
     </>
   );
