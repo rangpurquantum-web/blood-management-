@@ -1,0 +1,1 @@
+export const ACTIVE_BRANCH_COOKIE = "activeBranchId";
