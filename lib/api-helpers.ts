@@ -297,11 +297,16 @@ export async function requireRole(
  *
  * User name/email are copied into the audit log
  * at the time of creation.
+ *
+ * branchId/branchSlug are optional so existing call sites
+ * (without branch info) keep working unchanged.
  */
 export async function writeAuditLog(
   userId: number | null,
   action: string,
   details: string,
+  branchId: number | null = null,
+  branchSlug: string | null = null,
 ): Promise<void> {
   await connectMongo();
 
@@ -331,6 +336,8 @@ export async function writeAuditLog(
     userId: userId ?? null,
     userName,
     userEmail,
+    branchId,
+    branchSlug,
     action,
     details,
   });
