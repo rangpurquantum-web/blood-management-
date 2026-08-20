@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/branch";
 import { FileUploader } from "@/features/import-export/components/file-uploader";
 
 export default async function ImportPage() {
