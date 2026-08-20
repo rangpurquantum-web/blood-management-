@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { donorKeys } from "@/features/donors/hooks";
 
-import type { DonationHistory } from "@prisma/client";
+import type { DonationHistory } from "@/generated/branch";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
