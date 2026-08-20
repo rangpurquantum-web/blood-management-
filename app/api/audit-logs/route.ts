@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/branch";
 
 import { connectMongo } from "@/lib/mongodb";
 import { AuditLog } from "@/lib/models/AuditLog";
