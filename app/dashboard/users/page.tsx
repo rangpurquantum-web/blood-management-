@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/branch";
 import { Shield } from "lucide-react";
 import { UserManagementView } from "@/features/users/components/user-management-view";
 
