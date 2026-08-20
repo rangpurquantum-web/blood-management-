@@ -20,15 +20,26 @@ export default function DebugTools() {
   }
 
   async function encryptUrl() {
-    setEncryptResult("Encrypting...");
+  setEncryptResult("Encrypting...");
+  try {
     const res = await fetch("/api/debug/encrypt-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: dbUrl }),
     });
-    const data = await res.json();
-    setEncryptResult(data.encrypted || JSON.stringify(data));
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      setEncryptResult(`Status ${res.status}, non-JSON response:\n${text.slice(0, 500)}`);
+      return;
+    }
+    setEncryptResult(data.encrypted || `Status ${res.status}: ${JSON.stringify(data)}`);
+  } catch (e: any) {
+    setEncryptResult("Fetch error: " + e.message);
   }
+}
 
   return (
     <div style={{ maxWidth: 500, margin: "40px auto", padding: 16, fontFamily: "sans-serif" }}>
