@@ -5,6 +5,9 @@ import { withAuth, apiError } from "@/lib/api-helpers";
 import { connectMongo } from "@/lib/mongodb";
 import { AuditLog } from "@/lib/models/AuditLog";
 
+// GET /api/audit-logs
+// Admin only
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   return withAuth(
     req,
