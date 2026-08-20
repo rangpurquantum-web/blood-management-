@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { Role } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { getBranchDb } from "@/lib/branch-db";
 import {
   withAuth,
   writeAuditLog,
@@ -19,6 +18,28 @@ export const PATCH = withAuth(
 
     if (isNaN(id)) return apiError("Invalid donor ID", 400);
 
+    const branchId = session.branchId;
+
+    if (
+      typeof branchId !== "number" ||
+      !Number.isInteger(branchId) ||
+      branchId <= 0
+    ) {
+      return apiError(
+        "Your account is not associated with a valid branch",
+        403,
+      );
+    }
+
+    let branchDb;
+
+    try {
+      branchDb = await getBranchDb(branchId);
+    } catch (error) {
+      console.error(`Failed to connect to branch database: ${branchId}`, error);
+      return apiError("Could not connect to branch database", 503);
+    }
+
     let body: unknown;
     try {
       body = await req.json();
@@ -30,13 +51,13 @@ export const PATCH = withAuth(
 
     if (!parsed.success) return validationError(parsed.error);
 
-    const donor = await prisma.donor.findFirst({ where: { id, isDeleted: false } });
+    const donor = await branchDb.donor.findFirst({ where: { id, isDeleted: false } });
 
     if (!donor) return apiError("Donor not found", 404);
 
     const { deferralReason, deferredUntil } = parsed.data;
 
-    const updated = await prisma.donor.update({
+    const updated = await branchDb.donor.update({
       where: { id },
       data: {
         isEligible: false,
@@ -48,7 +69,7 @@ export const PATCH = withAuth(
     await writeAuditLog(
       session.userId,
       "Donor Manually Deferred",
-      `Deferred donor: ${updated.fullName} until ${deferredUntil.toISOString()} — Reason: ${deferralReason}`,
+      `Deferred donor: ${updated.fullName} until ${deferredUntil.toISOString()} — Reason: ${deferralReason} — Branch ${branchId}`,
     );
 
     return apiSuccess({
