@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { Donor, DonationHistory, DonorPhone } from "@prisma/client";
+import type { Donor, DonationHistory, DonorPhone } from "@/generated/branch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
