@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { centralPrisma } from "@/lib/central-db";
 import { Role } from "@/generated/branch";
 import { connectMongo } from "@/lib/mongodb";
 import { AuditLog } from "@/lib/models/AuditLog";
@@ -80,10 +81,10 @@ async function resolveEffectiveBranch(
     };
   }
 
-  const branch = await prisma.branch.findUnique({
-    where: { id: effectiveBranchId },
-    select: { slug: true },
-  });
+  const branch = await centralPrisma.branch.findUnique({
+  where: { id: effectiveBranchId },
+  select: { slug: true },
+});
 
   if (!branch) {
     return {
