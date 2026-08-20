@@ -6,25 +6,23 @@ import { Role } from "@prisma/client";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type AuthenticatedUser = {
-  id: number;
-  email?: string | null;
-  name?: string | null;
-  role: Role;
-};
-
-export type ApiErrorResponse = {
-  error: string;
-  message?: string;
-};
-
-export type ApiSuccessResponse<T = unknown> = {
-  data: T;
+export type AuthSession = {
+  user?: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    role?: Role | string | null;
+  };
 };
 
 export type AuthOptions = {
   roles?: Role[];
 };
+
+export type ApiHandler = (
+  req: NextRequest,
+  session: AuthSession,
+) => Promise<NextResponse> | NextResponse;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API Error Helper
@@ -33,15 +31,14 @@ export type AuthOptions = {
 export function apiError(
   message: string,
   status: number = 500,
-): NextResponse<ApiErrorResponse> {
+  details?: unknown,
+): NextResponse {
   return NextResponse.json(
     {
       error: message,
-      message,
+      ...(details !== undefined ? { details } : {}),
     },
-    {
-      status,
-    },
+    { status },
   );
 }
 
@@ -52,58 +49,28 @@ export function apiError(
 export function apiSuccess<T>(
   data: T,
   status: number = 200,
-): NextResponse<ApiSuccessResponse<T>> {
+): NextResponse {
   return NextResponse.json(
     {
       data,
     },
-    {
-      status,
-    },
+    { status },
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Get Authenticated User
+// Authentication
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
+export async function getAuthSession(): Promise<AuthSession | null> {
   try {
     const session = await auth();
 
-    if (!session?.user) {
+    if (!session) {
       return null;
     }
 
-    const sessionUser = session.user as {
-      id?: string | number;
-      email?: string | null;
-      name?: string | null;
-      role?: Role | string | null;
-    };
-
-    if (sessionUser.id === undefined || sessionUser.id === null) {
-      return null;
-    }
-
-    const id = Number(sessionUser.id);
-
-    if (!Number.isInteger(id) || id <= 0) {
-      return null;
-    }
-
-    if (!sessionUser.role) {
-      return null;
-    }
-
-    const role = sessionUser.role as Role;
-
-    return {
-      id,
-      email: sessionUser.email ?? null,
-      name: sessionUser.name ?? null,
-      role,
-    };
+    return session as AuthSession;
   } catch (error) {
     console.error("Authentication error:", error);
     return null;
@@ -111,115 +78,127 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Require Authentication
+// Role Check
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function requireAuth(
-  options: AuthOptions = {},
-): Promise<
-  | {
-      user: AuthenticatedUser;
-      error: null;
-    }
-  | {
-      user: null;
-      error: NextResponse<ApiErrorResponse>;
-    }
-> {
-  const user = await getAuthenticatedUser();
+export function hasRequiredRole(
+  session: AuthSession,
+  roles?: Role[],
+): boolean {
+  if (!roles || roles.length === 0) {
+    return true;
+  }
 
-  if (!user) {
+  const userRole = session.user?.role;
+
+  if (!userRole) {
+    return false;
+  }
+
+  return roles.some(
+    (role) => String(role) === String(userRole),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Authentication Wrapper
+//
+// IMPORTANT:
+// This helper is intentionally NOT exported as a Next.js route handler.
+// Use it INSIDE the exported GET/POST/etc. function.
+//
+// Example:
+//
+// export async function GET(req: NextRequest) {
+//   return withAuth(req, async (req, session) => {
+//     ...
+//   }, { roles: [Role.ADMIN] });
+// }
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function withAuth(
+  req: NextRequest,
+  handler: ApiHandler,
+  options?: AuthOptions,
+): Promise<NextResponse> {
+  try {
+    const session = await getAuthSession();
+
+    if (!session?.user) {
+      return apiError("Unauthorized", 401);
+    }
+
+    if (!hasRequiredRole(session, options?.roles)) {
+      return apiError("Forbidden", 403);
+    }
+
+    return await handler(req, session);
+  } catch (error) {
+    console.error("API handler error:", error);
+
+    return apiError(
+      "Internal server error",
+      500,
+      process.env.NODE_ENV === "development"
+        ? error instanceof Error
+          ? error.message
+          : String(error)
+        : undefined,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Optional utility: require authentication
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function requireAuth(): Promise<
+  | { session: AuthSession; error: null }
+  | { session: null; error: NextResponse }
+> {
+  const session = await getAuthSession();
+
+  if (!session?.user) {
     return {
-      user: null,
+      session: null,
       error: apiError("Unauthorized", 401),
     };
   }
 
-  // If roles are specified, check role access.
-  if (options.roles && options.roles.length > 0) {
-    const allowed = options.roles.includes(user.role);
-
-    if (!allowed) {
-      return {
-        user: null,
-        error: apiError("Forbidden", 403),
-      };
-    }
-  }
-
   return {
-    user,
+    session,
     error: null,
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// withAuth
-//
-// IMPORTANT:
-// Do NOT use this as:
-//
-// export const GET = withAuth(...)
-//
-// withAuth is kept for compatibility with existing server-side code,
-// but Route Handlers should perform authentication inside GET/POST/etc.
-// ─────────────────────────────────────────────────────────────────────────────
-
-export type AuthenticatedHandler = (
-  req: NextRequest,
-  user: AuthenticatedUser,
-) => Promise<NextResponse>;
-
-export async function withAuth(
-  req: NextRequest,
-  handler: AuthenticatedHandler,
-  options: AuthOptions = {},
-): Promise<NextResponse> {
-  const result = await requireAuth(options);
-
-  if (result.error) {
-    return result.error;
-  }
-
-  return handler(req, result.user);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Require Role
+// Optional utility: require specific roles
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function requireRole(
   roles: Role[],
 ): Promise<
-  | {
-      user: AuthenticatedUser;
-      error: null;
-    }
-  | {
-      user: null;
-      error: NextResponse<ApiErrorResponse>;
-    }
+  | { session: AuthSession; error: null }
+  | { session: null; error: NextResponse }
 > {
-  return requireAuth({
-    roles,
-  });
-}
+  const session = await getAuthSession();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Convenience Admin Check
-// ─────────────────────────────────────────────────────────────────────────────
+  if (!session?.user) {
+    return {
+      session: null,
+      error: apiError("Unauthorized", 401),
+    };
+  }
 
-export async function requireAdmin(): Promise<
-  | {
-      user: AuthenticatedUser;
-      error: null;
-    }
-  | {
-      user: null;
-      error: NextResponse<ApiErrorResponse>;
-    }
-> {
-  return requireAuth({
-    roles: [Role.ADMIN],
-  });
+  if (!hasRequiredRole(session, roles)) {
+    return {
+      session: null,
+      error: apiError("Forbidden", 403),
+    };
+  }
+
+  return {
+    session,
+    error: null,
+  };
 }
