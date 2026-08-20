@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
-import { centralPrisma } from "@/lib/central-db";
-
-export const ACTIVE_BRANCH_COOKIE = "activeBranchId";
+import { prisma } from "@/lib/db";
+import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -16,13 +15,14 @@ export async function POST(req: NextRequest) {
   }
 
   const { branchId } = await req.json();
+  const numericBranchId = Number(branchId);
 
-  if (!branchId || typeof branchId !== "string") {
-    return NextResponse.json({ error: "branchId is required" }, { status: 400 });
+  if (!Number.isInteger(numericBranchId) || numericBranchId <= 0) {
+    return NextResponse.json({ error: "Valid branchId is required" }, { status: 400 });
   }
 
-  const branch = await centralPrisma.branch.findUnique({
-    where: { id: branchId },
+  const branch = await prisma.branch.findUnique({
+    where: { id: numericBranchId },
     select: { id: true, slug: true },
   });
 
@@ -31,12 +31,12 @@ export async function POST(req: NextRequest) {
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(ACTIVE_BRANCH_COOKIE, branch.id, {
+  cookieStore.set(ACTIVE_BRANCH_COOKIE, String(branch.id), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 দিন
+    maxAge: 60 * 60 * 24 * 7,
   });
 
   return NextResponse.json({ success: true, branchId: branch.id, branchSlug: branch.slug });
@@ -44,6 +44,6 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   const cookieStore = await cookies();
-  const branchId = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value ?? null;
-  return NextResponse.json({ branchId });
+  const raw = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value ?? null;
+  return NextResponse.json({ branchId: raw ? Number(raw) : null });
 }
