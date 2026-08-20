@@ -5,16 +5,6 @@ import { withAuth, apiError } from "@/lib/api-helpers";
 import { connectMongo } from "@/lib/mongodb";
 import { AuditLog } from "@/lib/models/AuditLog";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/audit-logs
-// Admin only
-//
-// Query parameters:
-// ?userId=123
-// ?page=1
-// ?pageSize=50
-// ─────────────────────────────────────────────────────────────────────────────
-
 export async function GET(req: NextRequest): Promise<NextResponse> {
   return withAuth(
     req,
@@ -23,16 +13,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
       const { searchParams } = new URL(request.url);
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Query parameters
-      // ───────────────────────────────────────────────────────────────────────
-
       const userIdParam = searchParams.get("userId");
 
       const rawPage = Number(searchParams.get("page") ?? "1");
-      const rawPageSize = Number(
-        searchParams.get("pageSize") ?? "50",
-      );
+      const rawPageSize = Number(searchParams.get("pageSize") ?? "50");
 
       const page = Number.isFinite(rawPage)
         ? Math.max(1, Math.floor(rawPage))
@@ -41,10 +25,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const pageSize = Number.isFinite(rawPageSize)
         ? Math.min(100, Math.max(1, Math.floor(rawPageSize)))
         : 50;
-
-      // ───────────────────────────────────────────────────────────────────────
-      // MongoDB filter
-      // ───────────────────────────────────────────────────────────────────────
 
       const filter: Record<string, unknown> = {};
 
@@ -58,10 +38,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         filter.userId = userId;
       }
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Fetch logs + total count
-      // ───────────────────────────────────────────────────────────────────────
-
       const [logs, total] = await Promise.all([
         AuditLog.find(filter)
           .sort({ timestamp: -1 })
@@ -72,10 +48,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         AuditLog.countDocuments(filter),
       ]);
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Format response
-      // ───────────────────────────────────────────────────────────────────────
-
       const formatted = logs.map((log) => ({
         id: String(log._id),
         userId: log.userId,
@@ -85,13 +57,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         timestamp: log.timestamp,
       }));
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Response
-      // ───────────────────────────────────────────────────────────────────────
-
       return NextResponse.json({
         data: formatted,
-
         meta: {
           total,
           page,
