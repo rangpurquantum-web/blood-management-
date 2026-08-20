@@ -1,12 +1,16 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
 import { Droplet } from "lucide-react";
 import { ProfileDropdown } from "@/components/layout/profile-dropdown";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { SignOutButton } from "@/components/layout/signout-button";
+import { BranchSwitcher } from "@/components/layout/branch-switcher";
 import { hasPermission } from "@/lib/permissions";
+import { ACTIVE_BRANCH_COOKIE } from "@/app/api/branches/switch/route";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -17,6 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const role = session.user.role as Role;
   const isAdmin = role === Role.ADMIN;
+  const isSuperAdmin = session.user.isSuperAdmin === true;
   const userName = session.user.name ?? "User";
   const userEmail = session.user.email ?? "";
 
@@ -24,6 +29,27 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const canImport = hasPermission(session.user, "donorAdd");
   const canReports = hasPermission(session.user, "reportsExport");
   const canUserMgmt = hasPermission(session.user, "userManagement");
+
+  let branchSwitcherProps: {
+    branches: { id: number; name: string; slug: string }[];
+    activeBranchId: number | null;
+  } | null = null;
+
+  if (isSuperAdmin) {
+    const branches = await prisma.branch.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: "asc" },
+    });
+
+    const cookieStore = await cookies();
+    const raw = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value ?? null;
+
+    branchSwitcherProps = {
+      branches,
+      activeBranchId: raw ? Number(raw) : null,
+    };
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -69,6 +95,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
         {/* Desktop Header */}
         <header className="hidden h-14 items-center justify-end border-b px-6 md:flex bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 gap-3">
+          {branchSwitcherProps && (
+            <BranchSwitcher
+              branches={branchSwitcherProps.branches}
+              activeBranchId={branchSwitcherProps.activeBranchId}
+            />
+          )}
           <ProfileDropdown
             name={userName}
             email={userEmail}
