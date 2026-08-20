@@ -3,8 +3,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 import fs from "fs";
 import path from "path";
-import { prisma } from "@/lib/db";
-import { withAuth } from "@/lib/api-helpers";
+import { getBranchDb } from "@/lib/branch-db";
+import { withAuth, apiError } from "@/lib/api-helpers";
 
 // Place the logo file here: public/assets/logo-watermark.png
 const LOGO_PATH = path.join(
@@ -16,7 +16,7 @@ const LOGO_PATH = path.join(
 
 // GET /api/donors/[id]/card
 export const GET = withAuth(
-  async (req: NextRequest, _session, params) => {
+  async (req: NextRequest, session, params) => {
     const id = Number(params?.id);
 
     if (Number.isNaN(id)) {
@@ -26,7 +26,29 @@ export const GET = withAuth(
       );
     }
 
-    const donor = await prisma.donor.findFirst({
+    const branchId = session.branchId;
+
+    if (
+      typeof branchId !== "number" ||
+      !Number.isInteger(branchId) ||
+      branchId <= 0
+    ) {
+      return apiError(
+        "Your account is not associated with a valid branch",
+        403,
+      );
+    }
+
+    let branchDb;
+
+    try {
+      branchDb = await getBranchDb(branchId);
+    } catch (error) {
+      console.error(`Failed to connect to branch database: ${branchId}`, error);
+      return apiError("Could not connect to branch database", 503);
+    }
+
+    const donor = await branchDb.donor.findFirst({
       where: {
         id,
         isDeleted: false,
