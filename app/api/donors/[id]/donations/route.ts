@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getBranchDb } from "@/lib/branch-db";
 import {
   withAuth,
   writeAuditLog,
@@ -10,20 +10,55 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// ─── Helper: validate branch + get branch DB ─────────────────────────────────
+
+async function getValidatedBranchDb(branchId: number | null) {
+  if (
+    typeof branchId !== "number" ||
+    !Number.isInteger(branchId) ||
+    branchId <= 0
+  ) {
+    return {
+      branchDb: null,
+      error: apiError(
+        "Your account is not associated with a valid branch",
+        403,
+      ),
+    };
+  }
+
+  try {
+    const branchDb = await getBranchDb(branchId);
+    return { branchDb, error: null };
+  } catch (error) {
+    console.error(`Failed to connect to branch database: ${branchId}`, error);
+    return {
+      branchDb: null,
+      error: apiError("Could not connect to branch database", 503),
+    };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/donors/[id]/donations
 // Get donation history for a donor
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const GET = withAuth(
-  async (_req: NextRequest, _session, params) => {
+  async (_req: NextRequest, session, params) => {
     const donorId = Number(params?.id);
 
     if (!Number.isInteger(donorId) || donorId <= 0) {
       return apiError("Invalid donor ID", 400);
     }
 
-    const donor = await prisma.donor.findFirst({
+    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
+
+    if (error) {
+      return error;
+    }
+
+    const donor = await branchDb!.donor.findFirst({
       where: {
         id: donorId,
         isDeleted: false,
@@ -41,7 +76,7 @@ export const GET = withAuth(
       return apiError("Donor not found", 404);
     }
 
-    const donations = await prisma.donationHistory.findMany({
+    const donations = await branchDb!.donationHistory.findMany({
       where: {
         donorId,
       },
@@ -71,6 +106,12 @@ export const POST = withAuth(
 
     if (!Number.isInteger(donorId) || donorId <= 0) {
       return apiError("Invalid donor ID", 400);
+    }
+
+    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
+
+    if (error) {
+      return error;
     }
 
     let body: unknown;
@@ -135,7 +176,7 @@ export const POST = withAuth(
 
     // ── Find donor ────────────────────────────────────────────────────────────
 
-    const donor = await prisma.donor.findFirst({
+    const donor = await branchDb!.donor.findFirst({
       where: {
         id: donorId,
         isDeleted: false,
@@ -166,7 +207,7 @@ export const POST = withAuth(
 
     // ── Transaction ──────────────────────────────────────────────────────────
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await branchDb!.$transaction(async (tx) => {
       const donation = await tx.donationHistory.create({
         data: {
           donorId,
@@ -207,7 +248,7 @@ export const POST = withAuth(
     await writeAuditLog(
       session.userId,
       "Donation Recorded",
-      `Recorded donation for donor: ${donor.fullName} (${donor.bloodType}) — Donor ID ${donor.id}, Donation ID ${result.donation.id}`,
+      `Recorded donation for donor: ${donor.fullName} (${donor.bloodType}) — Donor ID ${donor.id}, Donation ID ${result.donation.id} — Branch ${session.branchId}`,
     );
 
     return apiSuccess(
