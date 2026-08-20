@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/db";
+import { centralPrisma } from "@/lib/central-db";
 import { Role } from "@prisma/client";
 import { Droplet } from "lucide-react";
 import { ProfileDropdown } from "@/components/layout/profile-dropdown";
