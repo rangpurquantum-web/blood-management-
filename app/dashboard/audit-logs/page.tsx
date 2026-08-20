@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/branch";
 import { AuditLogTable } from "@/features/audit-logs/components/audit-log-table";
 
 export default async function AuditLogsPage() {
