@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
@@ -8,6 +9,7 @@ import {
   hasPermission,
   PermissionKey,
 } from "@/lib/permissions";
+import { ACTIVE_BRANCH_COOKIE } from "@/app/api/branches/switch/route";
 import type { ZodError } from "zod";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,6 +23,7 @@ export type RouteSession = {
   role: Role;
   branchId: number | null;
   branchSlug: string | null;
+  isSuperAdmin: boolean;
 };
 
 type RouteHandler = (
@@ -36,6 +39,67 @@ type RouteContext = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Effective Branch Resolver (SuperAdmin aware)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Resolves the branchId/branchSlug that should actually be used
+ * for this request.
+ *
+ * - Normal BranchUser: uses their own session branchId/branchSlug.
+ * - SuperAdmin: has no fixed branchId, so we read the branch they
+ *   selected via the branch-switcher, stored in a cookie.
+ */
+async function resolveEffectiveBranch(
+  isSuperAdmin: boolean,
+  sessionBranchId: number | null,
+  sessionBranchSlug: string | null,
+): Promise<
+  | { ok: true; branchId: number | null; branchSlug: string | null }
+  | { ok: false; error: NextResponse }
+> {
+  if (!isSuperAdmin) {
+    return {
+      ok: true,
+      branchId: sessionBranchId,
+      branchSlug: sessionBranchSlug,
+    };
+  }
+
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value ?? null;
+  const effectiveBranchId = raw ? Number(raw) : null;
+
+  if (!effectiveBranchId || !Number.isInteger(effectiveBranchId)) {
+    return {
+      ok: false,
+      error: apiError(
+        "No branch selected — please select a branch first",
+        400,
+      ),
+    };
+  }
+
+  const branch = await prisma.branch.findUnique({
+    where: { id: effectiveBranchId },
+    select: { slug: true },
+  });
+
+  if (!branch) {
+    return {
+      ok: false,
+      error: apiError("Selected branch no longer exists", 400),
+    };
+  }
+
+  return {
+    ok: true,
+    branchId: effectiveBranchId,
+    branchSlug: branch.slug,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Auth Guard
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -47,7 +111,7 @@ type RouteContext = {
  * 1. Login/session verification
  * 2. Role authorization
  * 3. Permission authorization
- * 4. Branch information
+ * 4. Branch information (including SuperAdmin branch-switcher)
  * 5. Next.js 15 dynamic route params
  *
  * Examples:
@@ -126,19 +190,35 @@ export function withAuth(
       const userRole =
         session.user.role as Role | undefined;
 
+      const isSuperAdmin =
+        session.user.isSuperAdmin === true;
+
       // ───────────────────────────────────────────────────────────────────────
-      // Branch Information
+      // Branch Information (SuperAdmin-aware)
       // ───────────────────────────────────────────────────────────────────────
 
-      const branchId =
+      const sessionBranchId =
         typeof session.user.branchId === "number"
           ? session.user.branchId
           : null;
 
-      const branchSlug =
+      const sessionBranchSlug =
         typeof session.user.branchSlug === "string"
           ? session.user.branchSlug
           : null;
+
+      const branchResult = await resolveEffectiveBranch(
+        isSuperAdmin,
+        sessionBranchId,
+        sessionBranchSlug,
+      );
+
+      if (!branchResult.ok) {
+        return branchResult.error;
+      }
+
+      const branchId = branchResult.branchId;
+      const branchSlug = branchResult.branchSlug;
 
       // ───────────────────────────────────────────────────────────────────────
       // Permission Check
@@ -209,6 +289,7 @@ export function withAuth(
             userRole ?? Role.VOLUNTEER,
           branchId,
           branchSlug,
+          isSuperAdmin,
         },
         params,
       );
@@ -267,22 +348,38 @@ export async function requireRole(
     };
   }
 
-  const branchId =
+  const isSuperAdmin = session.user.isSuperAdmin === true;
+
+  const sessionBranchId =
     typeof session.user.branchId === "number"
       ? session.user.branchId
       : null;
 
-  const branchSlug =
+  const sessionBranchSlug =
     typeof session.user.branchSlug === "string"
       ? session.user.branchSlug
       : null;
+
+  const branchResult = await resolveEffectiveBranch(
+    isSuperAdmin,
+    sessionBranchId,
+    sessionBranchSlug,
+  );
+
+  if (!branchResult.ok) {
+    return {
+      session: null,
+      error: branchResult.error,
+    };
+  }
 
   return {
     session: {
       userId,
       role: userRole,
-      branchId,
-      branchSlug,
+      branchId: branchResult.branchId,
+      branchSlug: branchResult.branchSlug,
+      isSuperAdmin,
     },
     error: null,
   };
