@@ -13,9 +13,9 @@ export const PATCH = withAuth(
     if (!session.branchId) return apiError("No branch selected", 400);
 
     const body = await req.json();
-    const { newPassword, role, name, email, permissions, isActive } = body ?? {};
+    const { newPassword, role, name, email, isActive } = body ?? {};
 
-    if (!newPassword && !role && !name && !email && !permissions && isActive === undefined) {
+    if (!newPassword && !role && !name && !email && isActive === undefined) {
       return apiError("At least one update field must be provided", 400);
     }
 
@@ -51,17 +51,7 @@ export const PATCH = withAuth(
       if (targetId === session.userId) {
         return apiError("Cannot change your own role", 400);
       }
-      updateData.role = role as "ADMIN" | "VOLUNTEER";
-    }
-
-    if (permissions) {
-      if (typeof permissions !== "object") {
-        return apiError("Invalid permissions format", 400);
-      }
-      if (targetId === session.userId && permissions.userManagement === false) {
-        return apiError("Cannot remove your own user management permission", 400);
-      }
-      updateData.permissions = permissions;
+      updateData.role = role;
     }
 
     if (isActive !== undefined) {
@@ -89,7 +79,9 @@ export const PATCH = withAuth(
   { permission: "userManagement" }
 );
 
-// ─── DELETE /api/users/[id]  (Admin only — soft delete) ──────────────────────
+// ─── DELETE /api/users/[id]  (Admin only — deactivate) ──────────────────────
+// Schema has no isDeleted/deletedAt field, so this deactivates the account
+// (isActive: false) rather than a true soft delete.
 export const DELETE = withAuth(
   async (_req: NextRequest, session, params) => {
     const targetId = Number(params?.id);
@@ -99,23 +91,19 @@ export const DELETE = withAuth(
     if (targetId === session.userId) return apiError("Cannot delete your own account", 400);
 
     const target = await centralPrisma.branchUser.findFirst({
-      where: { id: targetId, branchId: session.branchId, isDeleted: false },
+      where: { id: targetId, branchId: session.branchId },
     });
     if (!target) return apiError("User not found", 404);
 
     await centralPrisma.branchUser.update({
       where: { id: targetId },
-      data: {
-        isDeleted: true,
-        isActive: false,
-        deletedAt: new Date(),
-      },
+      data: { isActive: false },
     });
 
     await writeAuditLog(
       session.userId,
       "User Deleted",
-      `Admin (id=${session.userId}) soft-deleted user: ${target.email}`,
+      `Admin (id=${session.userId}) deactivated user: ${target.email}`,
       session.branchId,
       session.branchSlug,
     );
