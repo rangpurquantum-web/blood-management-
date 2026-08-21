@@ -1,3 +1,7 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Permission System
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type PermissionKey =
   | "donorView"
   | "donorAdd"
@@ -8,10 +12,26 @@ export type PermissionKey =
   | "reportsExport"
   | "userManagement";
 
-export type UserRole =
-  | "ADMIN"
-  | "COORDINATOR"
-  | "VOLUNTEER";
+export type UserRole = "ADMIN" | "COORDINATOR" | "VOLUNTEER";
+
+export const PERMISSION_LABELS: Record<PermissionKey, string> = {
+  donorView: "Donor View",
+  donorAdd: "Donor Add",
+  donorEdit: "Donor Edit",
+  donorDelete: "Donor Delete",
+  approveReject: "Approve / Reject Registration",
+  notesEdit: "Notes Edit",
+  reportsExport: "Reports Export & PDF",
+  userManagement: "User Management",
+};
+
+export const PERMISSION_KEYS = Object.keys(
+  PERMISSION_LABELS
+) as PermissionKey[];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Default permissions by role
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const DEFAULT_PERMISSIONS: Record<
   UserRole,
@@ -51,10 +71,15 @@ export const DEFAULT_PERMISSIONS: Record<
   },
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Check permission
+// Custom JSON permission overrides role default.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function hasPermission(
   user:
     | {
-        role?: string;
+        role?: string | null;
         permissions?: unknown;
       }
     | null
@@ -63,30 +88,69 @@ export function hasPermission(
 ): boolean {
   if (!user) return false;
 
-  const perms = user.permissions;
+  const role = normalizeRole(user.role);
 
-  // Custom permissions have priority
+  // ADMIN always has all permissions unless explicitly overridden
+  // by a custom permission object.
+  const customPermissions = user.permissions;
+
   if (
-    perms &&
-    typeof perms === "object" &&
-    !Array.isArray(perms)
+    customPermissions &&
+    typeof customPermissions === "object" &&
+    !Array.isArray(customPermissions)
   ) {
-    const custom = perms as Record<string, unknown>;
+    const custom = customPermissions as Record<string, unknown>;
 
     if (custom[permission] !== undefined) {
       return Boolean(custom[permission]);
     }
   }
 
-  // Role-based default permissions
-  const role: UserRole =
-    user.role === "ADMIN" ||
-    user.role === "COORDINATOR" ||
-    user.role === "VOLUNTEER"
-      ? user.role
-      : "VOLUNTEER";
+  return DEFAULT_PERMISSIONS[role][permission];
+}
 
-  return Boolean(
-    DEFAULT_PERMISSIONS[role][permission]
-  );
+// ─────────────────────────────────────────────────────────────────────────────
+// Normalize role safely
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function normalizeRole(role?: string | null): UserRole {
+  if (role === "ADMIN") return "ADMIN";
+  if (role === "COORDINATOR") return "COORDINATOR";
+  return "VOLUNTEER";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Get complete permissions for a user
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function getUserPermissions(
+  user:
+    | {
+        role?: string | null;
+        permissions?: unknown;
+      }
+    | null
+    | undefined
+): Record<PermissionKey, boolean> {
+  const role = normalizeRole(user?.role);
+
+  const result: Record<PermissionKey, boolean> = {
+    ...DEFAULT_PERMISSIONS[role],
+  };
+
+  if (
+    user?.permissions &&
+    typeof user.permissions === "object" &&
+    !Array.isArray(user.permissions)
+  ) {
+    const custom = user.permissions as Record<string, unknown>;
+
+    for (const key of PERMISSION_KEYS) {
+      if (custom[key] !== undefined) {
+        result[key] = Boolean(custom[key]);
+      }
+    }
+  }
+
+  return result;
 }
