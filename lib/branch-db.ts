@@ -25,12 +25,12 @@ if (process.env.NODE_ENV !== "production") {
 export async function getBranchDb(
   branchId: number,
 ): Promise<PrismaClient> {
-  // Already connected?
-  const existingClient = branchClients.get(branchId);
-
-  if (existingClient) {
-    return existingClient;
-  }
+  // TEMP DEBUG: cache bypass — always create a fresh client while debugging
+  // const existingClient = branchClients.get(branchId);
+  //
+  // if (existingClient) {
+  //   return existingClient;
+  // }
 
   // Find branch from CENTRAL database
   const branch = await centralPrisma.branch.findUnique({
@@ -59,6 +59,19 @@ export async function getBranchDb(
 
   // Decrypt the stored connection string before using it.
   const connectionUrl = decryptDatabaseUrl(branch.databaseUrlSecret);
+
+  // TEMP DEBUG: log which host/dbname this branch is actually resolving to
+  try {
+    const parsed = new URL(connectionUrl);
+    console.log(
+      "[DEBUG] branchId:", branchId,
+      "branchName:", branch.name,
+      "host:", parsed.hostname,
+      "dbname:", parsed.pathname,
+    );
+  } catch (e) {
+    console.log("[DEBUG] Failed to parse connection URL for branchId:", branchId);
+  }
 
   // Create Prisma Client using this branch's database URL.
   const client = new PrismaClient({
