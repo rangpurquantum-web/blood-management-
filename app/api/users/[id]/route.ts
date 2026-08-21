@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { centralPrisma } from "@/lib/central-db";
 import {
   withAuth,
@@ -10,21 +10,110 @@ import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
-// ─── PATCH /api/users/[id] ─────────────────────────────────────
-// Update user account
+// ─────────────────────────────────────────────────────────────────────────────
+// Permission Keys
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PERMISSION_KEYS = [
+  "donorView",
+  "donorAdd",
+  "donorEdit",
+  "donorDelete",
+  "approveReject",
+  "notesEdit",
+  "reportsExport",
+  "userManagement",
+] as const;
+
+type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+const VALID_ROLES = ["ADMIN", "VOLUNTEER"] as const;
+
+type ValidRole = (typeof VALID_ROLES)[number];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function isValidRole(role: unknown): role is ValidRole {
+  return (
+    typeof role === "string" &&
+    VALID_ROLES.includes(role as ValidRole)
+  );
+}
+
+function sanitizePermissions(
+  permissions: unknown
+): Record<PermissionKey, boolean> | null {
+  if (
+    typeof permissions !== "object" ||
+    permissions === null ||
+    Array.isArray(permissions)
+  ) {
+    return null;
+  }
+
+  const input = permissions as Record<string, unknown>;
+
+  const result = {} as Record<PermissionKey, boolean>;
+
+  for (const key of PERMISSION_KEYS) {
+    if (input[key] !== undefined) {
+      result[key] = Boolean(input[key]);
+    }
+  }
+
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/users/[id]
+// Admin only
+//
+// Supports:
+// - name
+// - email
+// - password
+// - role
+// - permissions
+// - isActive
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const PATCH = withAuth(
-  async (req: NextRequest, session, params) => {
+  async (
+    req: NextRequest,
+    session,
+    params
+  ) => {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Validate ID
+    // ─────────────────────────────────────────────────────────────────────────
+
     const targetId = Number(params?.id);
 
-    if (isNaN(targetId)) {
+    if (!Number.isInteger(targetId) || targetId <= 0) {
       return apiError("Invalid user id", 400);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Branch check
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (!session.branchId) {
       return apiError("No branch selected", 400);
     }
 
-    const body = await req.json();
+    // ─────────────────────────────────────────────────────────────────────────
+    // Parse request
+    // ─────────────────────────────────────────────────────────────────────────
+
+    let body: any;
+
+    try {
+      body = await req.json();
+    } catch {
+      return apiError("Invalid JSON body", 400);
+    }
 
     const {
       newPassword,
@@ -32,18 +121,20 @@ export const PATCH = withAuth(
       name,
       email,
       isActive,
+      permissions,
     } = body ?? {};
 
-    // ─────────────────────────────────────────────────────────
-    // Check whether at least one field is provided
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // At least one field required
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (
-      !newPassword &&
-      !role &&
-      !name &&
-      !email &&
-      isActive === undefined
+      newPassword === undefined &&
+      role === undefined &&
+      name === undefined &&
+      email === undefined &&
+      isActive === undefined &&
+      permissions === undefined
     ) {
       return apiError(
         "At least one update field must be provided",
@@ -51,9 +142,9 @@ export const PATCH = withAuth(
       );
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Find target user in the current branch
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Find target user inside current branch
+    // ─────────────────────────────────────────────────────────────────────────
 
     const target = await centralPrisma.branchUser.findFirst({
       where: {
@@ -66,58 +157,75 @@ export const PATCH = withAuth(
       return apiError("User not found", 404);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Prepare update data
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Prepare update
+    // ─────────────────────────────────────────────────────────────────────────
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: any = {};
 
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     // Name
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (name !== undefined) {
-      const normalizedName = String(name).trim();
-
-      if (!normalizedName) {
-        return apiError("Name cannot be empty", 400);
+      if (
+        typeof name !== "string" ||
+        !name.trim()
+      ) {
+        return apiError("Name is required", 400);
       }
 
-      updateData.name = normalizedName;
+      updateData.name = name.trim();
     }
 
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     // Email
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (email !== undefined) {
-      const normalizedEmail = String(email)
+      if (
+        typeof email !== "string" ||
+        !email.trim()
+      ) {
+        return apiError("Email is required", 400);
+      }
+
+      const normalizedEmail = email
         .trim()
         .toLowerCase();
 
-      if (!normalizedEmail) {
-        return apiError("Email cannot be empty", 400);
+      // Basic email validation
+      const emailRegex =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(normalizedEmail)) {
+        return apiError("Invalid email address", 400);
       }
 
-      const existing = await centralPrisma.branchUser.findFirst({
-        where: {
-          email: normalizedEmail,
-          id: {
-            not: targetId,
+      // Check duplicate email
+      const existing =
+        await centralPrisma.branchUser.findFirst({
+          where: {
+            email: normalizedEmail,
+            id: {
+              not: targetId,
+            },
           },
-        },
-      });
+        });
 
       if (existing) {
-        return apiError("Email already in use", 409);
+        return apiError(
+          "Email already in use",
+          409
+        );
       }
 
       updateData.email = normalizedEmail;
     }
 
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     // Password
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (newPassword !== undefined) {
       if (
@@ -130,37 +238,23 @@ export const PATCH = withAuth(
         );
       }
 
-      updateData.passwordHash = await bcrypt.hash(
-        newPassword,
-        12
-      );
+      updateData.passwordHash =
+        await bcrypt.hash(newPassword, 12);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // ROLE
-    //
-    // Supported roles:
-    // ADMIN
-    // COORDINATOR
-    // VOLUNTEER
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Role
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (role !== undefined) {
-      const allowedRoles = [
-        "ADMIN",
-        "COORDINATOR",
-        "VOLUNTEER",
-      ];
-
-      const normalizedRole = String(role)
-        .trim()
-        .toUpperCase();
-
-      if (!allowedRoles.includes(normalizedRole)) {
-        return apiError("Invalid role", 400);
+      if (!isValidRole(role)) {
+        return apiError(
+          "Invalid role. Allowed roles: ADMIN, VOLUNTEER",
+          400
+        );
       }
 
-      // Cannot change your own role
+      // Prevent changing own role
       if (targetId === session.userId) {
         return apiError(
           "Cannot change your own role",
@@ -168,28 +262,58 @@ export const PATCH = withAuth(
         );
       }
 
-      updateData.role = normalizedRole;
+      updateData.role = role;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Active / Freeze
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Permissions
+    // ─────────────────────────────────────────────────────────────────────────
+
+    if (permissions !== undefined) {
+      const cleanPermissions =
+        sanitizePermissions(permissions);
+
+      if (!cleanPermissions) {
+        return apiError(
+          "Invalid permissions format",
+          400
+        );
+      }
+
+      updateData.permissions =
+        cleanPermissions;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Active / Frozen
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (isActive !== undefined) {
-      // Cannot freeze yourself
-      if (targetId === session.userId) {
+      if (
+        typeof isActive !== "boolean"
+      ) {
+        return apiError(
+          "isActive must be boolean",
+          400
+        );
+      }
+
+      // Prevent freezing own account
+      if (
+        targetId === session.userId
+      ) {
         return apiError(
           "Cannot freeze your own account",
           400
         );
       }
 
-      updateData.isActive = Boolean(isActive);
+      updateData.isActive = isActive;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Update user
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Update database
+    // ─────────────────────────────────────────────────────────────────────────
 
     const updatedUser =
       await centralPrisma.branchUser.update({
@@ -197,33 +321,41 @@ export const PATCH = withAuth(
           id: targetId,
         },
         data: updateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          permissions: true,
+          isActive: true,
+          createdAt: true,
+        },
       });
 
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     // Audit log
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const changedFields =
+      Object.keys(updateData);
 
     await writeAuditLog(
       session.userId,
       "User Updated",
-      `Admin (id=${session.userId}) updated user account: ${target.email}`,
+      `Admin (id=${session.userId}) updated user account: ${target.email}. Fields: ${changedFields.join(
+        ", "
+      )}`,
       session.branchId,
       session.branchSlug
     );
 
-    // ─────────────────────────────────────────────────────────
-    // Success
-    // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Response
+    // ─────────────────────────────────────────────────────────────────────────
 
     return apiSuccess({
       message: "User updated successfully",
-      user: {
-        id: updatedUser.id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        isActive: updatedUser.isActive,
-      },
+      user: updatedUser,
     });
   },
   {
@@ -231,21 +363,42 @@ export const PATCH = withAuth(
   }
 );
 
-// ─── DELETE /api/users/[id] ────────────────────────────────────
-// Deactivate user account
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/users/[id]
+// Admin only
+//
+// This is a SOFT DELETE through isActive=false.
+// Your current schema doesn't have isDeleted/deletedAt for BranchUser.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const DELETE = withAuth(
-  async (_req: NextRequest, session, params) => {
+  async (
+    _req: NextRequest,
+    session,
+    params
+  ) => {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Validate ID
+    // ─────────────────────────────────────────────────────────────────────────
+
     const targetId = Number(params?.id);
 
-    if (isNaN(targetId)) {
+    if (!Number.isInteger(targetId) || targetId <= 0) {
       return apiError("Invalid user id", 400);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Branch check
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (!session.branchId) {
       return apiError("No branch selected", 400);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
     // Cannot delete yourself
+    // ─────────────────────────────────────────────────────────────────────────
+
     if (targetId === session.userId) {
       return apiError(
         "Cannot delete your own account",
@@ -253,19 +406,29 @@ export const DELETE = withAuth(
       );
     }
 
-    // Find target user
-    const target = await centralPrisma.branchUser.findFirst({
-      where: {
-        id: targetId,
-        branchId: session.branchId,
-      },
-    });
+    // ─────────────────────────────────────────────────────────────────────────
+    // Find target
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const target =
+      await centralPrisma.branchUser.findFirst({
+        where: {
+          id: targetId,
+          branchId: session.branchId,
+        },
+      });
 
     if (!target) {
-      return apiError("User not found", 404);
+      return apiError(
+        "User not found",
+        404
+      );
     }
 
-    // Deactivate account
+    // ─────────────────────────────────────────────────────────────────────────
+    // Soft delete = deactivate
+    // ─────────────────────────────────────────────────────────────────────────
+
     await centralPrisma.branchUser.update({
       where: {
         id: targetId,
@@ -275,7 +438,10 @@ export const DELETE = withAuth(
       },
     });
 
+    // ─────────────────────────────────────────────────────────────────────────
     // Audit log
+    // ─────────────────────────────────────────────────────────────────────────
+
     await writeAuditLog(
       session.userId,
       "User Deleted",
