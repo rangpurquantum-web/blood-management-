@@ -6,8 +6,8 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { donorSchema, DonorInput } from "@/features/donors/schemas";
-import { usePublicRegisterDonor } from "@/features/donors/hooks";
+import { registerSchema, RegisterInput } from "@/features/donors/schemas";
+import { usePublicRegisterDonor, usePublicBranches } from "@/features/donors/hooks";
 import { BLOOD_TYPES } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,12 @@ export default function PublicRegisterPage() {
   const [serverError, setServerError] = useState<string | null>(null);
 
   const publicRegister = usePublicRegisterDonor();
+  const { data: branches, isLoading: branchesLoading } = usePublicBranches();
 
   const form = useForm<any>({
-    resolver: zodResolver(donorSchema),
+    resolver: zodResolver(registerSchema),
     defaultValues: {
+      branchId: "",
       fullName: "",
       dob: "",
       gender: "Male",
@@ -55,7 +57,7 @@ export default function PublicRegisterPage() {
     });
   };
 
-  const onSubmit = (values: DonorInput) => {
+  const onSubmit = (values: RegisterInput) => {
     setServerError(null);
     publicRegister.mutate(values, {
       onSuccess: () => {
@@ -139,6 +141,33 @@ export default function PublicRegisterPage() {
                 )}
 
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  {/* Branch Selection */}
+                  <div className="grid gap-2">
+                    <Label className="font-semibold">
+                      Branch / Area <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      disabled={branchesLoading}
+                      onValueChange={(val) => form.setValue("branchId", val)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={branchesLoading ? "Loading branches..." : "Select your branch"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branches?.map((b) => (
+                          <SelectItem key={b.id} value={String(b.id)}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.branchId && (
+                      <span className="text-xs text-destructive">{errors.branchId.message}</span>
+                    )}
+                  </div>
+
                   {/* Full Name */}
                   <div className="grid gap-2">
                     <Label htmlFor="fullName" className="font-semibold">
