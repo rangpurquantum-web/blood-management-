@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users,
   Plus,
   Loader2,
   Eye,
   EyeOff,
+  Shield,
   Edit,
   Trash2,
   KeyRound,
@@ -50,19 +51,20 @@ import {
 import {
   DEFAULT_PERMISSIONS,
   PermissionKey,
+  UserRole,
   hasPermission,
 } from "@/lib/permissions";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type UserRole = "ADMIN" | "COORDINATOR" | "VOLUNTEER";
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface SystemUser {
   id: number;
   name: string;
   email: string;
   role: UserRole;
-  permissions: any;
+  permissions: Record<string, boolean> | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -81,9 +83,11 @@ const PERMISSION_LABELS: Record<PermissionKey, string> = {
 const PERMISSION_KEYS =
   Object.keys(PERMISSION_LABELS) as PermissionKey[];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Role Badge
+// ─────────────────────────────────────────────────────────────────────────────
 
-function RoleBadge({ role }: { role: string }) {
+function RoleBadge({ role }: { role: UserRole }) {
   if (role === "ADMIN") {
     return (
       <Badge className="bg-red-50 text-red-700 border border-red-200 font-semibold text-xs">
@@ -107,21 +111,9 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-// Coordinator-এর জন্য আলাদা default permissions এখনো permissions.ts-এ না থাকলে
-// Volunteer-এর default permissions ব্যবহার করবে।
-function getDefaultPermissions(role: UserRole) {
-  if (role === "ADMIN") {
-    return DEFAULT_PERMISSIONS.ADMIN;
-  }
-
-  if (role === "COORDINATOR") {
-    return DEFAULT_PERMISSIONS.VOLUNTEER;
-  }
-
-  return DEFAULT_PERMISSIONS.VOLUNTEER;
-}
-
-// ─── Create User Modal ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Create User Modal
+// ─────────────────────────────────────────────────────────────────────────────
 
 function CreateUserModal({
   open,
@@ -144,32 +136,44 @@ function CreateUserModal({
     role: "VOLUNTEER",
   });
 
-  const [perms, setPerms] = useState<Record<PermissionKey, boolean>>(
-    DEFAULT_PERMISSIONS.VOLUNTEER
-  );
+  const [perms, setPerms] = useState<
+    Record<PermissionKey, boolean>
+  >(DEFAULT_PERMISSIONS.VOLUNTEER);
 
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // ─────────────────────────────────────────────────────────────
-  // Role change
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
+  // Role Change
+  // ───────────────────────────────────────────────────────────────────────────
 
   const handleRoleChange = (selectedRole: UserRole) => {
-    setForm((p) => ({
-      ...p,
+    setForm((prev) => ({
+      ...prev,
       role: selectedRole,
     }));
 
-    setPerms(getDefaultPermissions(selectedRole));
+    setPerms({
+      ...DEFAULT_PERMISSIONS[selectedRole],
+    });
   };
 
-  const handleCheckboxChange = (key: PermissionKey) => {
-    setPerms((p) => ({
-      ...p,
-      [key]: !p[key],
+  // ───────────────────────────────────────────────────────────────────────────
+  // Permission Checkbox
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const handleCheckboxChange = (
+    key: PermissionKey
+  ) => {
+    setPerms((prev) => ({
+      ...prev,
+      [key]: !prev[key],
     }));
   };
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Reset
+  // ───────────────────────────────────────────────────────────────────────────
 
   const reset = () => {
     setForm({
@@ -179,18 +183,32 @@ function CreateUserModal({
       role: "VOLUNTEER",
     });
 
-    setPerms(DEFAULT_PERMISSIONS.VOLUNTEER);
+    setPerms({
+      ...DEFAULT_PERMISSIONS.VOLUNTEER,
+    });
+
     setShow(false);
   };
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Create
+  // ───────────────────────────────────────────────────────────────────────────
+
   const handleCreate = async () => {
-    if (!form.name.trim() || !form.email.trim()) {
-      toast.error("Name and email are required");
+    if (!form.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
+    if (!form.email.trim()) {
+      toast.error("Email is required");
       return;
     }
 
     if (form.password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error(
+        "Password must be at least 8 characters"
+      );
       return;
     }
 
@@ -203,15 +221,22 @@ function CreateUserModal({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...form,
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+          role: form.role,
           permissions: perms,
         }),
       });
 
-      const json = await res.json();
+      const json = await res
+        .json()
+        .catch(() => ({}));
 
       if (!res.ok) {
-        toast.error(json?.error ?? "Failed to create user");
+        toast.error(
+          json?.error ?? "Failed to create user"
+        );
         return;
       }
 
@@ -220,6 +245,7 @@ function CreateUserModal({
       );
 
       reset();
+
       onCreated();
       onClose();
     } catch {
@@ -232,8 +258,8 @@ function CreateUserModal({
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => {
-        if (!o) {
+      onOpenChange={(value) => {
+        if (!value) {
           reset();
           onClose();
         }
@@ -247,11 +273,12 @@ function CreateUserModal({
           </DialogTitle>
 
           <DialogDescription>
-            Add a new account with custom permissions.
+            Add a new account with role and custom permissions.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Name + Email */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="cu-name">
@@ -263,8 +290,8 @@ function CreateUserModal({
                 placeholder="e.g. Rahim Uddin"
                 value={form.name}
                 onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
+                  setForm((prev) => ({
+                    ...prev,
                     name: e.target.value,
                   }))
                 }
@@ -280,11 +307,11 @@ function CreateUserModal({
               <Input
                 id="cu-email"
                 type="email"
-                placeholder="staff@bloodbank.org"
+                placeholder="staff@qblood.org"
                 value={form.email}
                 onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
+                  setForm((prev) => ({
+                    ...prev,
                     email: e.target.value,
                   }))
                 }
@@ -293,6 +320,7 @@ function CreateUserModal({
             </div>
           </div>
 
+          {/* Password + Role */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="cu-password">
@@ -302,12 +330,14 @@ function CreateUserModal({
               <div className="relative">
                 <Input
                   id="cu-password"
-                  type={show ? "text" : "password"}
+                  type={
+                    show ? "text" : "password"
+                  }
                   placeholder="Min 8 characters"
                   value={form.password}
                   onChange={(e) =>
-                    setForm((p) => ({
-                      ...p,
+                    setForm((prev) => ({
+                      ...prev,
                       password: e.target.value,
                     }))
                   }
@@ -317,7 +347,9 @@ function CreateUserModal({
 
                 <button
                   type="button"
-                  onClick={() => setShow((s) => !s)}
+                  onClick={() =>
+                    setShow((prev) => !prev)
+                  }
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
                 >
                   {show ? (
@@ -336,8 +368,10 @@ function CreateUserModal({
 
               <Select
                 value={form.role}
-                onValueChange={(v) =>
-                  handleRoleChange(v as UserRole)
+                onValueChange={(value) =>
+                  handleRoleChange(
+                    value as UserRole
+                  )
                 }
                 disabled={loading}
               >
@@ -346,23 +380,23 @@ function CreateUserModal({
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="ADMIN">
-                    Admin
+                  <SelectItem value="VOLUNTEER">
+                    Volunteer
                   </SelectItem>
 
                   <SelectItem value="COORDINATOR">
                     Coordinator
                   </SelectItem>
 
-                  <SelectItem value="VOLUNTEER">
-                    Volunteer
+                  <SelectItem value="ADMIN">
+                    Admin
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Custom Permissions */}
+          {/* Permissions */}
           <div className="space-y-2 border-t pt-3 mt-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Custom Permissions
@@ -376,7 +410,7 @@ function CreateUserModal({
                 >
                   <input
                     type="checkbox"
-                    checked={perms[key]}
+                    checked={Boolean(perms[key])}
                     onChange={() =>
                       handleCheckboxChange(key)
                     }
@@ -419,7 +453,9 @@ function CreateUserModal({
   );
 }
 
-// ─── Edit User Modal ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Edit User Modal
+// ─────────────────────────────────────────────────────────────────────────────
 
 function EditUserModal({
   user,
@@ -436,22 +472,21 @@ function EditUserModal({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-
   const [role, setRole] =
     useState<UserRole>("VOLUNTEER");
 
-  const [perms, setPerms] =
-    useState<Record<PermissionKey, boolean>>(
-      DEFAULT_PERMISSIONS.VOLUNTEER
-    );
+  const [perms, setPerms] = useState<
+    Record<PermissionKey, boolean>
+  >(DEFAULT_PERMISSIONS.VOLUNTEER);
 
   const [loading, setLoading] = useState(false);
 
-  const isSelf = user?.id === currentUserId;
+  const isSelf =
+    user?.id === currentUserId;
 
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
   // Load user data
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!user) return;
@@ -461,45 +496,49 @@ function EditUserModal({
     setRole(user.role);
 
     const initialPerms = {
-      ...getDefaultPermissions(user.role),
+      ...DEFAULT_PERMISSIONS[user.role],
     };
 
     if (
       user.permissions &&
-      typeof user.permissions === "object"
+      typeof user.permissions === "object" &&
+      !Array.isArray(user.permissions)
     ) {
-      Object.keys(initialPerms).forEach((k) => {
-        const key = k as PermissionKey;
-
+      for (const key of PERMISSION_KEYS) {
         if (
           user.permissions[key] !== undefined
         ) {
           initialPerms[key] =
-            !!user.permissions[key];
+            Boolean(user.permissions[key]);
         }
-      });
+      }
     }
 
     setPerms(initialPerms);
   }, [user]);
 
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
   // Role change
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
 
   const handleRoleChange = (
     selectedRole: UserRole
   ) => {
     setRole(selectedRole);
 
-    setPerms(
-      getDefaultPermissions(selectedRole)
-    );
+    setPerms({
+      ...DEFAULT_PERMISSIONS[selectedRole],
+    });
   };
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Permission change
+  // ───────────────────────────────────────────────────────────────────────────
 
   const handleCheckboxChange = (
     key: PermissionKey
   ) => {
+    // User cannot remove own userManagement permission
     if (
       isSelf &&
       key === "userManagement"
@@ -507,36 +546,42 @@ function EditUserModal({
       return;
     }
 
-    setPerms((p) => ({
-      ...p,
-      [key]: !p[key],
+    setPerms((prev) => ({
+      ...prev,
+      [key]: !prev[key],
     }));
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // Update user
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
+  // Update
+  // ───────────────────────────────────────────────────────────────────────────
 
   const handleUpdate = async () => {
     if (!user) return;
 
-    if (!name.trim() || !email.trim()) {
-      toast.error(
-        "Name and email are required"
-      );
+    if (!name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
+    if (!email.trim()) {
+      toast.error("Email is required");
       return;
     }
 
     setLoading(true);
 
     try {
-      const body: Record<string, unknown> = {
+      const body: Record<
+        string,
+        unknown
+      > = {
         name: name.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         permissions: perms,
       };
 
-      // Don't send role when editing yourself
+      // Never send own role
       if (!isSelf) {
         body.role = role;
       }
@@ -546,13 +591,16 @@ function EditUserModal({
         {
           method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify(body),
         }
       );
 
-      const json = await res.json();
+      const json = await res
+        .json()
+        .catch(() => ({}));
 
       if (!res.ok) {
         toast.error(
@@ -578,8 +626,10 @@ function EditUserModal({
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose();
+      onOpenChange={(value) => {
+        if (!value) {
+          onClose();
+        }
       }}
     >
       <DialogContent className="sm:max-w-xl">
@@ -590,11 +640,12 @@ function EditUserModal({
           </DialogTitle>
 
           <DialogDescription>
-            Modify profile info and adjust custom permission checkmarks.
+            Modify profile information, role and permissions.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Name + Email */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="eu-name">
@@ -636,8 +687,10 @@ function EditUserModal({
 
             <Select
               value={role}
-              onValueChange={(v) =>
-                handleRoleChange(v as UserRole)
+              onValueChange={(value) =>
+                handleRoleChange(
+                  value as UserRole
+                )
               }
               disabled={
                 loading || isSelf
@@ -648,68 +701,76 @@ function EditUserModal({
               </SelectTrigger>
 
               <SelectContent>
-                <SelectItem value="ADMIN">
-                  Admin
+                <SelectItem value="VOLUNTEER">
+                  Volunteer
                 </SelectItem>
 
                 <SelectItem value="COORDINATOR">
                   Coordinator
                 </SelectItem>
 
-                <SelectItem value="VOLUNTEER">
-                  Volunteer
+                <SelectItem value="ADMIN">
+                  Admin
                 </SelectItem>
               </SelectContent>
             </Select>
 
             {isSelf && (
               <p className="text-[10px] text-muted-foreground">
-                Self-demotion prevention: You cannot change your own role
+                You cannot change your own role.
               </p>
             )}
           </div>
 
-          {/* Custom Permissions */}
+          {/* Permissions */}
           <div className="space-y-2 border-t pt-3 mt-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Custom Permissions
             </p>
 
             <div className="grid grid-cols-2 gap-2.5">
-              {PERMISSION_KEYS.map((key) => {
-                const disabled =
-                  loading ||
-                  (isSelf &&
-                    key ===
-                      "userManagement");
+              {PERMISSION_KEYS.map(
+                (key) => {
+                  const disabled =
+                    loading ||
+                    (isSelf &&
+                      key ===
+                        "userManagement");
 
-                return (
-                  <label
-                    key={key}
-                    className={`flex items-center gap-2 text-sm select-none py-1 px-2 rounded-md transition-colors ${
-                      disabled
-                        ? "opacity-60 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-muted/30"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={perms[key]}
-                      onChange={() =>
-                        handleCheckboxChange(
-                          key
-                        )
-                      }
-                      disabled={disabled}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
+                  return (
+                    <label
+                      key={key}
+                      className={`flex items-center gap-2 text-sm select-none py-1 px-2 rounded-md transition-colors ${
+                        disabled
+                          ? "opacity-60 cursor-not-allowed"
+                          : "cursor-pointer hover:bg-muted/30"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(
+                          perms[key]
+                        )}
+                        onChange={() =>
+                          handleCheckboxChange(
+                            key
+                          )
+                        }
+                        disabled={disabled}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
 
-                    <span>
-                      {PERMISSION_LABELS[key]}
-                    </span>
-                  </label>
-                );
-              })}
+                      <span>
+                        {
+                          PERMISSION_LABELS[
+                            key
+                          ]
+                        }
+                      </span>
+                    </label>
+                  );
+                }
+              )}
             </div>
           </div>
         </div>
@@ -740,7 +801,9 @@ function EditUserModal({
   );
 }
 
-// ─── Reset Password Modal ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Reset Password Modal
+// ─────────────────────────────────────────────────────────────────────────────
 
 function ResetPasswordModal({
   user,
@@ -761,7 +824,9 @@ function ResetPasswordModal({
     useState(false);
 
   const handleReset = async () => {
-    if (!user || password.length < 8) {
+    if (!user) return;
+
+    if (password.length < 8) {
       toast.error(
         "Password must be at least 8 characters"
       );
@@ -776,7 +841,8 @@ function ResetPasswordModal({
         {
           method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             newPassword: password,
@@ -784,11 +850,14 @@ function ResetPasswordModal({
         }
       );
 
-      const json = await res.json();
+      const json = await res
+        .json()
+        .catch(() => ({}));
 
       if (!res.ok) {
         toast.error(
-          json?.error ?? "Failed"
+          json?.error ??
+            "Failed to reset password"
         );
         return;
       }
@@ -798,6 +867,7 @@ function ResetPasswordModal({
       );
 
       setPassword("");
+      setShow(false);
       onClose();
     } catch {
       toast.error("Unexpected error");
@@ -809,9 +879,10 @@ function ResetPasswordModal({
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => {
-        if (!o) {
+      onOpenChange={(value) => {
+        if (!value) {
           setPassword("");
+          setShow(false);
           onClose();
         }
       }}
@@ -824,7 +895,7 @@ function ResetPasswordModal({
           </DialogTitle>
 
           <DialogDescription>
-            Force set a new password for{" "}
+            Set a new password for{" "}
             <span className="font-semibold">
               {user?.email}
             </span>
@@ -845,7 +916,9 @@ function ResetPasswordModal({
               }
               value={password}
               onChange={(e) =>
-                setPassword(e.target.value)
+                setPassword(
+                  e.target.value
+                )
               }
               placeholder="Min 8 characters"
               className="pr-10"
@@ -855,7 +928,7 @@ function ResetPasswordModal({
             <button
               type="button"
               onClick={() =>
-                setShow((s) => !s)
+                setShow((prev) => !prev)
               }
               className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
             >
@@ -897,7 +970,9 @@ function ResetPasswordModal({
   );
 }
 
-// ─── Main Panel ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Main User Management View
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function UserManagementView({
   currentUserId,
@@ -915,9 +990,9 @@ export function UserManagementView({
   const [resetTarget, setResetTarget] =
     useState<SystemUser | null>(null);
 
-  // ─────────────────────────────────────────────────────────────
-  // Load users
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
+  // Users Query
+  // ───────────────────────────────────────────────────────────────────────────
 
   const {
     data,
@@ -932,66 +1007,73 @@ export function UserManagementView({
 
     queryFn: async () => {
       const res = await fetch(
-        "/api/users"
+        "/api/users",
+        {
+          cache: "no-store",
+        }
       );
 
-      if (!res.ok) {
-        const j =
-          await res
-            .json()
-            .catch(() => ({}));
+      const json = await res
+        .json()
+        .catch(() => ({}));
 
+      if (!res.ok) {
         throw new Error(
-          j.error ||
+          json?.error ??
             "Failed to load users"
         );
       }
 
-      return res.json();
+      return json;
     },
   });
 
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
   // Delete
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(
-        `/api/users/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!res.ok) {
-        const j =
-          await res.json();
-
-        throw new Error(
-          j?.error ??
-            "Delete failed"
+  const deleteMutation =
+    useMutation({
+      mutationFn: async (
+        id: number
+      ) => {
+        const res = await fetch(
+          `/api/users/${id}`,
+          {
+            method: "DELETE",
+          }
         );
-      }
-    },
 
-    onSuccess: () => {
-      toast.success(
-        "User deleted successfully"
-      );
+        const json = await res
+          .json()
+          .catch(() => ({}));
 
-      qc.invalidateQueries({
-        queryKey: ["system-users"],
-      });
-    },
+        if (!res.ok) {
+          throw new Error(
+            json?.error ??
+              "Delete failed"
+          );
+        }
+      },
 
-    onError: (err: Error) =>
-      toast.error(err.message),
-  });
+      onSuccess: () => {
+        toast.success(
+          "User deleted successfully"
+        );
 
-  // ─────────────────────────────────────────────────────────────
+        qc.invalidateQueries({
+          queryKey: ["system-users"],
+        });
+      },
+
+      onError: (err: Error) => {
+        toast.error(err.message);
+      },
+    });
+
+  // ───────────────────────────────────────────────────────────────────────────
   // Freeze / Unfreeze
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
 
   const freezeMutation =
     useMutation({
@@ -1016,13 +1098,14 @@ export function UserManagementView({
           }
         );
 
-        if (!res.ok) {
-          const j =
-            await res.json();
+        const json = await res
+          .json()
+          .catch(() => ({}));
 
+        if (!res.ok) {
           throw new Error(
-            j?.error ??
-              "Failed"
+            json?.error ??
+              "Failed to update account"
           );
         }
 
@@ -1037,22 +1120,24 @@ export function UserManagementView({
         );
 
         qc.invalidateQueries({
-          queryKey: [
-            "system-users",
-          ],
+          queryKey: ["system-users"],
         });
       },
 
-      onError: (err: Error) =>
-        toast.error(err.message),
+      onError: (err: Error) => {
+        toast.error(err.message);
+      },
     });
 
   const users =
     data?.users ?? [];
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Render
+  // ───────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1118,7 +1203,8 @@ export function UserManagementView({
           </TableHeader>
 
           <TableBody>
-            {isLoading ? (
+            {/* Loading */}
+            {isLoading && (
               <TableRow>
                 <TableCell
                   colSpan={5}
@@ -1127,27 +1213,39 @@ export function UserManagementView({
                   <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
-            ) : isError ? (
+            )}
+
+            {/* Error */}
+            {isError && (
               <TableRow>
                 <TableCell
                   colSpan={5}
                   className="py-10 text-center text-destructive"
                 >
                   Failed to load users:{" "}
-                  {error?.message ||
+                  {error?.message ??
                     "Unknown error"}
                 </TableCell>
               </TableRow>
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="py-10 text-center text-muted-foreground"
-                >
-                  No users found.
-                </TableCell>
-              </TableRow>
-            ) : (
+            )}
+
+            {/* Empty */}
+            {!isLoading &&
+              !isError &&
+              users.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="py-10 text-center text-muted-foreground"
+                  >
+                    No users found.
+                  </TableCell>
+                </TableRow>
+              )}
+
+            {/* Users */}
+            {!isLoading &&
+              !isError &&
               users.map((u) => {
                 const enabledCount =
                   PERMISSION_KEYS.filter(
@@ -1167,6 +1265,7 @@ export function UserManagementView({
                         : ""
                     }`}
                   >
+                    {/* Name */}
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div
@@ -1205,36 +1304,38 @@ export function UserManagementView({
                       </div>
                     </TableCell>
 
+                    {/* Email */}
                     <TableCell className="text-sm text-muted-foreground">
                       {u.email}
                     </TableCell>
 
+                    {/* Role */}
                     <TableCell>
                       <RoleBadge
                         role={u.role}
                       />
                     </TableCell>
 
+                    {/* Permission Count */}
                     <TableCell>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-slate-50 text-slate-700"
-                        >
-                          {enabledCount}{" "}
-                          of 8 Enabled
-                        </Badge>
-                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-slate-50 text-slate-700"
+                      >
+                        {enabledCount} of{" "}
+                        {PERMISSION_KEYS.length}{" "}
+                        Enabled
+                      </Badge>
                     </TableCell>
 
+                    {/* Actions */}
                     <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
                         {/* Edit */}
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 gap-1.2 text-xs"
+                          className="h-7 text-xs"
                           onClick={() =>
                             setEditTarget(u)
                           }
@@ -1247,9 +1348,11 @@ export function UserManagementView({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 gap-1.2 text-xs text-slate-700"
+                          className="h-7 text-xs text-slate-700"
                           onClick={() =>
-                            setResetTarget(u)
+                            setResetTarget(
+                              u
+                            )
                           }
                         >
                           <KeyRound className="h-3 w-3 mr-1" />
@@ -1265,7 +1368,7 @@ export function UserManagementView({
                               currentUserId ||
                             freezeMutation.isPending
                           }
-                          className={`h-7 text-xs gap-1 ${
+                          className={`h-7 text-xs ${
                             u.isActive
                               ? "text-blue-600 border-blue-300 hover:bg-blue-50"
                               : "text-green-600 border-green-300 hover:bg-green-50"
@@ -1297,17 +1400,20 @@ export function UserManagementView({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 gap-1.2 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
                           disabled={
                             u.id ===
                               currentUserId ||
                             deleteMutation.isPending
                           }
+                          className="h-7 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
                           onClick={() => {
+                            const confirmed =
+                              window.confirm(
+                                `Delete user account "${u.name}"?\n\nThis will deactivate the account.`
+                              );
+
                             if (
-                              confirm(
-                                `Delete user account "${u.name}"? (Soft delete — can be restored from database)`
-                              )
+                              confirmed
                             ) {
                               deleteMutation.mutate(
                                 u.id
@@ -1322,13 +1428,12 @@ export function UserManagementView({
                     </TableCell>
                   </TableRow>
                 );
-              })
-            )}
+              })}
           </TableBody>
         </Table>
       </div>
 
-      {/* Create User */}
+      {/* Create Modal */}
       <CreateUserModal
         open={createOpen}
         onClose={() =>
@@ -1336,14 +1441,12 @@ export function UserManagementView({
         }
         onCreated={() =>
           qc.invalidateQueries({
-            queryKey: [
-              "system-users",
-            ],
+            queryKey: ["system-users"],
           })
         }
       />
 
-      {/* Edit User */}
+      {/* Edit Modal */}
       <EditUserModal
         user={editTarget}
         open={!!editTarget}
@@ -1352,17 +1455,13 @@ export function UserManagementView({
         }
         onUpdated={() =>
           qc.invalidateQueries({
-            queryKey: [
-              "system-users",
-            ],
+            queryKey: ["system-users"],
           })
         }
-        currentUserId={
-          currentUserId
-        }
+        currentUserId={currentUserId}
       />
 
-      {/* Reset Password */}
+      {/* Reset Password Modal */}
       <ResetPasswordModal
         user={resetTarget}
         open={!!resetTarget}
