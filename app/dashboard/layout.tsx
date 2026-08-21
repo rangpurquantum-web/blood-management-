@@ -86,11 +86,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile Header */}
-        <header className="flex h-14 items-center justify-center border-b px-4 md:hidden bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-primary">
-            <Droplet className="h-5 w-5 fill-current" />
-            <span className="font-semibold">Quantum Blood Donor Pool</span>
+        <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card/50 backdrop-blur-sm gap-2">
+          <div className="flex items-center gap-2 text-primary min-w-0">
+            <Droplet className="h-5 w-5 fill-current flex-shrink-0" />
+            <span className="font-semibold truncate">Quantum Blood Donor Pool</span>
           </div>
+          {branchSwitcherProps && (
+            <BranchSwitcher
+              branches={branchSwitcherProps.branches}
+              activeBranchId={branchSwitcherProps.activeBranchId}
+            />
+          )}
         </header>
 
         {/* Desktop Header */}
