@@ -6,10 +6,44 @@ import {
   UserCheck,
   Heart,
 } from "lucide-react";
-import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
+import { getBranchDb } from "@/lib/branch-db";
+import { centralPrisma } from "@/lib/central-db";
+import { cookies } from "next/headers";
+import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 import { DashboardCharts } from "@/features/dashboard/components/dashboard-charts";
 
 export default async function DashboardPage() {
+  const session = await auth();
+
+  const isSuperAdmin = session?.user?.isSuperAdmin === true;
+  let branchId: number | null =
+    typeof session?.user?.branchId === "number" ? session.user.branchId : null;
+
+  // SuperAdmin: resolve the branch they've selected via the branch-switcher cookie
+  if (isSuperAdmin) {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value ?? null;
+    branchId = raw ? Number(raw) : null;
+  }
+
+  if (!branchId || !Number.isInteger(branchId) || branchId <= 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-muted-foreground">
+            {isSuperAdmin
+              ? "Please select a branch to view its dashboard."
+              : "Your account is not associated with a valid branch."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const prisma = await getBranchDb(branchId);
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
