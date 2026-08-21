@@ -91,6 +91,7 @@ export function BottomNav({ canApprove, canImport, canReports, canUserMgmt, isSu
           </SheetContent>
         </Sheet>
       </nav>
+      {/* Spacer so page content doesn't hide behind the fixed bottom bar */}
       <div className="h-16 md:hidden" />
     </>
   );
