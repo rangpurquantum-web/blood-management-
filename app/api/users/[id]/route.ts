@@ -10,6 +10,7 @@ export const PATCH = withAuth(
   async (req: NextRequest, session, params) => {
     const targetId = Number(params?.id);
     if (isNaN(targetId)) return apiError("Invalid user id", 400);
+    if (!session.branchId) return apiError("No branch selected", 400);
 
     const body = await req.json();
     const { newPassword, role, name, email, permissions, isActive } = body ?? {};
@@ -93,6 +94,7 @@ export const DELETE = withAuth(
   async (_req: NextRequest, session, params) => {
     const targetId = Number(params?.id);
     if (isNaN(targetId)) return apiError("Invalid user id", 400);
+    if (!session.branchId) return apiError("No branch selected", 400);
 
     if (targetId === session.userId) return apiError("Cannot delete your own account", 400);
 
