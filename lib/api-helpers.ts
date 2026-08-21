@@ -145,9 +145,9 @@ export function withAuth(
       const branchSlug = branchResult.branchSlug;
 
       if (options.permission && !isSuperAdmin) {
-        const dbUser = await prisma.user.findUnique({
+        const dbUser = await centralPrisma.branchUser.findUnique({
           where: { id: userId },
-          select: { role: true, permissions: true },
+          select: { role: true },
         });
 
         if (!dbUser || !hasPermission(dbUser, options.permission)) {
@@ -277,13 +277,22 @@ export async function writeAuditLog(
   let userEmail: string | null = null;
 
   if (userId) {
-    const user = await prisma.user.findUnique({
+    const branchUser = await centralPrisma.branchUser.findUnique({
       where: { id: userId },
       select: { name: true, email: true },
     });
 
-    userName = user?.name ?? null;
-    userEmail = user?.email ?? null;
+    if (branchUser) {
+      userName = branchUser.name;
+      userEmail = branchUser.email;
+    } else {
+      const admin = await centralPrisma.superAdmin.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true },
+      });
+      userName = admin?.name ?? null;
+      userEmail = admin?.email ?? null;
+    }
   }
 
   await AuditLog.create({
