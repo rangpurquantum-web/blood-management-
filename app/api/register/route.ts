@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBranchDb } from "@/lib/branch-db";
-import { donorSchema } from "@/features/donors";
+import { registerSchema } from "@/features/donors/schemas";
 import { apiError, apiSuccess, validationError, writeAuditLog } from "@/lib/api-helpers";
 
 // ─── POST /api/register ───────────────────────────────────────────────────────
@@ -15,7 +15,13 @@ export async function POST(req: NextRequest) {
     return apiError("Invalid JSON body", 400);
   }
 
-  const { branchId, ...rest } = (body as any) ?? {};
+  const parsed = registerSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return validationError(parsed.error);
+  }
+
+  const { branchId, phone: phoneData, ...donorData } = parsed.data;
 
   const parsedBranchId = Number(branchId);
   if (!Number.isInteger(parsedBranchId) || parsedBranchId <= 0) {
@@ -30,23 +36,15 @@ export async function POST(req: NextRequest) {
     return apiError("Could not connect to branch database", 503);
   }
 
-  const parsed = donorSchema.safeParse(rest);
-
-  if (!parsed.success) {
-    return validationError(parsed.error);
-  }
-
-  const data = parsed.data;
-
   // Uniqueness checks against active donors (isDeleted: false) IN THIS BRANCH
-  const phoneNumbers = data.phone.map((p) => p.number);
+  const phoneNumbers = phoneData.map((p) => p.number);
   const existing = await branchDb.donor.findFirst({
     where: {
       AND: [
         { isDeleted: false },
         {
           OR: [
-            { email: data.email },
+            { email: donorData.email },
             {
               phone: {
                 some: {
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (existing) {
-    if (existing.email === data.email) {
+    if (existing.email === donorData.email) {
       return apiError(
         `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
         409,
@@ -73,8 +71,6 @@ export async function POST(req: NextRequest) {
       );
     }
   }
-
-  const { phone: phoneData, ...donorData } = data;
 
   const donor = await branchDb.donor.create({
     data: {
