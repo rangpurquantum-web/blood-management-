@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { centralPrisma } from "@/lib/central-db";
 import { withAuth, apiError, apiSuccess, writeAuditLog } from "@/lib/api-helpers";
-import { Role } from "@/generated/branch";
+import { Role } from "@/generated/central"; // adjust to wherever BranchUser's Role enum is generated
 import bcrypt from "bcryptjs";
 
 export const dynamic = 'force-dynamic';
 
 // ─── PATCH /api/users/[id]/reset-password  (Admin only) ───────────────────────
-// Body: { newPassword }  — no current password required
 export const PATCH = withAuth(
   async (req: NextRequest, session, params) => {
     const targetId = Number(params?.id);
@@ -20,21 +19,22 @@ export const PATCH = withAuth(
       return apiError("At least one update field must be provided", 400);
     }
 
-    const target = await prisma.user.findUnique({ where: { id: targetId } });
+    const target = await centralPrisma.branchUser.findFirst({
+      where: { id: targetId, branchId: session.branchId },
+    });
     if (!target) return apiError("User not found", 404);
 
     const updateData: any = {};
 
-    if (name) {
-      updateData.name = String(name);
-    }
+    if (name) updateData.name = String(name);
 
     if (email) {
-      const existing = await prisma.user.findFirst({
-        where: { email: String(email), id: { not: targetId } },
+      const normalizedEmail = String(email).trim().toLowerCase();
+      const existing = await centralPrisma.branchUser.findFirst({
+        where: { email: normalizedEmail, id: { not: targetId } },
       });
       if (existing) return apiError("Email already in use", 409);
-      updateData.email = String(email);
+      updateData.email = normalizedEmail;
     }
 
     if (newPassword) {
@@ -71,7 +71,7 @@ export const PATCH = withAuth(
       updateData.isActive = Boolean(isActive);
     }
 
-    await prisma.user.update({
+    await centralPrisma.branchUser.update({
       where: { id: targetId },
       data: updateData,
     });
@@ -80,6 +80,8 @@ export const PATCH = withAuth(
       session.userId,
       "User Updated",
       `Admin (id=${session.userId}) updated user account: ${target.email}`,
+      session.branchId,
+      session.branchSlug,
     );
 
     return apiSuccess({ message: "User updated successfully" });
@@ -93,16 +95,14 @@ export const DELETE = withAuth(
     const targetId = Number(params?.id);
     if (isNaN(targetId)) return apiError("Invalid user id", 400);
 
-    // Admin cannot delete themselves
     if (targetId === session.userId) return apiError("Cannot delete your own account", 400);
 
-    const target = await prisma.user.findUnique({
-      where: { id: targetId, isDeleted: false },
+    const target = await centralPrisma.branchUser.findFirst({
+      where: { id: targetId, branchId: session.branchId, isDeleted: false },
     });
     if (!target) return apiError("User not found", 404);
 
-    // Soft delete — mark as deleted, keep the record
-    await prisma.user.update({
+    await centralPrisma.branchUser.update({
       where: { id: targetId },
       data: {
         isDeleted: true,
@@ -115,6 +115,8 @@ export const DELETE = withAuth(
       session.userId,
       "User Deleted",
       `Admin (id=${session.userId}) soft-deleted user: ${target.email}`,
+      session.branchId,
+      session.branchSlug,
     );
 
     return apiSuccess({ message: "User deleted" });
