@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getBranchDb } from "@/lib/branch-db";
 import { donorSchema } from "@/features/donors";
 import { apiError, apiSuccess, validationError, writeAuditLog } from "@/lib/api-helpers";
 
 // ─── POST /api/register ───────────────────────────────────────────────────────
 // Public endpoint for donor self-registration applications.
+// Body must include branchId to specify which branch's database to write to.
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -14,7 +15,22 @@ export async function POST(req: NextRequest) {
     return apiError("Invalid JSON body", 400);
   }
 
-  const parsed = donorSchema.safeParse(body);
+  const { branchId, ...rest } = (body as any) ?? {};
+
+  const parsedBranchId = Number(branchId);
+  if (!Number.isInteger(parsedBranchId) || parsedBranchId <= 0) {
+    return apiError("Please select a valid branch", 400);
+  }
+
+  let branchDb;
+  try {
+    branchDb = await getBranchDb(parsedBranchId);
+  } catch (error) {
+    console.error(`Failed to connect to branch database: ${parsedBranchId}`, error);
+    return apiError("Could not connect to branch database", 503);
+  }
+
+  const parsed = donorSchema.safeParse(rest);
 
   if (!parsed.success) {
     return validationError(parsed.error);
@@ -22,9 +38,9 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
 
-  // Uniqueness checks against active donors (isDeleted: false)
+  // Uniqueness checks against active donors (isDeleted: false) IN THIS BRANCH
   const phoneNumbers = data.phone.map((p) => p.number);
-  const existing = await prisma.donor.findFirst({
+  const existing = await branchDb.donor.findFirst({
     where: {
       AND: [
         { isDeleted: false },
@@ -47,12 +63,12 @@ export async function POST(req: NextRequest) {
   if (existing) {
     if (existing.email === data.email) {
       return apiError(
-        `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
+        `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
         409,
       );
     } else {
       return apiError(
-        `এই নম্বর দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
+        `এই নম্বর দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
         409,
       );
     }
@@ -60,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   const { phone: phoneData, ...donorData } = data;
 
-  const donor = await prisma.donor.create({
+  const donor = await branchDb.donor.create({
     data: {
       ...donorData,
       status: "PENDING",
@@ -80,7 +96,8 @@ export async function POST(req: NextRequest) {
   await writeAuditLog(
     null,
     "Public Donor Registration Application",
-    `New pending donor registered online: ${donor.fullName} (${donor.bloodType}) — ID ${donor.id}`,
+    `New pending donor registered online: ${donor.fullName} (${donor.bloodType}) — ID ${donor.id} — Branch ${parsedBranchId}`,
+    parsedBranchId,
   );
 
   return apiSuccess(
