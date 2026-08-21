@@ -67,6 +67,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
             canReports={canReports}
             canUserMgmt={canUserMgmt}
           />
+          {isSuperAdmin && (
+            <a
+              href="/superadmin/branches"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors mt-2 mx-2 rounded-md"
+            >
+              Branches (SuperAdmin)
+            </a>
+          )}
         </div>
 
         <div className="border-t p-4 space-y-2">
@@ -125,6 +133,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           canImport={canImport}
           canReports={canReports}
           canUserMgmt={canUserMgmt}
+          isSuperAdmin={isSuperAdmin}
         />
       </div>
     </div>
