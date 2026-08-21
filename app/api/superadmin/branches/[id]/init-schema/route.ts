@@ -37,8 +37,6 @@ export const POST = withAuth(async (req: NextRequest, session, params) => {
 
   const connectionUrl = decryptDatabaseUrl(branch.databaseUrlSecret);
 
-  // Use a dedicated, short-lived client for this — not the shared cached
-  // client from lib/branch-db.ts — since this is a one-off admin action.
   const client = new PrismaClient({
     datasources: { db: { url: connectionUrl } },
     log: ["error"],
@@ -49,13 +47,14 @@ export const POST = withAuth(async (req: NextRequest, session, params) => {
   try {
     for (const migration of SCHEMA_MIGRATIONS) {
       try {
-        await client.$executeRawUnsafe(migration.sql);
+        for (const statement of migration.statements) {
+          await client.$executeRawUnsafe(statement);
+        }
         results.push({ name: migration.name, ok: true });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         results.push({ name: migration.name, ok: false, error: message });
 
-        // Stop at the first failure — later migrations likely depend on it.
         return apiError(
           `Schema initialization failed at migration "${migration.name}"`,
           500,
