@@ -182,8 +182,7 @@ export function withAuth(
       );
     } catch (error) {
       console.error("withAuth error:", error);
-      const message = error instanceof Error ? error.message : String(error);
-      return apiError("Internal server error", 500, { debug: message });
+      return apiError("Internal server error", 500);
     }
   };
 }
