@@ -1,109 +1,56 @@
-import { PrismaClient } from "@/generated/branch";
-import { centralPrisma } from "@/lib/central-db";
-import { decryptDatabaseUrl } from "@/lib/encryption";
+import crypto from "crypto";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Branch Prisma Client Cache
-// ─────────────────────────────────────────────────────────────────────────────
+const ALGORITHM = "aes-256-gcm";
 
-const globalForBranchDb = globalThis as unknown as {
-  branchClients: Map<number, PrismaClient> | undefined;
-};
+function getKey() {
+  const secret = process.env.DATABASE_ENCRYPTION_KEY;
 
-const branchClients =
-  globalForBranchDb.branchClients ??
-  new Map<number, PrismaClient>();
+  if (!secret) {
+    throw new Error("DATABASE_ENCRYPTION_KEY is not configured");
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForBranchDb.branchClients = branchClients;
+  return crypto.createHash("sha256").update(secret).digest();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Get Prisma Client for a specific branch
-// ─────────────────────────────────────────────────────────────────────────────
+export function encryptDatabaseUrl(value: string): string {
+  const iv = crypto.randomBytes(16);
+  const key = getKey();
 
-export async function getBranchDb(
-  branchId: number,
-): Promise<PrismaClient> {
-  // Already connected?
-  const existingClient = branchClients.get(branchId);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-  if (existingClient) {
-    return existingClient;
-  }
+  const encrypted = Buffer.concat([
+    cipher.update(value, "utf8"),
+    cipher.final(),
+  ]);
 
-  // Find branch from CENTRAL database
-  const branch = await centralPrisma.branch.findUnique({
-    where: {
-      id: branchId,
-    },
-    select: {
-      id: true,
-      name: true,
-      databaseUrlSecret: true,
-      isActive: true,
-    },
-  });
+  const authTag = cipher.getAuthTag();
 
-  if (!branch) {
-    throw new Error("Branch not found");
-  }
-
-  if (!branch.isActive) {
-    throw new Error("Branch is inactive");
-  }
-
-  if (!branch.databaseUrlSecret) {
-    throw new Error("Branch database connection is not configured");
-  }
-
-  // Decrypt the stored connection string before using it.
-  const connectionUrl = decryptDatabaseUrl(branch.databaseUrlSecret);
-
-  // Create Prisma Client using this branch's database URL.
-  const client = new PrismaClient({
-    datasources: {
-      db: {
-        url: connectionUrl,
-      },
-    },
-    log: ["error"],
-  });
-
-  // Cache client for reuse
-  branchClients.set(branchId, client);
-
-  return client;
+  return [
+    iv.toString("base64"),
+    authTag.toString("base64"),
+    encrypted.toString("base64"),
+  ].join(".");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Disconnect a branch database client
-// ─────────────────────────────────────────────────────────────────────────────
+export function decryptDatabaseUrl(value: string): string {
+  const [iv, authTag, encrypted] = value.split(".");
 
-export async function disconnectBranchDb(
-  branchId: number,
-): Promise<void> {
-  const client = branchClients.get(branchId);
-
-  if (!client) {
-    return;
+  if (!iv || !authTag || !encrypted) {
+    throw new Error("Invalid encrypted database URL");
   }
 
-  await client.$disconnect();
-
-  branchClients.delete(branchId);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Remove all cached branch clients
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function disconnectAllBranchDbs(): Promise<void> {
-  const clients = Array.from(branchClients.values());
-
-  await Promise.all(
-    clients.map((client) => client.$disconnect()),
+  const decipher = crypto.createDecipheriv(
+    ALGORITHM,
+    getKey(),
+    Buffer.from(iv, "base64"),
   );
 
-  branchClients.clear();
+  decipher.setAuthTag(Buffer.from(authTag, "base64"));
+
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encrypted, "base64")),
+    decipher.final(),
+  ]);
+
+  return decrypted.toString("utf8");
 }
