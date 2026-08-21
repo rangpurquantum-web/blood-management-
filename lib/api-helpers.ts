@@ -33,8 +33,6 @@ type RouteHandler = (
   params?: RouteParams,
 ) => Promise<NextResponse>;
 
-// Next.js 15 route context.
-// `params` is a Promise in Next.js 15.
 type RouteContext = {
   params: Promise<RouteParams>;
 };
@@ -108,19 +106,11 @@ export function withAuth(
     context: RouteContext,
   ): Promise<NextResponse> => {
     try {
-      // ─────────────────────────────────────────────
-      // Authentication
-      // ─────────────────────────────────────────────
-
       const session = await auth();
 
       if (!session?.user) {
         return apiError("Unauthorized — please log in", 401);
       }
-
-      // ─────────────────────────────────────────────
-      // User ID
-      // ─────────────────────────────────────────────
 
       const userId = session.user.id ? Number(session.user.id) : 0;
 
@@ -128,16 +118,8 @@ export function withAuth(
         return apiError("Invalid user session", 401);
       }
 
-      // ─────────────────────────────────────────────
-      // User Role
-      // ─────────────────────────────────────────────
-
       const userRole = session.user.role as Role | undefined;
       const isSuperAdmin = session.user.isSuperAdmin === true;
-
-      // ─────────────────────────────────────────────
-      // Branch Information (SuperAdmin-aware)
-      // ─────────────────────────────────────────────
 
       const sessionBranchId =
         typeof session.user.branchId === "number"
@@ -162,10 +144,6 @@ export function withAuth(
       const branchId = branchResult.branchId;
       const branchSlug = branchResult.branchSlug;
 
-      // ─────────────────────────────────────────────
-      // Permission Check (SuperAdmin bypasses)
-      // ─────────────────────────────────────────────
-
       if (options.permission && !isSuperAdmin) {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
@@ -177,10 +155,6 @@ export function withAuth(
         }
       }
 
-      // ─────────────────────────────────────────────
-      // Role Check (SuperAdmin bypasses)
-      // ─────────────────────────────────────────────
-
       if (
         options.roles &&
         !isSuperAdmin &&
@@ -189,19 +163,11 @@ export function withAuth(
         return apiError("Forbidden — insufficient permissions", 403);
       }
 
-      // ─────────────────────────────────────────────
-      // Dynamic Route Parameters
-      // ─────────────────────────────────────────────
-
       let params: RouteParams | undefined;
 
       if (context?.params) {
         params = await context.params;
       }
-
-      // ─────────────────────────────────────────────
-      // Execute Protected Handler
-      // ─────────────────────────────────────────────
 
       return await handler(
         req,
@@ -216,7 +182,8 @@ export function withAuth(
       );
     } catch (error) {
       console.error("withAuth error:", error);
-      return apiError("Internal server error", 500);
+      const message = error instanceof Error ? error.message : String(error);
+      return apiError("Internal server error", 500, { debug: message });
     }
   };
 }
