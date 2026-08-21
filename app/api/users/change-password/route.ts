@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { centralPrisma } from "@/lib/central-db";
 import { withAuth, apiError, apiSuccess, writeAuditLog } from "@/lib/api-helpers";
-import { Role } from "@/generated/branch";
 import bcrypt from "bcryptjs";
-import { auth } from "@/auth";
+
+export const dynamic = 'force-dynamic';
 
 // ─── POST /api/users/change-password ──────────────────────────────────────────
 // Any logged-in user can call this to change their own password.
@@ -21,20 +21,36 @@ export const POST = withAuth(async (req: NextRequest, session) => {
     return apiError("New password must be at least 8 characters", 400);
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.userId } });
+  const hash = await bcrypt.hash(String(newPassword), 12);
+
+  if (session.isSuperAdmin) {
+    const admin = await centralPrisma.superAdmin.findUnique({ where: { id: session.userId } });
+    if (!admin) return apiError("User not found", 404);
+
+    const match = await bcrypt.compare(String(currentPassword), admin.passwordHash);
+    if (!match) return apiError("Current password is incorrect", 400);
+
+    await centralPrisma.superAdmin.update({
+      where: { id: session.userId },
+      data: { passwordHash: hash },
+    });
+
+    await writeAuditLog(session.userId, "Password Changed", `SuperAdmin ${admin.email} changed their own password`);
+    return apiSuccess({ message: "Password changed successfully" });
+  }
+
+  const user = await centralPrisma.branchUser.findUnique({ where: { id: session.userId } });
   if (!user) return apiError("User not found", 404);
 
   const match = await bcrypt.compare(String(currentPassword), user.passwordHash);
   if (!match) return apiError("Current password is incorrect", 400);
 
-  const hash = await bcrypt.hash(String(newPassword), 12);
-  await prisma.user.update({
+  await centralPrisma.branchUser.update({
     where: { id: session.userId },
     data: { passwordHash: hash },
   });
 
-  // Audit log
-  await writeAuditLog(session.userId, "Password Changed", `User ${user.email} changed their own password`);
+  await writeAuditLog(session.userId, "Password Changed", `User ${user.email} changed their own password`, session.branchId, session.branchSlug);
 
   return apiSuccess({ message: "Password changed successfully" });
 });
