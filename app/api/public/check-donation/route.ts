@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     return bTime - aTime;
   });
 
-  const best = found[0];
+  const best = found[0]!;
   const lastDonation = best.donor.donations[0] ?? null;
 
   return NextResponse.json({
