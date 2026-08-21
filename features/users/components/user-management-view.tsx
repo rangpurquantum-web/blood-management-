@@ -3,7 +3,16 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Users, Plus, Loader2, Eye, EyeOff, Shield, UserCircle2, Edit, Trash2, KeyRound, Snowflake, Flame
+  Users,
+  Plus,
+  Loader2,
+  Eye,
+  EyeOff,
+  Edit,
+  Trash2,
+  KeyRound,
+  Snowflake,
+  Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,25 +20,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
+
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { DEFAULT_PERMISSIONS, PermissionKey, hasPermission } from "@/lib/permissions";
+
+import {
+  DEFAULT_PERMISSIONS,
+  PermissionKey,
+  hasPermission,
+} from "@/lib/permissions";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+type UserRole = "ADMIN" | "COORDINATOR" | "VOLUNTEER";
 
 interface SystemUser {
   id: number;
   name: string;
   email: string;
-  role: "ADMIN" | "VOLUNTEER";
+  role: UserRole;
   permissions: any;
   isActive: boolean;
   createdAt: string;
@@ -46,20 +78,47 @@ const PERMISSION_LABELS: Record<PermissionKey, string> = {
   userManagement: "User Management (Admin Page)",
 };
 
-const PERMISSION_KEYS = Object.keys(PERMISSION_LABELS) as PermissionKey[];
+const PERMISSION_KEYS =
+  Object.keys(PERMISSION_LABELS) as PermissionKey[];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function RoleBadge({ role }: { role: string }) {
-  return role === "ADMIN" ? (
-    <Badge className="bg-red-50 text-red-700 border border-red-200 font-semibold text-xs">
-      Admin
-    </Badge>
-  ) : (
+  if (role === "ADMIN") {
+    return (
+      <Badge className="bg-red-50 text-red-700 border border-red-200 font-semibold text-xs">
+        Admin
+      </Badge>
+    );
+  }
+
+  if (role === "COORDINATOR") {
+    return (
+      <Badge className="bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-xs">
+        Coordinator
+      </Badge>
+    );
+  }
+
+  return (
     <Badge variant="secondary" className="text-xs">
       Volunteer
     </Badge>
   );
+}
+
+// Coordinator-এর জন্য আলাদা default permissions এখনো permissions.ts-এ না থাকলে
+// Volunteer-এর default permissions ব্যবহার করবে।
+function getDefaultPermissions(role: UserRole) {
+  if (role === "ADMIN") {
+    return DEFAULT_PERMISSIONS.ADMIN;
+  }
+
+  if (role === "COORDINATOR") {
+    return DEFAULT_PERMISSIONS.VOLUNTEER;
+  }
+
+  return DEFAULT_PERMISSIONS.VOLUNTEER;
 }
 
 // ─── Create User Modal ────────────────────────────────────────────────────────
@@ -73,29 +132,55 @@ function CreateUserModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+  }>({
     name: "",
     email: "",
     password: "",
-    role: "VOLUNTEER" as "ADMIN" | "VOLUNTEER",
+    role: "VOLUNTEER",
   });
-  const [perms, setPerms] = useState<Record<PermissionKey, boolean>>(DEFAULT_PERMISSIONS.VOLUNTEER);
+
+  const [perms, setPerms] = useState<Record<PermissionKey, boolean>>(
+    DEFAULT_PERMISSIONS.VOLUNTEER
+  );
+
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Sync permissions when role changes to match defaults
-  const handleRoleChange = (selectedRole: "ADMIN" | "VOLUNTEER") => {
-    setForm((p) => ({ ...p, role: selectedRole }));
-    setPerms(DEFAULT_PERMISSIONS[selectedRole]);
+  // ─────────────────────────────────────────────────────────────
+  // Role change
+  // ─────────────────────────────────────────────────────────────
+
+  const handleRoleChange = (selectedRole: UserRole) => {
+    setForm((p) => ({
+      ...p,
+      role: selectedRole,
+    }));
+
+    setPerms(getDefaultPermissions(selectedRole));
   };
 
   const handleCheckboxChange = (key: PermissionKey) => {
-    setPerms((p) => ({ ...p, [key]: !p[key] }));
+    setPerms((p) => ({
+      ...p,
+      [key]: !p[key],
+    }));
   };
 
   const reset = () => {
-    setForm({ name: "", email: "", password: "", role: "VOLUNTEER" });
+    setForm({
+      name: "",
+      email: "",
+      password: "",
+      role: "VOLUNTEER",
+    });
+
     setPerms(DEFAULT_PERMISSIONS.VOLUNTEER);
+    setShow(false);
   };
 
   const handleCreate = async () => {
@@ -103,27 +188,37 @@ function CreateUserModal({
       toast.error("Name and email are required");
       return;
     }
+
     if (form.password.length < 8) {
       toast.error("Password must be at least 8 characters");
       return;
     }
 
     setLoading(true);
+
     try {
       const res = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           ...form,
           permissions: perms,
         }),
       });
+
       const json = await res.json();
+
       if (!res.ok) {
         toast.error(json?.error ?? "Failed to create user");
         return;
       }
-      toast.success(`User "${form.name}" created successfully`);
+
+      toast.success(
+        `User "${form.name}" created successfully`
+      );
+
       reset();
       onCreated();
       onClose();
@@ -150,6 +245,7 @@ function CreateUserModal({
             <Plus className="h-5 w-5 text-primary" />
             Create New User
           </DialogTitle>
+
           <DialogDescription>
             Add a new account with custom permissions.
           </DialogDescription>
@@ -158,24 +254,40 @@ function CreateUserModal({
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="cu-name">Full Name</Label>
+              <Label htmlFor="cu-name">
+                Full Name
+              </Label>
+
               <Input
                 id="cu-name"
                 placeholder="e.g. Rahim Uddin"
                 value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    name: e.target.value,
+                  }))
+                }
                 disabled={loading}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cu-email">Email Address</Label>
+              <Label htmlFor="cu-email">
+                Email Address
+              </Label>
+
               <Input
                 id="cu-email"
                 type="email"
                 placeholder="staff@bloodbank.org"
                 value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    email: e.target.value,
+                  }))
+                }
                 disabled={loading}
               />
             </div>
@@ -183,48 +295,79 @@ function CreateUserModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="cu-password">Password</Label>
+              <Label htmlFor="cu-password">
+                Password
+              </Label>
+
               <div className="relative">
                 <Input
                   id="cu-password"
                   type={show ? "text" : "password"}
                   placeholder="Min 8 characters"
                   value={form.password}
-                  onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      password: e.target.value,
+                    }))
+                  }
                   className="pr-10"
                   disabled={loading}
                 />
+
                 <button
                   type="button"
                   onClick={() => setShow((s) => !s)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
                 >
-                  {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {show ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cu-role">Role</Label>
+              <Label htmlFor="cu-role">
+                Role
+              </Label>
+
               <Select
                 value={form.role}
-                onValueChange={(v) => handleRoleChange(v as any)}
+                onValueChange={(v) =>
+                  handleRoleChange(v as UserRole)
+                }
                 disabled={loading}
               >
                 <SelectTrigger id="cu-role">
                   <SelectValue />
                 </SelectTrigger>
+
                 <SelectContent>
-                  <SelectItem value="VOLUNTEER">Volunteer</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="ADMIN">
+                    Admin
+                  </SelectItem>
+
+                  <SelectItem value="COORDINATOR">
+                    Coordinator
+                  </SelectItem>
+
+                  <SelectItem value="VOLUNTEER">
+                    Volunteer
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Custom Permissions Checkboxes */}
+          {/* Custom Permissions */}
           <div className="space-y-2 border-t pt-3 mt-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Custom Permissions</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Custom Permissions
+            </p>
+
             <div className="grid grid-cols-2 gap-2.5">
               {PERMISSION_KEYS.map((key) => (
                 <label
@@ -234,11 +377,16 @@ function CreateUserModal({
                   <input
                     type="checkbox"
                     checked={perms[key]}
-                    onChange={() => handleCheckboxChange(key)}
+                    onChange={() =>
+                      handleCheckboxChange(key)
+                    }
                     disabled={loading}
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
-                  <span>{PERMISSION_LABELS[key]}</span>
+
+                  <span>
+                    {PERMISSION_LABELS[key]}
+                  </span>
                 </label>
               ))}
             </div>
@@ -246,11 +394,23 @@ function CreateUserModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+          >
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={loading} className="gap-2">
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+
+          <Button
+            onClick={handleCreate}
+            disabled={loading}
+            className="gap-2"
+          >
+            {loading && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+
             Create User
           </Button>
         </DialogFooter>
@@ -276,67 +436,136 @@ function EditUserModal({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"ADMIN" | "VOLUNTEER">("VOLUNTEER");
-  const [perms, setPerms] = useState<Record<PermissionKey, boolean>>(DEFAULT_PERMISSIONS.VOLUNTEER);
+
+  const [role, setRole] =
+    useState<UserRole>("VOLUNTEER");
+
+  const [perms, setPerms] =
+    useState<Record<PermissionKey, boolean>>(
+      DEFAULT_PERMISSIONS.VOLUNTEER
+    );
+
   const [loading, setLoading] = useState(false);
 
   const isSelf = user?.id === currentUserId;
 
-  useEffect(() => {
-    if (user) {
-      setName(user.name);
-      setEmail(user.email);
-      setRole(user.role);
+  // ─────────────────────────────────────────────────────────────
+  // Load user data
+  // ─────────────────────────────────────────────────────────────
 
-      // Load existing permissions or populate default by role
-      const initialPerms = { ...DEFAULT_PERMISSIONS[user.role] };
-      if (user.permissions && typeof user.permissions === "object") {
-        Object.keys(initialPerms).forEach((k) => {
-          const key = k as PermissionKey;
-          if (user.permissions[key] !== undefined) {
-            initialPerms[key] = !!user.permissions[key];
-          }
-        });
-      }
-      setPerms(initialPerms);
+  useEffect(() => {
+    if (!user) return;
+
+    setName(user.name);
+    setEmail(user.email);
+    setRole(user.role);
+
+    const initialPerms = {
+      ...getDefaultPermissions(user.role),
+    };
+
+    if (
+      user.permissions &&
+      typeof user.permissions === "object"
+    ) {
+      Object.keys(initialPerms).forEach((k) => {
+        const key = k as PermissionKey;
+
+        if (
+          user.permissions[key] !== undefined
+        ) {
+          initialPerms[key] =
+            !!user.permissions[key];
+        }
+      });
     }
+
+    setPerms(initialPerms);
   }, [user]);
 
-  const handleRoleChange = (selectedRole: "ADMIN" | "VOLUNTEER") => {
+  // ─────────────────────────────────────────────────────────────
+  // Role change
+  // ─────────────────────────────────────────────────────────────
+
+  const handleRoleChange = (
+    selectedRole: UserRole
+  ) => {
     setRole(selectedRole);
-    setPerms(DEFAULT_PERMISSIONS[selectedRole]);
+
+    setPerms(
+      getDefaultPermissions(selectedRole)
+    );
   };
 
-  const handleCheckboxChange = (key: PermissionKey) => {
-    if (isSelf && key === "userManagement") return; // Self cannot disable user management
-    setPerms((p) => ({ ...p, [key]: !p[key] }));
+  const handleCheckboxChange = (
+    key: PermissionKey
+  ) => {
+    if (
+      isSelf &&
+      key === "userManagement"
+    ) {
+      return;
+    }
+
+    setPerms((p) => ({
+      ...p,
+      [key]: !p[key],
+    }));
   };
+
+  // ─────────────────────────────────────────────────────────────
+  // Update user
+  // ─────────────────────────────────────────────────────────────
 
   const handleUpdate = async () => {
     if (!user) return;
+
     if (!name.trim() || !email.trim()) {
-      toast.error("Name and email are required");
+      toast.error(
+        "Name and email are required"
+      );
       return;
     }
 
     setLoading(true);
+
     try {
-      const res = await fetch(`/api/users/${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          role: isSelf ? undefined : role, // don't send role if editing self
-          permissions: perms,
-        }),
-      });
+      const body: Record<string, unknown> = {
+        name: name.trim(),
+        email: email.trim(),
+        permissions: perms,
+      };
+
+      // Don't send role when editing yourself
+      if (!isSelf) {
+        body.role = role;
+      }
+
+      const res = await fetch(
+        `/api/users/${user.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
       const json = await res.json();
+
       if (!res.ok) {
-        toast.error(json?.error ?? "Failed to update user");
+        toast.error(
+          json?.error ??
+            "Failed to update user"
+        );
         return;
       }
-      toast.success("User updated successfully");
+
+      toast.success(
+        "User updated successfully"
+      );
+
       onUpdated();
       onClose();
     } catch {
@@ -347,13 +576,19 @@ function EditUserModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Edit className="h-5 w-5 text-primary" />
             Edit User Profile
           </DialogTitle>
+
           <DialogDescription>
             Modify profile info and adjust custom permission checkmarks.
           </DialogDescription>
@@ -362,68 +597,116 @@ function EditUserModal({
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="eu-name">Full Name</Label>
+              <Label htmlFor="eu-name">
+                Full Name
+              </Label>
+
               <Input
                 id="eu-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) =>
+                  setName(e.target.value)
+                }
                 disabled={loading}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="eu-email">Email Address</Label>
+              <Label htmlFor="eu-email">
+                Email Address
+              </Label>
+
               <Input
                 id="eu-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) =>
+                  setEmail(e.target.value)
+                }
                 disabled={loading}
               />
             </div>
           </div>
 
+          {/* Role */}
           <div className="space-y-1.5">
-            <Label htmlFor="eu-role">Role</Label>
+            <Label htmlFor="eu-role">
+              Role
+            </Label>
+
             <Select
               value={role}
-              onValueChange={(v) => handleRoleChange(v as any)}
-              disabled={loading || isSelf} // cannot change own role
+              onValueChange={(v) =>
+                handleRoleChange(v as UserRole)
+              }
+              disabled={
+                loading || isSelf
+              }
             >
               <SelectTrigger id="eu-role">
                 <SelectValue />
               </SelectTrigger>
+
               <SelectContent>
-                <SelectItem value="VOLUNTEER">Volunteer</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="ADMIN">
+                  Admin
+                </SelectItem>
+
+                <SelectItem value="COORDINATOR">
+                  Coordinator
+                </SelectItem>
+
+                <SelectItem value="VOLUNTEER">
+                  Volunteer
+                </SelectItem>
               </SelectContent>
             </Select>
+
             {isSelf && (
-              <p className="text-[10px] text-muted-foreground">Self-demotion prevention: You cannot change your own role</p>
+              <p className="text-[10px] text-muted-foreground">
+                Self-demotion prevention: You cannot change your own role
+              </p>
             )}
           </div>
 
-          {/* Checkboxes */}
+          {/* Custom Permissions */}
           <div className="space-y-2 border-t pt-3 mt-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Custom Permissions</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Custom Permissions
+            </p>
+
             <div className="grid grid-cols-2 gap-2.5">
               {PERMISSION_KEYS.map((key) => {
-                const disabled = loading || (isSelf && key === "userManagement");
+                const disabled =
+                  loading ||
+                  (isSelf &&
+                    key ===
+                      "userManagement");
+
                 return (
                   <label
                     key={key}
                     className={`flex items-center gap-2 text-sm select-none py-1 px-2 rounded-md transition-colors ${
-                      disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-muted/30"
+                      disabled
+                        ? "opacity-60 cursor-not-allowed"
+                        : "cursor-pointer hover:bg-muted/30"
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={perms[key]}
-                      onChange={() => handleCheckboxChange(key)}
+                      onChange={() =>
+                        handleCheckboxChange(
+                          key
+                        )
+                      }
                       disabled={disabled}
                       className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <span>{PERMISSION_LABELS[key]}</span>
+
+                    <span>
+                      {PERMISSION_LABELS[key]}
+                    </span>
                   </label>
                 );
               })}
@@ -432,11 +715,23 @@ function EditUserModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+          >
             Cancel
           </Button>
-          <Button onClick={handleUpdate} disabled={loading} className="gap-2">
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+
+          <Button
+            onClick={handleUpdate}
+            disabled={loading}
+            className="gap-2"
+          >
+            {loading && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+
             Save Changes
           </Button>
         </DialogFooter>
@@ -456,28 +751,52 @@ function ResetPasswordModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [password, setPassword] =
+    useState("");
+
+  const [show, setShow] =
+    useState(false);
+
+  const [loading, setLoading] =
+    useState(false);
 
   const handleReset = async () => {
     if (!user || password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error(
+        "Password must be at least 8 characters"
+      );
       return;
     }
+
     setLoading(true);
+
     try {
-      const res = await fetch(`/api/users/${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword: password }),
-      });
+      const res = await fetch(
+        `/api/users/${user.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            newPassword: password,
+          }),
+        }
+      );
+
       const json = await res.json();
+
       if (!res.ok) {
-        toast.error(json?.error ?? "Failed");
+        toast.error(
+          json?.error ?? "Failed"
+        );
         return;
       }
-      toast.success(`Password reset for ${user.email}`);
+
+      toast.success(
+        `Password reset for ${user.email}`
+      );
+
       setPassword("");
       onClose();
     } catch {
@@ -488,44 +807,88 @@ function ResetPasswordModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setPassword(""); onClose(); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          setPassword("");
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-primary" />
             Reset Password
           </DialogTitle>
+
           <DialogDescription>
-            Force set a new password for <span className="font-semibold">{user?.email}</span>.
+            Force set a new password for{" "}
+            <span className="font-semibold">
+              {user?.email}
+            </span>
+            .
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 py-2">
-          <Label htmlFor="reset-pw">New Password</Label>
+          <Label htmlFor="reset-pw">
+            New Password
+          </Label>
+
           <div className="relative">
             <Input
               id="reset-pw"
-              type={show ? "text" : "password"}
+              type={
+                show ? "text" : "password"
+              }
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
               placeholder="Min 8 characters"
               className="pr-10"
               disabled={loading}
             />
+
             <button
               type="button"
-              onClick={() => setShow((s) => !s)}
+              onClick={() =>
+                setShow((s) => !s)
+              }
               className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
             >
-              {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {show ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button onClick={handleReset} disabled={loading || password.length < 8} className="gap-2">
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={handleReset}
+            disabled={
+              loading ||
+              password.length < 8
+            }
+            className="gap-2"
+          >
+            {loading && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+
             Reset Password
           </Button>
         </DialogFooter>
@@ -536,81 +899,191 @@ function ResetPasswordModal({
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export function UserManagementView({ currentUserId }: { currentUserId: number }) {
+export function UserManagementView({
+  currentUserId,
+}: {
+  currentUserId: number;
+}) {
   const qc = useQueryClient();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<SystemUser | null>(null);
-  const [resetTarget, setResetTarget] = useState<SystemUser | null>(null);
 
-  const { data, isLoading, isError, error } = useQuery<{ users: SystemUser[] }, Error>({
+  const [createOpen, setCreateOpen] =
+    useState(false);
+
+  const [editTarget, setEditTarget] =
+    useState<SystemUser | null>(null);
+
+  const [resetTarget, setResetTarget] =
+    useState<SystemUser | null>(null);
+
+  // ─────────────────────────────────────────────────────────────
+  // Load users
+  // ─────────────────────────────────────────────────────────────
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useQuery<
+    { users: SystemUser[] },
+    Error
+  >({
     queryKey: ["system-users"],
+
     queryFn: async () => {
-      const res = await fetch("/api/users");
+      const res = await fetch(
+        "/api/users"
+      );
+
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "Failed to load users");
+        const j =
+          await res
+            .json()
+            .catch(() => ({}));
+
+        throw new Error(
+          j.error ||
+            "Failed to load users"
+        );
       }
+
       return res.json();
     },
   });
 
+  // ─────────────────────────────────────────────────────────────
+  // Delete
+  // ─────────────────────────────────────────────────────────────
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/users/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
       if (!res.ok) {
-        const j = await res.json();
-        throw new Error(j?.error ?? "Delete failed");
+        const j =
+          await res.json();
+
+        throw new Error(
+          j?.error ??
+            "Delete failed"
+        );
       }
     },
+
     onSuccess: () => {
-      toast.success("User deleted successfully");
-      qc.invalidateQueries({ queryKey: ["system-users"] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
+      toast.success(
+        "User deleted successfully"
+      );
 
-  const freezeMutation = useMutation({
-    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const res = await fetch(`/api/users/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive }),
+      qc.invalidateQueries({
+        queryKey: ["system-users"],
       });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error(j?.error ?? "Failed");
-      }
-      return isActive;
     },
-    onSuccess: (isActive) => {
-      toast.success(isActive ? "Account activated" : "Account frozen");
-      qc.invalidateQueries({ queryKey: ["system-users"] });
-    },
-    onError: (err: Error) => toast.error(err.message),
+
+    onError: (err: Error) =>
+      toast.error(err.message),
   });
 
-  const users = data?.users ?? [];
+  // ─────────────────────────────────────────────────────────────
+  // Freeze / Unfreeze
+  // ─────────────────────────────────────────────────────────────
+
+  const freezeMutation =
+    useMutation({
+      mutationFn: async ({
+        id,
+        isActive,
+      }: {
+        id: number;
+        isActive: boolean;
+      }) => {
+        const res = await fetch(
+          `/api/users/${id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              isActive,
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const j =
+            await res.json();
+
+          throw new Error(
+            j?.error ??
+              "Failed"
+          );
+        }
+
+        return isActive;
+      },
+
+      onSuccess: (isActive) => {
+        toast.success(
+          isActive
+            ? "Account activated"
+            : "Account frozen"
+        );
+
+        qc.invalidateQueries({
+          queryKey: [
+            "system-users",
+          ],
+        });
+      },
+
+      onError: (err: Error) =>
+        toast.error(err.message),
+    });
+
+  const users =
+    data?.users ?? [];
 
   return (
     <div className="space-y-6">
-      {/* Header Row */}
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
             <Users className="h-5 w-5 text-primary" />
           </div>
+
           <div>
-            <p className="font-semibold text-sm">System Accounts</p>
+            <p className="font-semibold text-sm">
+              System Accounts
+            </p>
+
             <p className="text-xs text-muted-foreground">
-              {isLoading ? "Loading…" : `${users.length} user${users.length !== 1 ? "s" : ""} registered`}
+              {isLoading
+                ? "Loading…"
+                : `${users.length} user${
+                    users.length !== 1
+                      ? "s"
+                      : ""
+                  } registered`}
             </p>
           </div>
         </div>
+
         <Button
           id="open-create-user"
           size="sm"
           className="gap-2"
-          onClick={() => setCreateOpen(true)}
+          onClick={() =>
+            setCreateOpen(true)
+          }
         >
           <Plus className="h-4 w-4" />
           Add User
@@ -622,54 +1095,98 @@ export function UserManagementView({ currentUserId }: { currentUserId: number })
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Permissions Enabled</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>
+                Name
+              </TableHead>
+
+              <TableHead>
+                Email
+              </TableHead>
+
+              <TableHead>
+                Role
+              </TableHead>
+
+              <TableHead>
+                Permissions Enabled
+              </TableHead>
+
+              <TableHead className="text-right">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="py-10 text-center text-muted-foreground"
+                >
                   <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : isError ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-destructive">
-                  Failed to load users: {error?.message || "Unknown error"}
+                <TableCell
+                  colSpan={5}
+                  className="py-10 text-center text-destructive"
+                >
+                  Failed to load users:{" "}
+                  {error?.message ||
+                    "Unknown error"}
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="py-10 text-center text-muted-foreground"
+                >
                   No users found.
                 </TableCell>
               </TableRow>
             ) : (
               users.map((u) => {
-                // Calculate count of enabled permissions
-                const enabledCount = PERMISSION_KEYS.filter((key) => hasPermission(u, key)).length;
+                const enabledCount =
+                  PERMISSION_KEYS.filter(
+                    (key) =>
+                      hasPermission(
+                        u,
+                        key
+                      )
+                  ).length;
 
                 return (
                   <TableRow
                     key={u.id}
-                    className={`hover:bg-muted/20 transition-colors ${!u.isActive ? "bg-blue-50/40 dark:bg-blue-950/20" : ""}`}
+                    className={`hover:bg-muted/20 transition-colors ${
+                      !u.isActive
+                        ? "bg-blue-50/40 dark:bg-blue-950/20"
+                        : ""
+                    }`}
                   >
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold shrink-0 ${
-                          !u.isActive
-                            ? "bg-blue-100 text-blue-600"
-                            : "bg-primary/10 text-primary"
-                        }`}>
-                          {u.name.charAt(0).toUpperCase()}
+                        <div
+                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold shrink-0 ${
+                            !u.isActive
+                              ? "bg-blue-100 text-blue-600"
+                              : "bg-primary/10 text-primary"
+                          }`}
+                        >
+                          {u.name
+                            .charAt(0)
+                            .toUpperCase()}
                         </div>
+
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-medium leading-none">{u.name}</p>
+                            <p className="text-sm font-medium leading-none">
+                              {u.name}
+                            </p>
+
                             {!u.isActive && (
                               <Badge className="text-[9px] px-1 py-0 bg-blue-100 text-blue-700 border-blue-200 font-semibold">
                                 <Snowflake className="h-2.5 w-2.5 mr-0.5" />
@@ -677,81 +1194,131 @@ export function UserManagementView({ currentUserId }: { currentUserId: number })
                               </Badge>
                             )}
                           </div>
-                          {u.id === currentUserId && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5">You</p>
+
+                          {u.id ===
+                            currentUserId && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              You
+                            </p>
                           )}
                         </div>
                       </div>
                     </TableCell>
+
                     <TableCell className="text-sm text-muted-foreground">
                       {u.email}
                     </TableCell>
+
                     <TableCell>
-                      <RoleBadge role={u.role} />
+                      <RoleBadge
+                        role={u.role}
+                      />
                     </TableCell>
+
                     <TableCell>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700">
-                          {enabledCount} of 8 Enabled
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-slate-50 text-slate-700"
+                        >
+                          {enabledCount}{" "}
+                          of 8 Enabled
                         </Badge>
                       </div>
                     </TableCell>
+
                     <TableCell>
                       <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1.2 text-xs"
-                            onClick={() => setEditTarget(u)}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1.2 text-xs text-slate-700"
-                            onClick={() => setResetTarget(u)}
-                          >
-                            <KeyRound className="h-3 w-3 mr-1" />
-                            Reset PW
-                          </Button>
-                          {/* Freeze / Unfreeze */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={u.id === currentUserId || freezeMutation.isPending}
-                            className={`h-7 text-xs gap-1 ${
-                              u.isActive
-                                ? "text-blue-600 border-blue-300 hover:bg-blue-50"
-                                : "text-green-600 border-green-300 hover:bg-green-50"
-                            }`}
-                            onClick={() =>
-                              freezeMutation.mutate({ id: u.id, isActive: !u.isActive })
-                            }
-                          >
-                            {u.isActive ? (
-                              <><Snowflake className="h-3 w-3 mr-1" />Freeze</>
-                            ) : (
-                              <><Flame className="h-3 w-3 mr-1" />Unfreeze</>
-                            )}
-                          </Button>
-                          {/* Soft Delete */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1.2 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
-                            disabled={u.id === currentUserId || deleteMutation.isPending}
-                            onClick={() => {
-                              if (confirm(`Delete user account "${u.name}"? (Soft delete — can be restored from database)`)) {
-                                deleteMutation.mutate(u.id);
+
+                        {/* Edit */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1.2 text-xs"
+                          onClick={() =>
+                            setEditTarget(u)
+                          }
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+
+                        {/* Reset Password */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1.2 text-xs text-slate-700"
+                          onClick={() =>
+                            setResetTarget(u)
+                          }
+                        >
+                          <KeyRound className="h-3 w-3 mr-1" />
+                          Reset PW
+                        </Button>
+
+                        {/* Freeze / Unfreeze */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            u.id ===
+                              currentUserId ||
+                            freezeMutation.isPending
+                          }
+                          className={`h-7 text-xs gap-1 ${
+                            u.isActive
+                              ? "text-blue-600 border-blue-300 hover:bg-blue-50"
+                              : "text-green-600 border-green-300 hover:bg-green-50"
+                          }`}
+                          onClick={() =>
+                            freezeMutation.mutate(
+                              {
+                                id: u.id,
+                                isActive:
+                                  !u.isActive,
                               }
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
+                            )
+                          }
+                        >
+                          {u.isActive ? (
+                            <>
+                              <Snowflake className="h-3 w-3 mr-1" />
+                              Freeze
+                            </>
+                          ) : (
+                            <>
+                              <Flame className="h-3 w-3 mr-1" />
+                              Unfreeze
+                            </>
+                          )}
+                        </Button>
+
+                        {/* Delete */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1.2 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
+                          disabled={
+                            u.id ===
+                              currentUserId ||
+                            deleteMutation.isPending
+                          }
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Delete user account "${u.name}"? (Soft delete — can be restored from database)`
+                              )
+                            ) {
+                              deleteMutation.mutate(
+                                u.id
+                              );
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -761,25 +1328,47 @@ export function UserManagementView({ currentUserId }: { currentUserId: number })
         </Table>
       </div>
 
-      {/* Modals */}
+      {/* Create User */}
       <CreateUserModal
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => qc.invalidateQueries({ queryKey: ["system-users"] })}
+        onClose={() =>
+          setCreateOpen(false)
+        }
+        onCreated={() =>
+          qc.invalidateQueries({
+            queryKey: [
+              "system-users",
+            ],
+          })
+        }
       />
 
+      {/* Edit User */}
       <EditUserModal
         user={editTarget}
         open={!!editTarget}
-        onClose={() => setEditTarget(null)}
-        onUpdated={() => qc.invalidateQueries({ queryKey: ["system-users"] })}
-        currentUserId={currentUserId}
+        onClose={() =>
+          setEditTarget(null)
+        }
+        onUpdated={() =>
+          qc.invalidateQueries({
+            queryKey: [
+              "system-users",
+            ],
+          })
+        }
+        currentUserId={
+          currentUserId
+        }
       />
 
+      {/* Reset Password */}
       <ResetPasswordModal
         user={resetTarget}
         open={!!resetTarget}
-        onClose={() => setResetTarget(null)}
+        onClose={() =>
+          setResetTarget(null)
+        }
       />
     </div>
   );
