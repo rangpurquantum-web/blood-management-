@@ -8,7 +8,15 @@ export type PermissionKey =
   | "reportsExport"
   | "userManagement";
 
-export const DEFAULT_PERMISSIONS: Record<"ADMIN" | "VOLUNTEER", Record<PermissionKey, boolean>> = {
+export type UserRole =
+  | "ADMIN"
+  | "COORDINATOR"
+  | "VOLUNTEER";
+
+export const DEFAULT_PERMISSIONS: Record<
+  UserRole,
+  Record<PermissionKey, boolean>
+> = {
   ADMIN: {
     donorView: true,
     donorAdd: true,
@@ -19,6 +27,18 @@ export const DEFAULT_PERMISSIONS: Record<"ADMIN" | "VOLUNTEER", Record<Permissio
     reportsExport: true,
     userManagement: true,
   },
+
+  COORDINATOR: {
+    donorView: true,
+    donorAdd: true,
+    donorEdit: true,
+    donorDelete: false,
+    approveReject: true,
+    notesEdit: true,
+    reportsExport: true,
+    userManagement: false,
+  },
+
   VOLUNTEER: {
     donorView: true,
     donorAdd: true,
@@ -31,25 +51,42 @@ export const DEFAULT_PERMISSIONS: Record<"ADMIN" | "VOLUNTEER", Record<Permissio
   },
 };
 
-/**
- * Checks if a user has a specific permission.
- * Cascades from user's custom JSON permissions -> role-based default permissions.
- */
 export function hasPermission(
-  user: { role?: string; permissions?: any } | null | undefined,
+  user:
+    | {
+        role?: string;
+        permissions?: unknown;
+      }
+    | null
+    | undefined,
   permission: PermissionKey
 ): boolean {
   if (!user) return false;
 
   const perms = user.permissions;
-  if (perms && typeof perms === "object") {
-    const custom = perms as Record<string, any>;
+
+  // Custom permissions have priority
+  if (
+    perms &&
+    typeof perms === "object" &&
+    !Array.isArray(perms)
+  ) {
+    const custom = perms as Record<string, unknown>;
+
     if (custom[permission] !== undefined) {
-      return !!custom[permission];
+      return Boolean(custom[permission]);
     }
   }
 
-  const role = (user.role || "VOLUNTEER") as "ADMIN" | "VOLUNTEER";
-  const defaults = DEFAULT_PERMISSIONS[role] || DEFAULT_PERMISSIONS.VOLUNTEER;
-  return !!defaults[permission];
+  // Role-based default permissions
+  const role: UserRole =
+    user.role === "ADMIN" ||
+    user.role === "COORDINATOR" ||
+    user.role === "VOLUNTEER"
+      ? user.role
+      : "VOLUNTEER";
+
+  return Boolean(
+    DEFAULT_PERMISSIONS[role][permission]
+  );
 }
