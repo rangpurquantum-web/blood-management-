@@ -1,9 +1,9 @@
- "use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, UserCheck, Settings, Menu } from "lucide-react";
+import { LayoutDashboard, Users, UserCheck, Settings, Menu, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
 import { SignOutButton } from "@/components/layout/signout-button";
@@ -14,9 +14,10 @@ interface BottomNavProps {
   canImport: boolean;
   canReports: boolean;
   canUserMgmt: boolean;
+  isSuperAdmin?: boolean;
 }
 
-export function BottomNav({ canApprove, canImport, canReports, canUserMgmt }: BottomNavProps) {
+export function BottomNav({ canApprove, canImport, canReports, canUserMgmt, isSuperAdmin }: BottomNavProps) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -66,6 +67,16 @@ export function BottomNav({ canApprove, canImport, canReports, canUserMgmt }: Bo
               <span className="font-semibold text-lg tracking-tight">Quantum Blood Donor Pool</span>
             </div>
             <div className="flex-1 overflow-y-auto py-4">
+              {isSuperAdmin && (
+                <Link
+                  href="/superadmin/branches"
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+                >
+                  <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+                  Branches (SuperAdmin)
+                </Link>
+              )}
               <DashboardNav
                 canApprove={canApprove}
                 canImport={canImport}
@@ -80,7 +91,6 @@ export function BottomNav({ canApprove, canImport, canReports, canUserMgmt }: Bo
           </SheetContent>
         </Sheet>
       </nav>
-      {/* Spacer so page content doesn't hide behind the fixed bottom bar */}
       <div className="h-16 md:hidden" />
     </>
   );
