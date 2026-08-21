@@ -28,6 +28,28 @@ export const donorKeys = {
   detail: (id: number) => ["donors", "detail", id] as const,
 };
 
+// ─── Public Branches (for registration form) ───────────────────────────────
+
+export interface PublicBranch {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+async function fetchPublicBranches(): Promise<PublicBranch[]> {
+  const res = await fetch("/api/branches/public");
+  if (!res.ok) throw new Error("Failed to fetch branches");
+  const json = await res.json();
+  return json.branches;
+}
+
+export function usePublicBranches() {
+  return useQuery({
+    queryKey: ["branches", "public"],
+    queryFn: fetchPublicBranches,
+  });
+}
+
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 
 async function fetchDonors(filters: DonorFilters): Promise<DonorWithPhone[]> {
