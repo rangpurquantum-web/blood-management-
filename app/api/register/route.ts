@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return validationError(parsed.error);
   }
 
-  const { branchId, phone: phoneData, ...donorData } = parsed.data;
+  const { branchId, phone: phoneData, lastDonationDate, ...donorData } = parsed.data;
 
   const parsedBranchId = Number(branchId);
   if (!Number.isInteger(parsedBranchId) || parsedBranchId <= 0) {
@@ -83,9 +83,19 @@ export async function POST(req: NextRequest) {
           isPrimary: p.isPrimary,
         })),
       },
+      donations: lastDonationDate
+        ? {
+            create: [
+              {
+                donationDate: lastDonationDate,
+              },
+            ],
+          }
+        : undefined,
     },
     include: {
       phone: true,
+      donations: true,
     },
   });
 
