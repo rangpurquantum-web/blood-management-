@@ -189,4 +189,11 @@ ADD COLUMN     "isDeleted" BOOLEAN NOT NULL DEFAULT false`,
       `CREATE INDEX "Donor_publicToken_idx" ON "Donor"("publicToken")`,
     ],
   },
+  {
+    name: "make_donation_history_patient_hospital_optional",
+    statements: [
+      `ALTER TABLE "DonationHistory" ALTER COLUMN "patientName" DROP NOT NULL`,
+      `ALTER TABLE "DonationHistory" ALTER COLUMN "hospitalName" DROP NOT NULL`,
+    ],
+  },
 ];
