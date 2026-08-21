@@ -8,8 +8,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
 enum Role {
   ADMIN
+  COORDINATOR
   VOLUNTEER
 }
 
@@ -19,72 +24,154 @@ enum DonorStatus {
   REJECTED
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────────────────────
+
 model User {
   id           Int       @id @default(autoincrement())
   name         String
   email        String    @unique
   passwordHash String
+
   role         Role      @default(VOLUNTEER)
+
   permissions  Json?
+
   isActive     Boolean   @default(true)
   isDeleted    Boolean   @default(false)
   deletedAt    DateTime?
+
   createdAt    DateTime  @default(now())
+
   auditLogs    AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@index([isDeleted])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DONOR
+// ─────────────────────────────────────────────────────────────────────────────
 
 model Donor {
   id             Int               @id @default(autoincrement())
   fullName       String
+
   dob            DateTime?
+
   gender         String
+
   bloodType      String
+
   phone          DonorPhone[]
+
   email          String?
+
   publicToken    String            @unique @default(uuid())
+
   address        String
+
   isEligible     Boolean           @default(true)
+
   deferralReason String?
+
   deferredUntil  DateTime?
+
   status         DonorStatus       @default(APPROVED)
+
   isDeleted      Boolean           @default(false)
+
   createdAt      DateTime          @default(now())
+
   deletedAt      DateTime?
+
   notes          String?
+
   donations      DonationHistory[]
 
   @@index([fullName])
   @@index([isDeleted])
   @@index([status])
   @@index([publicToken])
+  @@index([bloodType])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DONOR PHONE
+// ─────────────────────────────────────────────────────────────────────────────
 
 model DonorPhone {
   id        Int     @id @default(autoincrement())
+
   donorId   Int
-  donor     Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  donor     Donor   @relation(
+    fields: [donorId],
+    references: [id],
+    onDelete: Cascade
+  )
+
   number    String
+
   label     String
+
   isPrimary Boolean
 
   @@index([number])
+  @@index([donorId])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DONATION HISTORY
+// ─────────────────────────────────────────────────────────────────────────────
 
 model DonationHistory {
   id           Int      @id @default(autoincrement())
+
   donorId      Int
-  donor        Donor    @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  donor        Donor    @relation(
+    fields: [donorId],
+    references: [id],
+    onDelete: Cascade
+  )
+
   patientName  String?
+
   hospitalName String?
+
   donationDate DateTime
+
   notes        String?
+
+  @@index([donorId])
+  @@index([donationDate])
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
 model AuditLog {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
+
   userId    Int?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  user      User?     @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: SetNull
+  )
+
   action    String
+
   details   String
-  timestamp DateTime @default(now())
+
+  timestamp DateTime  @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
 }
