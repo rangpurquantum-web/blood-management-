@@ -106,7 +106,17 @@ export const donorEligibilitySchema = z.object({
   ),
 });
 
+// ─── Public Register Schema ──────────────────────────────────────────────────
+// Used only by the public /register page + /api/register route.
+// Same shape as donorSchema, plus branchId so the API route knows which
+// branch DB to write the new donor into.
+
+export const registerSchema = donorSchema.extend({
+  branchId: z.string().min(1, "Please select a branch"),
+});
+
 export type DonorInput = z.infer<typeof donorSchema>;
 export type DonorUpdateInput = z.infer<typeof donorUpdateSchema>;
 export type DonorEligibilityInput = z.infer<typeof donorEligibilitySchema>;
 export type ImportDonorInput = z.infer<typeof importDonorSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
