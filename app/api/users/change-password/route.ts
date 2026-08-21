@@ -5,10 +5,6 @@ import bcrypt from "bcryptjs";
 
 export const dynamic = 'force-dynamic';
 
-// ─── POST /api/users/change-password ──────────────────────────────────────────
-// Any logged-in user can call this to change their own password.
-// Body: { currentPassword, newPassword }
-
 export const POST = withAuth(async (req: NextRequest, session) => {
   const body = await req.json();
   const { currentPassword, newPassword } = body ?? {};
