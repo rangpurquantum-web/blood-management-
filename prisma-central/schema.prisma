@@ -50,19 +50,10 @@ model BranchUser {
   name         String
   email        String    @unique
   passwordHash String
-
-  // ADMIN / COORDINATOR / VOLUNTEER
   role         String    @default("VOLUNTEER")
 
-  // Custom permissions for this account
-  permissions  Json?
-
   branchId     Int
-  branch       Branch    @relation(
-    fields: [branchId],
-    references: [id],
-    onDelete: Cascade
-  )
+  branch       Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   isActive     Boolean   @default(true)
 
