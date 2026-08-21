@@ -1,6 +1,7 @@
 import { PrismaClient } from "@/generated/branch";
 import { centralPrisma } from "@/lib/central-db";
 import { decryptDatabaseUrl } from "@/lib/crypto";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Branch Prisma Client Cache
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,11 +57,14 @@ export async function getBranchDb(
     throw new Error("Branch database connection is not configured");
   }
 
+  // Decrypt the stored connection string before using it.
+  const connectionUrl = decryptDatabaseUrl(branch.databaseUrlSecret);
+
   // Create Prisma Client using this branch's database URL.
   const client = new PrismaClient({
     datasources: {
       db: {
-        url: branch.databaseUrlSecret,
+        url: connectionUrl,
       },
     },
     log: ["error"],
