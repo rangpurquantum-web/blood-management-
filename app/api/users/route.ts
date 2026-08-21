@@ -8,21 +8,17 @@ export const dynamic = 'force-dynamic';
 // ─── GET /api/users  (Admin only — list all users) ────────────────────────────
 export const GET = withAuth(
   async (_req: NextRequest, session) => {
-    if (!session.branchId) {
-      return apiError("No branch selected", 400);
-    }
+    if (!session.branchId) return apiError("No branch selected", 400);
 
     const users = await centralPrisma.branchUser.findMany({
-      where: { branchId: session.branchId, isDeleted: false },
+      where: { branchId: session.branchId },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
         createdAt: true,
-        permissions: true,
         isActive: true,
-        isDeleted: true,
       },
       orderBy: { createdAt: "asc" },
     });
@@ -34,12 +30,10 @@ export const GET = withAuth(
 // ─── POST /api/users  (Admin only — create user) ──────────────────────────────
 export const POST = withAuth(
   async (req: NextRequest, session) => {
-    if (!session.branchId) {
-      return apiError("No branch selected", 400);
-    }
+    if (!session.branchId) return apiError("No branch selected", 400);
 
     const body = await req.json();
-    const { name, email, password, role, permissions } = body ?? {};
+    const { name, email, password, role } = body ?? {};
 
     if (!name || !email || !password) {
       return apiError("name, email and password are required", 400);
@@ -61,11 +55,10 @@ export const POST = withAuth(
         email: normalizedEmail,
         passwordHash: hash,
         role,
-        permissions: permissions || null,
         branchId: session.branchId,
         isActive: true,
       },
-      select: { id: true, name: true, email: true, role: true, createdAt: true, permissions: true },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
 
     await writeAuditLog(session.userId, "User Created", `Admin created user: ${normalizedEmail} (${role})`, session.branchId, session.branchSlug);
