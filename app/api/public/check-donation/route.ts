@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const searches = await Promise.all(
     branches.map(async (branch) => {
       try {
-        const branchClient = getBranchPrismaClient(branch.databaseUrl);
+        const branchClient = getBranchPrismaClient(branch.databaseUrlSecret);
 
         const donorPhone = await branchClient.donorPhone.findFirst({
           where: { number: phone },
