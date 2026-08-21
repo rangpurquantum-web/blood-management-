@@ -1,6 +1,6 @@
 import { PrismaClient } from "@/generated/branch";
 import { centralPrisma } from "@/lib/central-db";
-import { decryptDatabaseUrl } from "@/lib/encryption";
+import { decryptDatabaseUrl } from "@/lib/crypto";
 // ─────────────────────────────────────────────────────────────────────────────
 // Branch Prisma Client Cache
 // ─────────────────────────────────────────────────────────────────────────────
