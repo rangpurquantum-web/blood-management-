@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { centralPrisma } from "@/lib/central-db";
 import { withAuth, apiError, apiSuccess, writeAuditLog } from "@/lib/api-helpers";
-import { Role } from "@/generated/central"; // adjust to wherever BranchUser's Role enum is generated
+updateData.role = role as "ADMIN" | "VOLUNTEER"; // adjust to wherever BranchUser's Role enum is generated
 import bcrypt from "bcryptjs";
 
 export const dynamic = 'force-dynamic';
