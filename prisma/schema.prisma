@@ -33,15 +33,11 @@ model User {
   name         String
   email        String    @unique
   passwordHash String
-
   role         Role      @default(VOLUNTEER)
-
   permissions  Json?
-
   isActive     Boolean   @default(true)
   isDeleted    Boolean   @default(false)
   deletedAt    DateTime?
-
   createdAt    DateTime  @default(now())
 
   auditLogs    AuditLog[]
@@ -59,37 +55,21 @@ model User {
 model Donor {
   id             Int               @id @default(autoincrement())
   fullName       String
-
   dob            DateTime?
-
   gender         String
-
   bloodType      String
-
   phone          DonorPhone[]
-
   email          String?
-
   publicToken    String            @unique @default(uuid())
-
   address        String
-
   isEligible     Boolean           @default(true)
-
   deferralReason String?
-
   deferredUntil  DateTime?
-
   status         DonorStatus       @default(APPROVED)
-
   isDeleted      Boolean           @default(false)
-
   createdAt      DateTime          @default(now())
-
   deletedAt      DateTime?
-
   notes          String?
-
   donations      DonationHistory[]
 
   @@index([fullName])
@@ -105,19 +85,10 @@ model Donor {
 
 model DonorPhone {
   id        Int     @id @default(autoincrement())
-
   donorId   Int
-
-  donor     Donor   @relation(
-    fields: [donorId],
-    references: [id],
-    onDelete: Cascade
-  )
-
+  donor     Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
   number    String
-
   label     String
-
   isPrimary Boolean
 
   @@index([number])
@@ -130,21 +101,11 @@ model DonorPhone {
 
 model DonationHistory {
   id           Int      @id @default(autoincrement())
-
   donorId      Int
-
-  donor        Donor    @relation(
-    fields: [donorId],
-    references: [id],
-    onDelete: Cascade
-  )
-
+  donor        Donor    @relation(fields: [donorId], references: [id], onDelete: Cascade)
   patientName  String?
-
   hospitalName String?
-
   donationDate DateTime
-
   notes        String?
 
   @@index([donorId])
@@ -157,19 +118,10 @@ model DonationHistory {
 
 model AuditLog {
   id        Int       @id @default(autoincrement())
-
   userId    Int?
-
-  user      User?     @relation(
-    fields: [userId],
-    references: [id],
-    onDelete: SetNull
-  )
-
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   action    String
-
   details   String
-
   timestamp DateTime  @default(now())
 
   @@index([userId])
