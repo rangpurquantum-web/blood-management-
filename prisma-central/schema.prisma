@@ -1,105 +1,100 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/branch"
+  output   = "../generated/central"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("CENTRAL_DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  COORDINATOR
-  VOLUNTEER
+// ─────────────────────────────────────────────────────────────────────────────
+// BRANCH
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Branch {
+  id                Int          @id @default(autoincrement())
+  name              String       @unique
+  slug              String       @unique
+  location          String?
+  databaseUrlSecret String
+  isActive          Boolean      @default(true)
+
+  users             BranchUser[]
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 
-enum DonorStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPER ADMIN
+// ─────────────────────────────────────────────────────────────────────────────
 
-model User {
+model SuperAdmin {
   id           Int       @id @default(autoincrement())
   name         String
   email        String    @unique
   passwordHash String
-  role         Role      @default(VOLUNTEER)
+  isActive     Boolean   @default(true)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BRANCH USER
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BranchUser {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+
+  // ADMIN / COORDINATOR / VOLUNTEER
+  role         String    @default("VOLUNTEER")
+
+  // Custom permissions
   permissions  Json?
+
+  branchId     Int
+  branch       Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
   isActive     Boolean   @default(true)
   isDeleted    Boolean   @default(false)
   deletedAt    DateTime?
+
   createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  auditLogs    AuditLog[]
-
+  @@index([branchId])
   @@index([email])
   @@index([role])
   @@index([isActive])
   @@index([isDeleted])
 }
 
-model Donor {
-  id             Int               @id @default(autoincrement())
-  fullName       String
-  dob            DateTime?
-  gender         String
-  bloodType      String
-  phone          DonorPhone[]
-  email          String?
-  publicToken    String            @unique @default(uuid())
-  address        String
-  isEligible     Boolean           @default(true)
-  deferralReason String?
-  deferredUntil  DateTime?
-  status         DonorStatus       @default(APPROVED)
-  isDeleted      Boolean           @default(false)
-  createdAt      DateTime          @default(now())
-  deletedAt      DateTime?
-  notes          String?
-  donations      DonationHistory[]
+// ─────────────────────────────────────────────────────────────────────────────
+// PUSH SUBSCRIPTION (FCM tokens for staff push notifications)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  @@index([fullName])
-  @@index([isDeleted])
-  @@index([status])
-  @@index([publicToken])
-  @@index([bloodType])
-}
+model PushSubscription {
+  id           Int       @id @default(autoincrement())
 
-model DonorPhone {
-  id        Int     @id @default(autoincrement())
-  donorId   Int
-  donor     Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
-  number    String
-  label     String
-  isPrimary Boolean
+  // Either a BranchUser or a SuperAdmin subscribes — store which + their id
+  userId       Int
+  userType     String    // "BRANCH_USER" | "SUPER_ADMIN"
 
-  @@index([number])
-  @@index([donorId])
-}
+  // For branch users, which branch they belong to (for scoping the
+  // midnight per-branch digest). Null for super admins.
+  branchId     Int?
 
-model DonationHistory {
-  id           Int      @id @default(autoincrement())
-  donorId      Int
-  donor        Donor    @relation(fields: [donorId], references: [id], onDelete: Cascade)
-  patientName  String?
-  hospitalName String?
-  donationDate DateTime
-  notes        String?
+  fcmToken     String    @unique
+  deviceInfo   String?   // optional label, e.g. "Fahim's Redmi"
 
-  @@index([donorId])
-  @@index([donationDate])
-}
-
-model AuditLog {
-  id        Int       @id @default(autoincrement())
-  userId    Int?
-  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action    String
-  details   String
-  timestamp DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([userId])
-  @@index([timestamp])
+  @@index([branchId])
 }
