@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "965102882685",
+    "project_id": "blood-management-system-35094",
+    "storage_bucket": "blood-management-system-35094.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965102882685:android:06ce2d515c96f6a7814614",
+        "android_client_info": {
+          "package_name": "com.bloodmanager.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoPtU6IuLMcpJp8M-rn7azZ6LnnpYjLEs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
