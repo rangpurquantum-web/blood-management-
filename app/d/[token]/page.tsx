@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/db";
+import { centralPrisma } from "@/lib/central-db";
+import { getBranchDb } from "@/lib/branch-db";
 import { notFound } from "next/navigation";
 import DonationEditor from "./donation-editor";
 
@@ -10,6 +11,46 @@ type PageProps = {
 
 export const dynamic = "force-dynamic";
 
+async function findDonorAcrossBranches(token: string) {
+  // Public QR route has no session, so no branchId is known.
+  // Look up all active branches, then check each branch DB for this token.
+  const branches = await centralPrisma.branch.findMany({
+    where: { isActive: true },
+    select: { id: true },
+  });
+
+  for (const branch of branches) {
+    const branchDb = await getBranchDb(branch.id);
+
+    const donor = await branchDb.donor.findFirst({
+      where: {
+        publicToken: token,
+        isDeleted: false,
+        status: "APPROVED",
+      },
+      select: {
+        fullName: true,
+        bloodType: true,
+        dob: true,
+        publicToken: true,
+        isEligible: true,
+        deferredUntil: true,
+        donations: {
+          orderBy: { donationDate: "desc" },
+          take: 1,
+          select: { donationDate: true },
+        },
+      },
+    });
+
+    if (donor) {
+      return donor;
+    }
+  }
+
+  return null;
+}
+
 export default async function PublicDonorPage({
   params,
 }: PageProps) {
@@ -19,31 +60,7 @@ export default async function PublicDonorPage({
     notFound();
   }
 
-  const donor = await prisma.donor.findFirst({
-    where: {
-      publicToken: token,
-      isDeleted: false,
-      status: "APPROVED",
-    },
-    select: {
-      fullName: true,
-      bloodType: true,
-      dob: true,
-      publicToken: true,
-      isEligible: true,
-      deferredUntil: true,
-
-      donations: {
-        orderBy: {
-          donationDate: "desc",
-        },
-        take: 1,
-        select: {
-          donationDate: true,
-        },
-      },
-    },
-  });
+  const donor = await findDonorAcrossBranches(token);
 
   if (!donor) {
     notFound();
