@@ -5,6 +5,7 @@ import { AppProviders } from "@/components/providers/app-providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
+import ReceiveFcmToken from "@/components/pwa/receive-fcm-token";
 
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen font-sans" suppressHydrationWarning>
         <RegisterServiceWorker />
+        <ReceiveFcmToken />
         <AppProviders>
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="top-center" richColors />
