@@ -147,7 +147,7 @@ export function withAuth(
       if (options.permission && !isSuperAdmin) {
         const dbUser = await centralPrisma.branchUser.findUnique({
           where: { id: userId },
-          select: { role: true },
+          select: { role: true, permissions: true },
         });
 
         if (!dbUser || !hasPermission(dbUser, options.permission)) {
