@@ -5,12 +5,16 @@ import { useState } from "react";
 type DonationEditorProps = {
   token: string;
   currentDate: string | null;
+  isEligible: boolean;
+  deferredUntil: string | null;
   onUpdated?: () => void;
 };
 
 export default function DonationEditor({
   token,
   currentDate,
+  isEligible,
+  deferredUntil,
   onUpdated,
 }: DonationEditorProps) {
   const [date, setDate] = useState(
@@ -71,6 +75,32 @@ export default function DonationEditor({
     } finally {
       setSaving(false);
     }
+  }
+
+  if (!isEligible) {
+    let deferredText = "You are currently deferred from donating.";
+
+    if (deferredUntil) {
+      const date = new Date(deferredUntil);
+
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+
+      deferredText = `You are deferred until ${day}/${month}/${year}. You can update your donation date again after that.`;
+    }
+
+    return (
+      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+        <p className="text-sm font-bold text-amber-800">
+          Update Unavailable
+        </p>
+
+        <p className="mt-1 text-xs text-amber-700">
+          {deferredText}
+        </p>
+      </div>
+    );
   }
 
   return (
