@@ -85,9 +85,16 @@ export const authConfig = {
             ? user.branchSlug
             : null;
 
-        token.permissions = Array.isArray(user.permissions)
-          ? user.permissions
-          : [];
+        // Permissions are a { permissionKey: boolean } object,
+        // NOT an array — store it as-is (or null if absent/malformed)
+        // so role-default overrides aren't silently dropped.
+        const rawPermissions = (user as { permissions?: unknown }).permissions;
+        token.permissions =
+          rawPermissions &&
+          typeof rawPermissions === "object" &&
+          !Array.isArray(rawPermissions)
+            ? rawPermissions
+            : null;
 
         token.isSuperAdmin = Boolean((user as { isSuperAdmin?: boolean }).isSuperAdmin);
       }
@@ -126,13 +133,15 @@ export const authConfig = {
           ? token.branchSlug
           : null;
 
-      // Permissions
-      session.user.permissions = Array.isArray(token.permissions)
-        ? token.permissions.filter(
-            (permission): permission is string =>
-              typeof permission === "string",
-          )
-        : [];
+      // Permissions — pass through the object as-is (null if not set),
+      // matching what lib/permissions.ts's hasPermission() expects.
+      const tokenPermissions = (token as { permissions?: unknown }).permissions;
+      session.user.permissions =
+        tokenPermissions &&
+        typeof tokenPermissions === "object" &&
+        !Array.isArray(tokenPermissions)
+          ? (tokenPermissions as Record<string, boolean>)
+          : null;
 
       // Super Admin flag
       (session.user as { isSuperAdmin?: boolean }).isSuperAdmin = Boolean(
