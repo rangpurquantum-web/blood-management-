@@ -72,10 +72,45 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ─────────────────────────────────────────
+  // Calculate eligibility from lastDonationDate
+  // Same 120-day rule used by the donate route.
+  // If no last donation date was given, the donor
+  // has no donation history yet and is eligible.
+  // ─────────────────────────────────────────
+
+  let isEligible = true;
+  let deferredUntil: Date | null = null;
+  let deferralReason: string | null = null;
+
+  if (lastDonationDate) {
+    const parsedLastDonation = new Date(lastDonationDate);
+
+    const computedDeferredUntil = new Date(parsedLastDonation);
+    computedDeferredUntil.setDate(
+      computedDeferredUntil.getDate() + 120,
+    );
+
+    const now = new Date();
+
+    if (computedDeferredUntil > now) {
+      // Still within the 120-day rest period
+      isEligible = false;
+      deferredUntil = computedDeferredUntil;
+      deferralReason = "Recent blood donation";
+    }
+    // If computedDeferredUntil <= now, the donor has
+    // already completed the waiting period, so they
+    // stay eligible (isEligible remains true).
+  }
+
   const donor = await branchDb.donor.create({
     data: {
       ...donorData,
       status: "PENDING",
+      isEligible,
+      deferredUntil,
+      deferralReason,
       phone: {
         create: phoneData.map((p) => ({
           number: p.number,
