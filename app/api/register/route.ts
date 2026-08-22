@@ -123,6 +123,9 @@ export async function POST(req: NextRequest) {
             create: [
               {
                 donationDate: lastDonationDate,
+                patientName: "Direct / Self Donation",
+                hospitalName: "N/A",
+                notes: "Recorded during self-registration",
               },
             ],
           }
