@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Building2, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -41,12 +42,25 @@ export function BranchSwitcher({
       onValueChange={handleChange}
       disabled={loading}
     >
-      <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="Select branch" />
+      <SelectTrigger
+        className="w-auto min-w-[160px] gap-2 rounded-full border-border/60 bg-primary/10 px-3.5 py-1.5 h-9 text-sm font-medium text-primary hover:bg-primary/15 transition-colors focus:ring-primary/30 [&>svg:last-child]:text-primary/70"
+      >
+        <span className="flex items-center gap-2 truncate">
+          {loading ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          ) : (
+            <Building2 className="h-4 w-4 shrink-0" />
+          )}
+          <SelectValue placeholder="Select branch" />
+        </span>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="rounded-xl border-border/60">
         {branches.map((b) => (
-          <SelectItem key={b.id} value={String(b.id)}>
+          <SelectItem
+            key={b.id}
+            value={String(b.id)}
+            className="rounded-lg text-sm focus:bg-primary/10 focus:text-primary"
+          >
             {b.name}
           </SelectItem>
         ))}
