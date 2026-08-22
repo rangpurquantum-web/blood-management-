@@ -37,7 +37,7 @@ export interface PublicBranch {
 }
 
 async function fetchPublicBranches(): Promise<PublicBranch[]> {
-  const res = await fetch("/api/branches/public");
+  const res = await fetch("/api/branches/public", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch branches");
   const json = await res.json();
   return json.branches;
@@ -51,6 +51,10 @@ export function usePublicBranches() {
 }
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
+// NOTE: cache: "no-store" is required on every donor fetch — without it the
+// BROWSER's own HTTP cache can silently serve a stale response for an
+// identical GET URL (e.g. right after creating a new donor + reload),
+// even though the Next.js server itself is already force-dynamic.
 
 async function fetchDonors(filters: DonorFilters): Promise<DonorWithPhone[]> {
   const params = new URLSearchParams();
@@ -60,13 +64,15 @@ async function fetchDonors(filters: DonorFilters): Promise<DonorWithPhone[]> {
   if (filters.status) params.set("status", filters.status);
   if (filters.area) params.set("area", filters.area);
 
-  const res = await fetch(`/api/donors?${params.toString()}`);
+  const res = await fetch(`/api/donors?${params.toString()}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch donors");
   return res.json();
 }
 
 async function fetchDonor(id: number): Promise<DonorWithDonations> {
-  const res = await fetch(`/api/donors/${id}`);
+  const res = await fetch(`/api/donors/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch donor");
   return res.json();
 }
@@ -99,6 +105,7 @@ export function useCreateDonor() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        cache: "no-store",
       });
       const json = await res.json();
       if (!res.ok) throw json;
@@ -119,6 +126,7 @@ export function usePublicRegisterDonor() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        cache: "no-store",
       });
       const json = await res.json();
       if (!res.ok) throw json;
@@ -139,6 +147,7 @@ export function useUpdateDonor(id: number) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        cache: "no-store",
       });
       const json = await res.json();
       if (!res.ok) throw json;
@@ -156,7 +165,10 @@ export function useDeleteDonor() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/donors/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/donors/${id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
       const json = await res.json();
       if (!res.ok) throw json;
       return json;
@@ -176,6 +188,7 @@ export function useDeferDonor(id: number) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        cache: "no-store",
       });
       const json = await res.json();
       if (!res.ok) throw json;
