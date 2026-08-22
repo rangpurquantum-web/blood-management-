@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, PlusCircle, DatabaseZap } from "lucide-react";
+import { Loader2, PlusCircle, DatabaseZap, KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -79,14 +79,22 @@ export default function BranchesPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-8 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold">Branches</h1>
-        <Link href="/superadmin/branches/new">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Branch
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/debug/tools" target="_blank" rel="noopener noreferrer">
+            <Button variant="outline">
+              <KeyRound className="mr-2 h-4 w-4" />
+              DB Tools
+            </Button>
+          </Link>
+          <Link href="/superadmin/branches/new">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Branch
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {isLoading ? (
