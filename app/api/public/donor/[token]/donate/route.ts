@@ -1,7 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { centralPrisma } from "@/lib/central-db";
+import { getBranchDb } from "@/lib/branch-db";
 
 export const dynamic = "force-dynamic";
+
+// ─────────────────────────────────────────────
+// Helper: find donor + which branch DB they live in
+// Public QR route has no session, so no branchId is known —
+// check every active branch DB until the token matches.
+// ─────────────────────────────────────────────
+
+async function findDonorWithBranchDb(token: string) {
+  const branches = await centralPrisma.branch.findMany({
+    where: { isActive: true },
+    select: { id: true },
+  });
+
+  for (const branch of branches) {
+    const branchDb = await getBranchDb(branch.id);
+
+    const donor = await branchDb.donor.findFirst({
+      where: {
+        publicToken: token,
+        isDeleted: false,
+        status: "APPROVED",
+      },
+      include: {
+        donations: {
+          orderBy: {
+            donationDate: "desc",
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (donor) {
+      return { donor, branchDb };
+    }
+  }
+
+  return null;
+}
 
 // ─────────────────────────────────────────────
 // GET
@@ -25,23 +65,9 @@ export async function GET(
       );
     }
 
-    const donor = await prisma.donor.findFirst({
-      where: {
-        publicToken: token,
-        isDeleted: false,
-        status: "APPROVED",
-      },
-      include: {
-        donations: {
-          orderBy: {
-            donationDate: "desc",
-          },
-          take: 1,
-        },
-      },
-    });
+    const result = await findDonorWithBranchDb(token);
 
-    if (!donor) {
+    if (!result) {
       return NextResponse.json(
         {
           success: false,
@@ -51,6 +77,8 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    const { donor } = result;
 
     const lastDonation = donor.donations[0] ?? null;
 
@@ -132,23 +160,12 @@ export async function POST(
     }
 
     // ─────────────────────────────────────────
-    // Find donor
+    // Find donor (and the branch DB they belong to)
     // ─────────────────────────────────────────
 
-    const donor = await prisma.donor.findFirst({
-      where: {
-        publicToken: token,
-        isDeleted: false,
-        status: "APPROVED",
-      },
-      select: {
-        id: true,
-        fullName: true,
-        publicToken: true,
-      },
-    });
+    const result = await findDonorWithBranchDb(token);
 
-    if (!donor) {
+    if (!result) {
       return NextResponse.json(
         {
           success: false,
@@ -159,12 +176,14 @@ export async function POST(
       );
     }
 
+    const { donor, branchDb } = result;
+
     // ─────────────────────────────────────────
-    // Find latest donation
+    // Find latest donation (in the same branch DB)
     // ─────────────────────────────────────────
 
     const latestDonation =
-      await prisma.donationHistory.findFirst({
+      await branchDb.donationHistory.findFirst({
         where: {
           donorId: donor.id,
         },
@@ -180,7 +199,7 @@ export async function POST(
     // ─────────────────────────────────────────
 
     if (latestDonation) {
-      donation = await prisma.donationHistory.update({
+      donation = await branchDb.donationHistory.update({
         where: {
           id: latestDonation.id,
         },
@@ -195,7 +214,7 @@ export async function POST(
     // ─────────────────────────────────────────
 
     else {
-      donation = await prisma.donationHistory.create({
+      donation = await branchDb.donationHistory.create({
         data: {
           donorId: donor.id,
           patientName: "Direct / Self Donation",
@@ -217,10 +236,10 @@ export async function POST(
     );
 
     // ─────────────────────────────────────────
-    // Update donor eligibility
+    // Update donor eligibility (in the same branch DB)
     // ─────────────────────────────────────────
 
-    await prisma.donor.update({
+    await branchDb.donor.update({
       where: {
         id: donor.id,
       },
