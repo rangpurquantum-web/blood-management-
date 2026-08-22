@@ -89,9 +89,9 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-destructive text-primary-foreground shadow-lg">
             <Droplet className="h-8 w-8 fill-current" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">Welcome Back</CardTitle>
+          <CardTitle className="text-3xl font-bold tracking-tight">Quantum Blood Donor Pool</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
-            Sign in to the Internal Blood Management System
+            Sign In
           </CardDescription>
         </CardHeader>
         
