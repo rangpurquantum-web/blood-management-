@@ -5,6 +5,7 @@ import {
   Users,
   UserCheck,
   Heart,
+  Cake,
 } from "lucide-react";
 import { auth } from "@/auth";
 import { getBranchDb } from "@/lib/branch-db";
@@ -12,6 +13,8 @@ import { centralPrisma } from "@/lib/central-db";
 import { cookies } from "next/headers";
 import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 import { DashboardCharts } from "@/features/dashboard/components/dashboard-charts";
+import { BirthdayList } from "@/features/donors/components/birthday-list";
+import { getTodaysBirthdays } from "@/features/donors/birthday-helpers";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -54,6 +57,7 @@ export default async function DashboardPage() {
     recentDonations,
     donorsByBloodType,
     donationsLast7Days,
+    todaysBirthdays,
   ] = await Promise.all([
     // 1. Total Active Donors — APPROVED + not deleted
     prisma.donor.count({
@@ -97,6 +101,9 @@ export default async function DashboardPage() {
       },
       select: { donationDate: true },
     }),
+
+    // 7. Today's birthdays (this branch only, Asia/Dhaka "today")
+    getTodaysBirthdays(prisma),
   ]);
 
   // Aggregate donations by day
@@ -249,6 +256,27 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Row 3: Today's Birthdays ── */}
+      <Card className="bg-card shadow-sm border-muted/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-sm font-medium">Today&apos;s Birthdays</CardTitle>
+            <Cake className="h-4 w-4 text-pink-500" />
+          </div>
+          {todaysBirthdays.length > 0 && (
+            <Link
+              href="/dashboard/birthdays"
+              className="text-xs text-primary hover:underline"
+            >
+              View all branches →
+            </Link>
+          )}
+        </CardHeader>
+        <CardContent>
+          <BirthdayList donors={todaysBirthdays} />
+        </CardContent>
+      </Card>
 
       {/* ── Charts ── */}
       <DashboardCharts bloodTypeData={bloodTypeData} trendData={trendData} />
