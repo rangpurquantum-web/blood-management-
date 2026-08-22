@@ -196,6 +196,12 @@ export default async function PublicDonorPage({
                       ? lastDonation.donationDate.toISOString()
                       : null
                   }
+                  isEligible={donor.isEligible}
+                  deferredUntil={
+                    donor.deferredUntil
+                      ? donor.deferredUntil.toISOString()
+                      : null
+                  }
                 />
               </div>
 
