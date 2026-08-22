@@ -179,6 +179,21 @@ export async function POST(
     const { donor, branchDb } = result;
 
     // ─────────────────────────────────────────
+    // Block self-update while donor is deferred
+    // ─────────────────────────────────────────
+
+    if (!donor.isEligible) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "আপনি বর্তমানে ডোনেশনের জন্য deferred অবস্থায় আছেন, তাই এই মুহূর্তে ডেট আপডেট করা যাবে না।",
+        },
+        { status: 403 }
+      );
+    }
+
+    // ─────────────────────────────────────────
     // Find latest donation (in the same branch DB)
     // ─────────────────────────────────────────
 
