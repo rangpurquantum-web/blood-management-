@@ -26,6 +26,7 @@
     "db:migrate:central": "prisma migrate dev --schema=prisma-central/schema.prisma",
 
     "db:push": "prisma db push",
+    "db:push:main": "prisma db push --schema=prisma/schema.prisma",
     "db:push:central": "prisma db push --schema=prisma-central/schema.prisma",
 
     "db:seed": "prisma db seed",
