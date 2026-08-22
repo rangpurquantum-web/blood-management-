@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBranchDb } from "@/lib/branch-db";
+import { centralPrisma } from "@/lib/central-db";
+import { sendFCMNotification } from "@/lib/send-notification";
 import { registerSchema } from "@/features/donors/schemas";
 import { apiError, apiSuccess, validationError, writeAuditLog } from "@/lib/api-helpers";
 
@@ -143,6 +145,35 @@ export async function POST(req: NextRequest) {
     `New pending donor registered online: ${donor.fullName} (${donor.bloodType}) — ID ${donor.id} — Branch ${parsedBranchId}`,
     parsedBranchId,
   );
+
+  // FCM notification পাঠানো (fire-and-forget, response block করবে না)
+  (async () => {
+    try {
+      const subscriptions = await centralPrisma.pushSubscription.findMany({
+        where: {
+          OR: [
+            { userType: "SUPER_ADMIN" },
+            { userType: "BRANCH_USER", branchId: parsedBranchId },
+          ],
+        },
+        select: { fcmToken: true },
+      });
+      const tokens = subscriptions.map((s) => s.fcmToken).filter(Boolean);
+
+      await sendFCMNotification(
+        tokens,
+        "নতুন Donor Application",
+        `${donor.fullName} (${donor.bloodType}) — Branch ${parsedBranchId}`,
+        {
+          type: "new_donor_application",
+          donorId: String(donor.id),
+          branchId: String(parsedBranchId),
+        },
+      );
+    } catch (err) {
+      console.error("FCM notification failed:", err);
+    }
+  })();
 
   return apiSuccess(
     {
