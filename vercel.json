@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/midnight-digest",
-      "schedule": "6 3 * * *"
+      "schedule": "10 4 * * *"
     }
   ]
 }
