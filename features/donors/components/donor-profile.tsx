@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { useDonor, useUpdateDonor } from "@/features/donors/hooks";
 import { format } from "date-fns";
 import { hasPermission } from "@/lib/permissions";
-import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 
 import {
