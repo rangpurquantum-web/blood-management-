@@ -18,7 +18,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        registerPlugin(UpdateInstallerPlugin.class);
+        // registerPlugin(UpdateInstallerPlugin.class); // TODO: re-enable once plugin class is added
 
         // ── Cookie persistence fix ──────────────────────────────
         // Login session cookie thik moto save rakhar jonno
