@@ -21,7 +21,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Top-right Login ──────────────────────────────────────────── */}
-      <div className="relative z-20 flex justify-end px-6 pt-4 shrink-0">
+        <div className="relative z-20 flex justify-end px-6 pt-8 shrink-0">
         <Link
           href="/login"
           className="flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-blue-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
