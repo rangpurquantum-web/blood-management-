@@ -11,12 +11,15 @@ interface UpdateInstallerPlugin {
 
 const UpdateInstaller = registerPlugin<UpdateInstallerPlugin>("UpdateInstaller");
 
+const UPDATE_CHECK_ENABLED = false;
+
 export function UpdateChecker() {
   const [updateInfo, setUpdateInfo] = useState<{ downloadUrl: string } | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
+    if (!UPDATE_CHECK_ENABLED) return;
     if (!Capacitor.isNativePlatform()) return;
 
     async function checkUpdate() {
@@ -50,7 +53,7 @@ export function UpdateChecker() {
     }
   };
 
-  if (!updateInfo || dismissed) return null;
+  if (!UPDATE_CHECK_ENABLED || !updateInfo || dismissed) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 rounded-lg border bg-card shadow-lg p-4 flex items-center gap-3">
