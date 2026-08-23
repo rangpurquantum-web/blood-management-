@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { Camera, Upload, X, Loader2, ScanLine, ImageOff } from "lucide-react";
+import { Camera, Upload, X, Loader2, ImageOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -134,41 +134,40 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
   return (
     <div className="flex flex-col items-center gap-4">
       {mode === "camera" ? (
-        <div className="relative w-full max-w-xs overflow-hidden rounded-2xl border border-red-900/20 bg-black shadow-lg shadow-red-950/10">
+        <div className="relative w-full max-w-xs overflow-hidden rounded-2xl bg-black shadow-xl">
           <video
             ref={videoRef}
-            className="aspect-square w-full object-cover"
+            className="aspect-[3/4] w-full object-cover"
             muted
             playsInline
           />
           <canvas ref={canvasRef} className="hidden" />
 
-          {/* scan frame overlay */}
+          {/* Lens-style reticle: wide-set, rounded arc corners */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="relative h-[70%] w-[70%]">
-              <Corner className="left-0 top-0 border-l-2 border-t-2" />
-              <Corner className="right-0 top-0 border-r-2 border-t-2" />
-              <Corner className="bottom-0 left-0 border-b-2 border-l-2" />
-              <Corner className="bottom-0 right-0 border-b-2 border-r-2" />
-              <div className="scan-line absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
+            <div className="relative h-[46%] w-[78%]">
+              <Corner className="left-0 top-0 rounded-tl-3xl border-l-[3px] border-t-[3px]" />
+              <Corner className="right-0 top-0 rounded-tr-3xl border-r-[3px] border-t-[3px]" />
+              <Corner className="bottom-0 left-0 rounded-bl-3xl border-b-[3px] border-l-[3px]" />
+              <Corner className="bottom-0 right-0 rounded-br-3xl border-b-[3px] border-r-[3px]" />
             </div>
           </div>
 
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent p-3">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-white">
-              <ScanLine className="h-3.5 w-3.5" />
-              QR কোড স্ক্যান করুন
+          <div className="absolute inset-x-0 bottom-0 flex justify-center pb-3">
+            <span className="rounded-full bg-black/50 px-3 py-1 text-xs text-white/90">
+              QR কোডটি ফ্রেমের মধ্যে রাখুন
             </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              className="h-7 w-7 rounded-full"
-              onClick={stopCamera}
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute right-3 top-3 h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/70"
+            onClick={stopCamera}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       ) : previewUrl ? (
         <div className="relative w-full max-w-xs overflow-hidden rounded-2xl border border-red-900/20 bg-muted shadow-lg shadow-red-950/10">
@@ -249,32 +248,6 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
         </div>
       )}
 
-      <style jsx>{`
-        .scan-line {
-          animation: scan 2.2s ease-in-out infinite;
-        }
-        @keyframes scan {
-          0% {
-            top: 2%;
-            opacity: 0.9;
-          }
-          50% {
-            top: 96%;
-            opacity: 0.9;
-          }
-          51% {
-            opacity: 0;
-          }
-          52% {
-            top: 2%;
-            opacity: 0.9;
-          }
-          100% {
-            top: 2%;
-            opacity: 0.9;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -283,7 +256,7 @@ function Corner({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "absolute h-6 w-6 rounded-sm border-red-500",
+        "absolute h-9 w-9 border-white/90",
         className,
       )}
     />
