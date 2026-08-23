@@ -594,3 +594,330 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                           donor.fullName
                         }
                         trigger={
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            onSelect={(e) =>
+                              e.preventDefault()
+                            }
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Donor
+                          </DropdownMenuItem>
+                        }
+                      />
+                    </>
+                  )}
+
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </CardHeader>
+
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* Contact + Eligibility */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+
+        <CardContent className="pt-6 grid sm:grid-cols-2 gap-8">
+
+          {/* Contact */}
+
+          <div className="space-y-4">
+
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+              Contact Info
+            </h3>
+
+            <div className="space-y-3">
+
+              {/* Phones */}
+
+              <div className="space-y-1">
+
+                {primaryPhone ? (
+                  renderPhoneItem(
+                    primaryPhone,
+                  )
+                ) : typeof donor.phone ===
+                    "string" &&
+                  donor.phone ? (
+                  renderPhoneItem({
+                    number: donor.phone,
+                    label: "Phone",
+                    isPrimary: true,
+                  })
+                ) : (
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground py-1.5">
+                    <Phone className="h-4 w-4 text-primary" />
+
+                    <span>
+                      No phone number
+                    </span>
+                  </div>
+                )}
+
+                {secondaryPhones.length >
+                  0 && (
+                  <div className="mt-1">
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setShowAllPhones(
+                          !showAllPhones,
+                        )
+                      }
+                      className="text-xs text-primary hover:bg-primary/5 flex items-center gap-1 h-8 px-2 -ml-2"
+                    >
+                      {showAllPhones ? (
+                        <>
+                          <ChevronUp className="h-3.5 w-3.5" />
+                          Hide extra numbers
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5" />
+                          Show more numbers (
+                          {
+                            secondaryPhones.length
+                          }
+                          )
+                        </>
+                      )}
+                    </Button>
+
+                    {showAllPhones && (
+                      <div className="pl-4 mt-2 border-l-2 border-muted space-y-1 animate-in slide-in-from-top-1 duration-200">
+                        {secondaryPhones.map(
+                          (p: any) =>
+                            renderPhoneItem(
+                              p,
+                            ),
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Email */}
+
+              <div className="flex items-center gap-3 text-sm py-1.5">
+                <Mail className="h-4 w-4 text-primary shrink-0" />
+
+                <span>
+                  {donor.email}
+                </span>
+              </div>
+
+              {/* Address */}
+
+              <div className="flex items-start gap-3 text-sm py-1.5">
+                <MapPin className="h-4 w-4 text-primary shrink-0" />
+
+                <span>
+                  {donor.address}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Eligibility */}
+
+          <div className="space-y-4">
+
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+              Eligibility Status
+            </h3>
+
+            <div className="rounded-md border p-4 bg-muted/30">
+
+              {donor.isEligible ? (
+
+                <div className="flex items-start gap-3">
+
+                  <Droplet className="h-5 w-5 text-emerald-500 shrink-0" />
+
+                  <div>
+
+                    <p className="font-medium text-sm">
+                      Ready to Donate
+                    </p>
+
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This donor has completed
+                      the required 120-day
+                      waiting period and is
+                      eligible for donation.
+                    </p>
+
+                  </div>
+                </div>
+
+              ) : (
+
+                <div className="flex items-start gap-3">
+
+                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+
+                  <div>
+
+                    <p className="font-medium text-sm text-amber-700">
+                      Deferred
+                    </p>
+
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {donor.deferralReason ||
+                        "Recent donation — 120-day rest period."}
+                    </p>
+
+                    {donor.deferredUntil && (
+                      <p className="text-xs font-semibold mt-2">
+                        Eligible again on:{" "}
+                        {format(
+                          new Date(
+                            donor.deferredUntil,
+                          ),
+                          "PP",
+                        )}
+                      </p>
+                    )}
+
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+
+        </CardContent>
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Admin Notes */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+
+      <Card className="bg-amber-50/50 border-amber-200/50 shadow-sm">
+
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+
+          <CardTitle className="text-lg text-amber-900">
+            Admin Notes
+          </CardTitle>
+
+          {!isEditingNotes &&
+            canEditNotes && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setIsEditingNotes(true)
+                }
+                className="h-8 border-amber-200 text-amber-700 hover:bg-amber-100"
+              >
+                <Edit className="h-3.5 w-3.5 mr-2" />
+                Edit Notes
+              </Button>
+            )}
+        </CardHeader>
+
+        <CardContent>
+
+          {isEditingNotes ? (
+
+            <div className="space-y-3">
+
+              <Textarea
+                placeholder="Add special observations or notes about this donor..."
+                value={notes}
+                onChange={(e) =>
+                  setNotes(e.target.value)
+                }
+                className="min-h-[100px] bg-white border-amber-200 focus-visible:ring-amber-500"
+              />
+
+              <div className="flex gap-2 justify-end">
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNotes(
+                      (donor as any)
+                        .notes || "",
+                    );
+
+                    setIsEditingNotes(
+                      false,
+                    );
+                  }}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700"
+                  disabled={
+                    updateDonor.isPending
+                  }
+                  onClick={
+                    handleSaveNotes
+                  }
+                >
+                  {updateDonor.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+
+                  Save Notes
+                </Button>
+
+              </div>
+            </div>
+
+          ) : (
+
+            <div className="min-h-[60px] text-sm text-amber-800 whitespace-pre-wrap">
+
+              {(donor as any).notes ? (
+                (donor as any).notes
+              ) : (
+                <span className="text-amber-700/50 italic">
+                  No notes added yet.
+                </span>
+              )}
+
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Donation History */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+
+      <Card className="bg-card shadow-sm border-muted">
+
+        <CardHeader>
+          <CardTitle className="text-lg">
+            Donation History
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <Separator />
+
+          <DonationTimeline
+            donorId={donor.id}
+          />
+        </CardContent>
+
+      </Card>
+    </div>
+  );
+}
