@@ -209,9 +209,18 @@ export function DonorProfile({ donorId }: { donorId: number }) {
           title: "Donor ID Card",
           url: savedFile.uri,
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error("ID card download error:", err);
-        toast.error("ID card ডাউনলোড করার সময় সমস্যা হয়েছে");
+
+        // TEMP: surfacing the real error message for debugging.
+        // Once confirmed working, this can go back to a generic toast.
+        const detail =
+          err?.message ||
+          err?.errorMessage ||
+          JSON.stringify(err) ||
+          "Unknown error";
+
+        toast.error(`ID card ডাউনলোড ব্যর্থ: ${detail}`);
       } finally {
         setIsDownloadingCard(false);
       }
