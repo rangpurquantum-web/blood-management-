@@ -65,6 +65,8 @@ import {
   hasPermission,
 } from "@/lib/permissions";
 
+import { UserQrCode } from "@/components/user-qr-code";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1294,6 +1296,12 @@ export function UserManagementView({
                     {/* Actions */}
                     <TableCell>
                       <div className="flex items-center justify-end gap-2 flex-wrap">
+
+                        {/* QR Login */}
+                        <UserQrCode
+                          userId={user.id}
+                          userName={user.name}
+                        />
 
                         {/* Edit */}
                         <Button
