@@ -35,6 +35,7 @@ model SuperAdmin {
   name         String
   email        String    @unique
   passwordHash String
+  qrToken      String?   @unique
   isActive     Boolean   @default(true)
 
   createdAt    DateTime  @default(now())
@@ -50,6 +51,7 @@ model BranchUser {
   name         String
   email        String    @unique
   passwordHash String
+  qrToken      String?   @unique
 
   // ADMIN / COORDINATOR / VOLUNTEER
   role         String    @default("VOLUNTEER")
@@ -72,6 +74,7 @@ model BranchUser {
   @@index([role])
   @@index([isActive])
   @@index([isDeleted])
+  @@index([qrToken])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,16 +84,13 @@ model BranchUser {
 model PushSubscription {
   id           Int       @id @default(autoincrement())
 
-  // Either a BranchUser or a SuperAdmin subscribes — store which + their id
   userId       Int
-  userType     String    // "BRANCH_USER" | "SUPER_ADMIN"
+  userType     String
 
-  // For branch users, which branch they belong to (for scoping the
-  // midnight per-branch digest). Null for super admins.
   branchId     Int?
 
   fcmToken     String    @unique
-  deviceInfo   String?   // optional label, e.g. "Fahim's Redmi"
+  deviceInfo   String?
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
