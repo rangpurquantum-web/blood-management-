@@ -1,5 +1,7 @@
 package com.bloodmanager.app;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,6 +10,8 @@ import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 import com.google.firebase.messaging.FirebaseMessaging;
 
@@ -15,6 +19,9 @@ public class MainActivity extends BridgeActivity {
 
     private static final int MAX_RETRIES = 15;
     private static final long RETRY_DELAY_MS = 1000;
+    private static final int CAMERA_PERMISSION_REQUEST_CODE = 9001;
+
+    private PermissionRequest pendingWebPermissionRequest;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -61,10 +68,12 @@ public class MainActivity extends BridgeActivity {
     }
 
     // ── Camera permission grant for WebView (QR scanner uses getUserMedia) ──
-    // Capacitor-এর ভেতরের WebView ডিফল্টভাবে camera access দেয় না, তাই
-    // WebChromeClient.onPermissionRequest override করে explicitly grant
-    // করতে হচ্ছে — নাহলে navigator.mediaDevices.getUserMedia() silently
-    // fail করবে (QR scanner-এ blank/broken video দেখাবে)।
+    // Duita layer permission lagbe:
+    //  1) OS-level runtime permission (ActivityCompat.requestPermissions) —
+    //     user-ke system "Allow Camera?" popup dekhate hobe
+    //  2) WebView-level grant (WebChromeClient.onPermissionRequest) —
+    //     WebView-ke bola je oi OS permission use korte pare
+    // Dutoi na thakle getUserMedia() silently fail kore.
     private void enableCameraPermissionWithRetry(int attempt) {
         WebView webView = this.getBridge() != null ? this.getBridge().getWebView() : null;
         if (webView == null) {
@@ -81,10 +90,44 @@ public class MainActivity extends BridgeActivity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
-                runOnUiThread(() -> request.grant(request.getResources()));
+                runOnUiThread(() -> {
+                    boolean hasOsPermission =
+                        ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)
+                            == PackageManager.PERMISSION_GRANTED;
+
+                    if (hasOsPermission) {
+                        request.grant(request.getResources());
+                    } else {
+                        // OS permission ekhono nei — user-ke system popup dekhiye
+                        // request kori, result asle grant/deny kora hobe.
+                        pendingWebPermissionRequest = request;
+                        ActivityCompat.requestPermissions(
+                            MainActivity.this,
+                            new String[]{Manifest.permission.CAMERA},
+                            CAMERA_PERMISSION_REQUEST_CODE
+                        );
+                    }
+                });
             }
         });
         Log.d("CAMERA_FIX", "WebChromeClient camera permission handler set");
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == CAMERA_PERMISSION_REQUEST_CODE && pendingWebPermissionRequest != null) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted) {
+                pendingWebPermissionRequest.grant(pendingWebPermissionRequest.getResources());
+                Log.d("CAMERA_FIX", "OS camera permission granted, WebView request granted");
+            } else {
+                pendingWebPermissionRequest.deny();
+                Log.w("CAMERA_FIX", "OS camera permission denied by user");
+            }
+            pendingWebPermissionRequest = null;
+        }
     }
 
     // ── App background/close hoyar somoy cookie disk-e save (flush) kora ──
