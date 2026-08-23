@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DonorToPatientStatic } from "@/components/DonorToPatientStatic";
 
 export default function HomePage() {
   return (
@@ -19,15 +20,35 @@ export default function HomePage() {
         />
       </div>
 
+      {/* ── Top-right Login ──────────────────────────────────────────── */}
+      <div className="relative z-20 flex justify-end px-6 pt-6">
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-rose-100/80 ring-1 ring-white/15 hover:text-white hover:ring-white/30 transition-colors"
+        >
+          Login
+        </Link>
+      </div>
+
       {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md text-center mb-14">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10">
+        <div className="w-full max-w-md text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-3">
             Quantum Blood Donor Pool
           </h1>
         </div>
 
-        <div className="w-full max-w-sm space-y-4">
+        <div className="w-full max-w-3xl mx-auto mb-8">
+          <DonorToPatientStatic />
+        </div>
+
+        <div className="w-full max-w-md text-center mb-8">
+          <h2 className="text-xl font-semibold text-white">
+            Become a Proud Blood Donor
+          </h2>
+        </div>
+
+        <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             href="/check-donation"
             className="flex items-center justify-center w-full rounded-full bg-white/95 px-7 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-white transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -45,15 +66,6 @@ export default function HomePage() {
               Register as a New Donor
             </span>
           </Link>
-
-          <div className="pt-3 flex justify-center">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-rose-100/80 ring-1 ring-white/15 hover:text-white hover:ring-white/30 transition-colors"
-            >
-              Staff Login
-            </Link>
-          </div>
         </div>
       </div>
     </div>
