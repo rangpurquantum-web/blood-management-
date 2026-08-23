@@ -1,15 +1,20 @@
 package com.bloodmanager.app;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
@@ -22,6 +27,22 @@ public class MainActivity extends BridgeActivity {
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 9001;
 
     private PermissionRequest pendingWebPermissionRequest;
+    private ValueCallback<Uri[]> filePathCallback;
+
+    private final ActivityResultLauncher<Intent> fileChooserLauncher =
+        registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (filePathCallback == null) return;
+
+            Uri[] resultUris = null;
+            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                Uri data = result.getData().getData();
+                if (data != null) {
+                    resultUris = new Uri[]{data};
+                }
+            }
+            filePathCallback.onReceiveValue(resultUris);
+            filePathCallback = null;
+        });
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -67,13 +88,10 @@ public class MainActivity extends BridgeActivity {
         Log.d("COOKIE_FIX", "Third-party cookies enabled");
     }
 
-    // ── Camera permission grant for WebView (QR scanner uses getUserMedia) ──
-    // Duita layer permission lagbe:
-    //  1) OS-level runtime permission (ActivityCompat.requestPermissions) —
-    //     user-ke system "Allow Camera?" popup dekhate hobe
-    //  2) WebView-level grant (WebChromeClient.onPermissionRequest) —
-    //     WebView-ke bola je oi OS permission use korte pare
-    // Dutoi na thakle getUserMedia() silently fail kore.
+    // ── Camera permission grant + File chooser support for WebView ──
+    // Capacitor-er nijer WebChromeClient replace kore dicchi, tai
+    // file-input (ছবি আপলোড) er jonno onShowFileChooser nijei
+    // implement korte hocche — nahole seta bhenge jay.
     private void enableCameraPermissionWithRetry(int attempt) {
         WebView webView = this.getBridge() != null ? this.getBridge().getWebView() : null;
         if (webView == null) {
@@ -98,8 +116,6 @@ public class MainActivity extends BridgeActivity {
                     if (hasOsPermission) {
                         request.grant(request.getResources());
                     } else {
-                        // OS permission ekhono nei — user-ke system popup dekhiye
-                        // request kori, result asle grant/deny kora hobe.
                         pendingWebPermissionRequest = request;
                         ActivityCompat.requestPermissions(
                             MainActivity.this,
@@ -109,8 +125,36 @@ public class MainActivity extends BridgeActivity {
                     }
                 });
             }
+
+            @Override
+            public boolean onShowFileChooser(
+                    WebView webViewParam,
+                    ValueCallback<Uri[]> callback,
+                    FileChooserParams fileChooserParams) {
+
+                filePathCallback = callback;
+
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+
+                String[] acceptTypes = fileChooserParams.getAcceptTypes();
+                if (acceptTypes != null && acceptTypes.length > 0 && !acceptTypes[0].isEmpty()) {
+                    intent.setType(acceptTypes[0]);
+                }
+
+                try {
+                    fileChooserLauncher.launch(Intent.createChooser(intent, "Select File"));
+                } catch (Exception e) {
+                    Log.e("FILE_CHOOSER", "Failed to launch file chooser", e);
+                    filePathCallback = null;
+                    return false;
+                }
+
+                return true;
+            }
         });
-        Log.d("CAMERA_FIX", "WebChromeClient camera permission handler set");
+        Log.d("CAMERA_FIX", "WebChromeClient camera permission + file chooser handler set");
     }
 
     @Override
