@@ -27,9 +27,6 @@ export default function DonorToPatientHero({
         aria-label="Animated blood donation illustration"
       >
         <defs>
-          {/* =========================================================
-              BAG CLIP
-          ========================================================== */}
           <clipPath id={ids.bagClip}>
             <path
               d="
@@ -46,9 +43,6 @@ export default function DonorToPatientHero({
             />
           </clipPath>
 
-          {/* =========================================================
-              LEFT BLOOD FLOW PATH
-          ========================================================== */}
           <path
             id={ids.leftFlow}
             d="
@@ -59,9 +53,6 @@ export default function DonorToPatientHero({
             "
           />
 
-          {/* =========================================================
-              RIGHT BLOOD FLOW PATH
-          ========================================================== */}
           <path
             id={ids.rightFlow}
             d="
@@ -72,18 +63,6 @@ export default function DonorToPatientHero({
             "
           />
         </defs>
-
-        {/* ============================================================
-            BACKGROUND
-        ============================================================ */}
-
-        <rect
-          x="0"
-          y="0"
-          width="1500"
-          height="900"
-          fill="#FFFDF5"
-        />
 
         {/* ============================================================
             LEFT BED
@@ -153,11 +132,9 @@ export default function DonorToPatientHero({
 
         {/* ============================================================
             LEFT HAND
-            Same composition/style as supplied image
         ============================================================ */}
 
         <g className="hand-group left-hand">
-          {/* wrist/arm horizontal */}
           <path
             className="draw"
             d="
@@ -171,7 +148,6 @@ export default function DonorToPatientHero({
             strokeLinecap="round"
           />
 
-          {/* palm + fingers */}
           <path
             className="draw hand-outline"
             d="
@@ -204,7 +180,6 @@ export default function DonorToPatientHero({
             strokeLinejoin="round"
           />
 
-          {/* palm internal curves */}
           <path
             className="draw inner-line"
             d="
@@ -226,7 +201,6 @@ export default function DonorToPatientHero({
             strokeLinecap="round"
           />
 
-          {/* wrist connector */}
           <g className="draw wrist-tag">
             <rect
               x="160"
@@ -250,11 +224,9 @@ export default function DonorToPatientHero({
 
         {/* ============================================================
             RIGHT HAND
-            Mirror composition
         ============================================================ */}
 
         <g className="hand-group right-hand">
-          {/* arm */}
           <path
             className="draw"
             d="
@@ -268,7 +240,6 @@ export default function DonorToPatientHero({
             strokeLinecap="round"
           />
 
-          {/* palm + fingers */}
           <path
             className="draw hand-outline"
             d="
@@ -301,7 +272,6 @@ export default function DonorToPatientHero({
             strokeLinejoin="round"
           />
 
-          {/* palm curves */}
           <path
             className="draw inner-line"
             d="
@@ -323,7 +293,6 @@ export default function DonorToPatientHero({
             strokeLinecap="round"
           />
 
-          {/* wrist connector */}
           <g className="draw wrist-tag">
             <rect
               x="1282"
@@ -364,7 +333,6 @@ export default function DonorToPatientHero({
           strokeLinejoin="round"
         />
 
-        {/* white tube inner */}
         <path
           className="tube-inner"
           d="
@@ -379,7 +347,6 @@ export default function DonorToPatientHero({
           strokeLinecap="round"
         />
 
-        {/* red blood inside */}
         <path
           className="tube-blood"
           d="
@@ -652,7 +619,6 @@ export default function DonorToPatientHero({
             fill="#D6303B"
           />
 
-          {/* moving surface */}
           <path
             className="bag-surface"
             d="
@@ -682,7 +648,6 @@ export default function DonorToPatientHero({
           strokeWidth="7"
         />
 
-        {/* blood icon */}
         <path
           className="label-blood"
           d="
@@ -696,7 +661,6 @@ export default function DonorToPatientHero({
           fill="#D6303B"
         />
 
-        {/* label lines */}
         <path
           d="M700 485H800"
           stroke="#111"
@@ -748,20 +712,12 @@ export default function DonorToPatientHero({
           strokeWidth="7"
         />
 
-        {/* ============================================================
-            CSS ANIMATION
-        ============================================================ */}
-
         <style>{`
           .dtp-hero {
             width: 100%;
             height: auto;
             display: block;
           }
-
-          /* =========================================
-             DRAW EVERYTHING
-          ========================================== */
 
           .draw {
             stroke-dasharray: 1600;
@@ -821,10 +777,6 @@ export default function DonorToPatientHero({
             animation-duration: .7s;
           }
 
-          /* =========================================
-             DONOR HAND
-          ========================================== */
-
           .left-hand {
             animation:
               donor-breathe 3.5s ease-in-out
@@ -841,10 +793,6 @@ export default function DonorToPatientHero({
               transform: translateY(-3px);
             }
           }
-
-          /* =========================================
-             RIGHT HAND RECEIVING
-          ========================================== */
 
           .right-hand {
             transform-origin: center;
@@ -863,10 +811,6 @@ export default function DonorToPatientHero({
               transform: translateY(-3px);
             }
           }
-
-          /* =========================================
-             TUBE BLOOD FLOW
-          ========================================== */
 
           .tube-blood {
             opacity: 0;
@@ -916,10 +860,6 @@ export default function DonorToPatientHero({
             }
           }
 
-          /* =========================================
-             BIG BLOOD DROPS
-          ========================================== */
-
           .blood-drop {
             transform-box: fill-box;
             transform-origin: center;
@@ -946,10 +886,6 @@ export default function DonorToPatientHero({
               transform: scale(1.08);
             }
           }
-
-          /* =========================================
-             BAG FILL
-          ========================================== */
 
           .bag-blood {
             transform-box: fill-box;
@@ -1006,10 +942,6 @@ export default function DonorToPatientHero({
             }
           }
 
-          /* =========================================
-             BAG LABEL
-          ========================================== */
-
           .label-blood {
             transform-box: fill-box;
             transform-origin: center;
@@ -1030,10 +962,6 @@ export default function DonorToPatientHero({
               transform: scale(1.12);
             }
           }
-
-          /* =========================================
-             FLOW PARTICLES
-          ========================================== */
 
           .left-flow-particles {
             opacity: 0;
@@ -1064,21 +992,6 @@ export default function DonorToPatientHero({
               opacity: 1;
             }
           }
-
-          /* =========================================
-             MOBILE
-          ========================================== */
-
-          @media (max-width: 700px) {
-            .dtp-hero {
-              min-width: 760px;
-              transform: translateX(-130px);
-            }
-          }
-
-          /* =========================================
-             REDUCED MOTION
-          ========================================== */
 
           @media (prefers-reduced-motion: reduce) {
             .draw {
