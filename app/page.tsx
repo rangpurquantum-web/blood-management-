@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DonorToPatientStatic } from "@/components/DonorToPatientStatic";
+import DonorToPatientHero from "@/components/DonorToPatientHero";
 
 export default function HomePage() {
   return (
@@ -39,7 +39,7 @@ export default function HomePage() {
         </div>
 
         <div className="w-full max-w-3xl mx-auto my-8">
-          <DonorToPatientStatic />
+          <DonorToPatientHero />
         </div>
 
         <div className="w-full max-w-md text-center mb-6">
