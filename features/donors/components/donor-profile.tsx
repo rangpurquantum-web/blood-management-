@@ -24,6 +24,7 @@ import {
   MoreVertical,
   ShieldAlert,
   Trash2,
+  BadgeCheck,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -392,6 +393,16 @@ export function DonorProfile({ donorId }: { donorId: number }) {
 
               <CardTitle className="text-2xl flex items-center gap-3 flex-wrap">
                 {donor.fullName}
+
+                {(donor as any).isVerified && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 text-xs font-medium px-2 py-0.5"
+                    title="Verified Voluntary Donor"
+                  >
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                    Verified
+                  </span>
+                )}
 
                 <Badge
                   variant="outline"
