@@ -76,7 +76,7 @@ export default function PublicRegisterPage() {
   const errors = form.formState.errors as any;
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === STEPS.length - 1;
-  const currentStep = STEPS[stepIndex];
+  const currentStep = STEPS[stepIndex] ?? STEPS[0];
 
   const handleNext = async () => {
     const fieldsToValidate = currentStep.fields as any;
