@@ -6,6 +6,8 @@ import { useDonor, useUpdateDonor } from "@/features/donors/hooks";
 import { format } from "date-fns";
 import { hasPermission } from "@/lib/permissions";
 import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
 import {
   MapPin,
@@ -134,6 +136,7 @@ export function DonorProfile({ donorId }: { donorId: number }) {
 
   const [notes, setNotes] = useState("");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isDownloadingCard, setIsDownloadingCard] = useState(false);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Sync notes
@@ -147,6 +150,17 @@ export function DonorProfile({ donorId }: { donorId: number }) {
 
   // ─────────────────────────────────────────────────────────────────────────
   // Download ID card
+  //
+  // IMPORTANT: We deliberately do NOT use @capacitor/browser's Browser.open()
+  // here. That opens the device's system browser (Chrome Custom Tab), which
+  // has its own separate cookie jar from the app's WebView. If the user was
+  // ever logged into the site directly in Chrome under a different account,
+  // the request would carry that session instead of the app's session and
+  // hit the wrong branch database ("Donor not found").
+  //
+  // Instead we fetch the PDF using the WebView's own session/cookies
+  // (credentials: "include"), save it to the device filesystem, then use
+  // the native Share sheet so the user can view/save/share it.
   // ─────────────────────────────────────────────────────────────────────────
 
   const handleDownloadIdCard = async () => {
@@ -155,9 +169,51 @@ export function DonorProfile({ donorId }: { donorId: number }) {
     const path = `/api/donors/${donor.id}/card`;
 
     if (Capacitor.isNativePlatform()) {
-      await Browser.open({
-        url: `https://blood-management-livid.vercel.app${path}`,
-      });
+      setIsDownloadingCard(true);
+
+      try {
+        const response = await fetch(path, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          toast.error("ID card ডাউনলোড করা যায়নি");
+          return;
+        }
+
+        const blob = await response.blob();
+
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            // strip the "data:application/pdf;base64," prefix
+            resolve(result.split(",")[1]);
+          };
+
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const fileName = `donor-${donor.id}-id-card.pdf`;
+
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+
+        await Share.share({
+          title: "Donor ID Card",
+          url: savedFile.uri,
+        });
+      } catch (err) {
+        console.error("ID card download error:", err);
+        toast.error("ID card ডাউনলোড করার সময় সমস্যা হয়েছে");
+      } finally {
+        setIsDownloadingCard(false);
+      }
     } else {
       window.open(path, "_blank");
     }
@@ -467,8 +523,13 @@ export function DonorProfile({ donorId }: { donorId: number }) {
                 variant="outline"
                 size="sm"
                 onClick={handleDownloadIdCard}
+                disabled={isDownloadingCard}
               >
-                <Download className="mr-2 h-4 w-4" />
+                {isDownloadingCard ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
                 ID Card
               </Button>
             )}
