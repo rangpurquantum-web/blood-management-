@@ -83,7 +83,7 @@ export default function RequestBloodPage() {
 
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === STEPS.length - 1;
-  const currentStep = STEPS[stepIndex];
+  const currentStep = STEPS[stepIndex]!;
   const selectedBranch =
     form.branchIndex !== null ? BRANCHES[form.branchIndex] : null;
 
@@ -92,18 +92,15 @@ export default function RequestBloodPage() {
   }
 
   function validateStep(): boolean {
-  setError(null);
+    setError(null);
 
-  if (!currentStep) {
-    return false;
-  }
-
-  switch (currentStep.key) {
-    case "branch":
-      if (form.branchIndex === null) {
-        setError("অনুগ্রহ করে একটি শাখা নির্বাচন করুন");
-        return false;
-       }
+    switch (currentStep.key) {
+      case "branch":
+        if (form.branchIndex === null) {
+          setError("অনুগ্রহ করে একটি শাখা নির্বাচন করুন");
+          return false;
+        }
+        return true;
       case "patient":
         if (!form.patientName.trim()) {
           setError("রোগীর নাম লিখুন");
