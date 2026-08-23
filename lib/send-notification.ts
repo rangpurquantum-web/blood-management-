@@ -33,7 +33,8 @@ export async function sendFCMNotification(
       const invalidTokens: string[] = [];
       response.responses.forEach((res, idx) => {
         if (!res.success) {
-          invalidTokens.push(tokenList[idx]);
+          const token = tokenList[idx];
+            if (token) invalidTokens.push(token);
           console.error(`FCM error for token ${idx}:`, res.error?.message);
         }
       });
