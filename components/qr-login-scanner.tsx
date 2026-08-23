@@ -134,18 +134,18 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
   return (
     <div className="flex flex-col items-center gap-4">
       {mode === "camera" ? (
-        <div className="relative w-full max-w-xs overflow-hidden rounded-2xl bg-black shadow-xl">
+        <div className="fixed inset-0 z-50 bg-black">
           <video
             ref={videoRef}
-            className="aspect-[3/4] w-full object-cover"
+            className="h-full w-full object-cover"
             muted
             playsInline
           />
           <canvas ref={canvasRef} className="hidden" />
 
           {/* Lens-style reticle: wide-set, rounded arc corners */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="relative h-[46%] w-[78%]">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
+            <div className="relative h-[32%] w-full max-w-sm">
               <Corner className="left-0 top-0 rounded-tl-3xl border-l-[3px] border-t-[3px]" />
               <Corner className="right-0 top-0 rounded-tr-3xl border-r-[3px] border-t-[3px]" />
               <Corner className="bottom-0 left-0 rounded-bl-3xl border-b-[3px] border-l-[3px]" />
@@ -153,8 +153,8 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 flex justify-center pb-3">
-            <span className="rounded-full bg-black/50 px-3 py-1 text-xs text-white/90">
+          <div className="absolute inset-x-0 bottom-10 flex justify-center">
+            <span className="rounded-full bg-black/50 px-4 py-1.5 text-sm text-white/90">
               QR কোডটি ফ্রেমের মধ্যে রাখুন
             </span>
           </div>
@@ -163,10 +163,20 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
             type="button"
             variant="secondary"
             size="icon"
-            className="absolute right-3 top-3 h-8 w-8 rounded-full bg-black/50 text-white hover:bg-black/70"
+            className="absolute right-4 top-[calc(env(safe-area-inset-top)+1rem)] h-10 w-10 rounded-full bg-black/50 text-white hover:bg-black/70"
             onClick={stopCamera}
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute bottom-10 left-6 h-11 w-11 rounded-full bg-black/50 text-white hover:bg-black/70"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-5 w-5" />
           </Button>
         </div>
       ) : previewUrl ? (
@@ -227,15 +237,16 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
             <Upload className="mr-2 h-4 w-4" />
             ছবি আপলোড
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-          />
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
 
       {cameraError && (
         <p className="text-center text-sm text-destructive">{cameraError}</p>
