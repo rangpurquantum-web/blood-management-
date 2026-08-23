@@ -10,7 +10,7 @@ import { registerSchema, RegisterInput } from "@/features/donors/schemas";
 import { usePublicRegisterDonor, usePublicBranches } from "@/features/donors/hooks";
 import { BLOOD_TYPES } from "@/types";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,9 +118,9 @@ export default function PublicRegisterPage() {
                 >
                   Submit Another Application
                 </Button>
-                <Button asChild>
-                  <Link href="/">Back to Home</Link>
-                </Button>
+                <Link href="/" className={buttonVariants({ variant: "default" })}>
+                  Back to Home
+                </Link>
               </div>
             </CardContent>
           ) : (
