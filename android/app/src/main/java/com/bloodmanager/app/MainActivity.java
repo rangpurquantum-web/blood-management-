@@ -51,7 +51,6 @@ public class MainActivity extends BridgeActivity {
         // registerPlugin(UpdateInstallerPlugin.class); // TODO: re-enable once plugin class is added
 
         // ── Cookie persistence fix ──────────────────────────────
-        // Login session cookie thik moto save rakhar jonno
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
 
@@ -88,10 +87,7 @@ public class MainActivity extends BridgeActivity {
         Log.d("COOKIE_FIX", "Third-party cookies enabled");
     }
 
-    // ── Camera permission grant + File chooser support for WebView ──
-    // Capacitor-er nijer WebChromeClient replace kore dicchi, tai
-    // file-input (ছবি আপলোড) er jonno onShowFileChooser nijei
-    // implement korte hocche — nahole seta bhenge jay.
+    // ── Camera permission grant + autoplay fix + File chooser support ──
     private void enableCameraPermissionWithRetry(int attempt) {
         WebView webView = this.getBridge() != null ? this.getBridge().getWebView() : null;
         if (webView == null) {
@@ -105,6 +101,12 @@ public class MainActivity extends BridgeActivity {
             );
             return;
         }
+
+        // ★ NEW: WebView autoplay policy fix — এটা ছাড়া getUserMedia() স্ট্রিম
+        // পেলেও video.play() কে "no user gesture" ধরে ব্লক করে রাখে, আর
+        // ব্রাউজারের ডিফল্ট প্লে-বাটন placeholder দেখায়।
+        webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
@@ -154,7 +156,7 @@ public class MainActivity extends BridgeActivity {
                 return true;
             }
         });
-        Log.d("CAMERA_FIX", "WebChromeClient camera permission + file chooser handler set");
+        Log.d("CAMERA_FIX", "WebChromeClient camera permission + autoplay fix + file chooser handler set");
     }
 
     @Override
@@ -174,7 +176,6 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // ── App background/close hoyar somoy cookie disk-e save (flush) kora ──
     @Override
     public void onPause() {
         super.onPause();
