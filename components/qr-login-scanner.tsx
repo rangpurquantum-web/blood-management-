@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { Camera, Upload, X, Loader2 } from "lucide-react";
+import { Camera, Upload, X, Loader2, ScanLine, ImageOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface QrLoginScannerProps {
   onDetected: (token: string) => void;
@@ -14,6 +15,11 @@ interface QrLoginScannerProps {
 export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
   const [mode, setMode] = useState<"idle" | "camera">("idle");
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<
+    "idle" | "scanning" | "found" | "not-found"
+  >("idle");
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -29,6 +35,8 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
 
   async function startCamera() {
     setCameraError(null);
+    setPreviewUrl(null);
+    setPreviewStatus("idle");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
@@ -75,6 +83,10 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setCameraError(null);
+    setPreviewStatus("scanning");
+    setPreviewUrl(URL.createObjectURL(file));
+
     const img = new Image();
     const reader = new FileReader();
 
@@ -90,8 +102,10 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
         const code = jsQR(imageData.data, imageData.width, imageData.height);
 
         if (code?.data) {
+          setPreviewStatus("found");
           onDetected(code.data);
         } else {
+          setPreviewStatus("not-found");
           setCameraError("ছবিতে কোনো QR কোড খুঁজে পাওয়া যায়নি।");
         }
       };
@@ -102,37 +116,102 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
     e.target.value = "";
   }
 
+  function clearPreview() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewStatus("idle");
+    setCameraError(null);
+  }
+
   useEffect(() => {
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-4">
       {mode === "camera" ? (
-        <div className="relative w-full max-w-xs">
+        <div className="relative w-full max-w-xs overflow-hidden rounded-2xl border border-red-900/20 bg-black shadow-lg shadow-red-950/10">
           <video
             ref={videoRef}
-            className="w-full rounded-xl border"
+            className="aspect-square w-full object-cover"
             muted
             playsInline
           />
           <canvas ref={canvasRef} className="hidden" />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="absolute right-2 top-2"
-            onClick={stopCamera}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+
+          {/* scan frame overlay */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="relative h-[70%] w-[70%]">
+              <Corner className="left-0 top-0 border-l-2 border-t-2" />
+              <Corner className="right-0 top-0 border-r-2 border-t-2" />
+              <Corner className="bottom-0 left-0 border-b-2 border-l-2" />
+              <Corner className="bottom-0 right-0 border-b-2 border-r-2" />
+              <div className="scan-line absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
+            </div>
+          </div>
+
+          <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent p-3">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-white">
+              <ScanLine className="h-3.5 w-3.5" />
+              QR কোড স্ক্যান করুন
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="h-7 w-7 rounded-full"
+              onClick={stopCamera}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : previewUrl ? (
+        <div className="relative w-full max-w-xs overflow-hidden rounded-2xl border border-red-900/20 bg-muted shadow-lg shadow-red-950/10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="আপলোড করা QR কোড"
+            className="aspect-square w-full object-contain bg-white"
+          />
+
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/60 to-transparent p-3">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-white">
+              {previewStatus === "scanning" && (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  পরীক্ষা করা হচ্ছে...
+                </>
+              )}
+              {previewStatus === "found" && "QR কোড পাওয়া গেছে"}
+              {previewStatus === "not-found" && (
+                <>
+                  <ImageOff className="h-3.5 w-3.5" />
+                  QR কোড পাওয়া যায়নি
+                </>
+              )}
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="h-7 w-7 rounded-full"
+              onClick={clearPreview}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="flex w-full gap-2">
           <Button
             type="button"
             variant="outline"
-            className="flex-1"
+            className="flex-1 border-red-900/20 hover:border-red-600/40 hover:bg-red-50 hover:text-red-700"
             disabled={disabled}
             onClick={startCamera}
           >
@@ -142,7 +221,7 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
           <Button
             type="button"
             variant="outline"
-            className="flex-1"
+            className="flex-1 border-red-900/20 hover:border-red-600/40 hover:bg-red-50 hover:text-red-700"
             disabled={disabled}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -169,6 +248,44 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
           লগইন হচ্ছে...
         </div>
       )}
+
+      <style jsx>{`
+        .scan-line {
+          animation: scan 2.2s ease-in-out infinite;
+        }
+        @keyframes scan {
+          0% {
+            top: 2%;
+            opacity: 0.9;
+          }
+          50% {
+            top: 96%;
+            opacity: 0.9;
+          }
+          51% {
+            opacity: 0;
+          }
+          52% {
+            top: 2%;
+            opacity: 0.9;
+          }
+          100% {
+            top: 2%;
+            opacity: 0.9;
+          }
+        }
+      `}</style>
     </div>
+  );
+}
+
+function Corner({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "absolute h-6 w-6 rounded-sm border-red-500",
+        className,
+      )}
+    />
   );
 }
