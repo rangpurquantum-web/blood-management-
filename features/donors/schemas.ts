@@ -59,6 +59,7 @@ export const donorSchema = z.object({
 export const donorUpdateSchema = donorSchema.partial().extend({
   status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
   notes: z.string().optional().nullable(),
+  isVerified: z.boolean().optional(),
 });
 
 // ─── Donor Import Schema (relaxed — used only for CSV/Excel bulk import) ────
