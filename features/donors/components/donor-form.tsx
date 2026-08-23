@@ -57,6 +57,7 @@ export function DonorForm({
       email: donor?.email || "",
       address: donor?.address || "",
       lastDonationDate: "",
+      isVerified: donor?.isVerified || false,
     },
   });
 
@@ -289,6 +290,24 @@ export function DonorForm({
               <span className="text-xs text-destructive">{errors.address.message}</span>
             )}
           </div>
+
+          {/* Verified Voluntary Donor — only shown when editing an existing donor */}
+          {donor && (
+            <div className="flex items-center gap-2 border p-3 rounded-lg bg-blue-50/50">
+              <input
+                type="checkbox"
+                id="isVerified"
+                checked={form.watch("isVerified")}
+                onChange={(e) => form.setValue("isVerified", e.target.checked)}
+                className="h-4 w-4 accent-blue-600 cursor-pointer"
+              />
+              <Label htmlFor="isVerified" className="cursor-pointer flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-blue-600" />
+                Verified Voluntary Donor
+              </Label>
+            </div>
+          )}
+
           <div className="flex justify-end pt-4">
             <Button type="submit" disabled={isPending}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
