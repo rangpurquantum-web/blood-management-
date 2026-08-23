@@ -114,5 +114,92 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+
+    Credentials({
+      id: "qr",
+      name: "QR Login",
+
+      credentials: {
+        token: {
+          label: "QR Token",
+          type: "text",
+        },
+      },
+
+      authorize: async (credentials) => {
+        if (!credentials?.token) {
+          return null;
+        }
+
+        const token = String(credentials.token).trim();
+
+        if (!token) {
+          return null;
+        }
+
+        // ─────────────────────────────────────────────
+        // 1. Check SuperAdmin by QR token
+        // ─────────────────────────────────────────────
+
+        const superAdmin = await centralPrisma.superAdmin.findUnique({
+          where: { qrToken: token },
+        });
+
+        if (superAdmin) {
+          if (!superAdmin.isActive) {
+            throw new Error("ACCOUNT_INACTIVE");
+          }
+
+          return {
+            id: String(superAdmin.id),
+            email: superAdmin.email,
+            name: superAdmin.name,
+            role: "ADMIN",
+            branchId: null,
+            branchSlug: null,
+            isSuperAdmin: true,
+          };
+        }
+
+        // ─────────────────────────────────────────────
+        // 2. Check BranchUser by QR token
+        // ─────────────────────────────────────────────
+
+        const branchUser = await centralPrisma.branchUser.findUnique({
+          where: { qrToken: token },
+          include: {
+            branch: {
+              select: {
+                id: true,
+                slug: true,
+                isActive: true,
+              },
+            },
+          },
+        });
+
+        if (!branchUser) {
+          return null;
+        }
+
+        if (!branchUser.isActive) {
+          throw new Error("ACCOUNT_INACTIVE");
+        }
+
+        if (!branchUser.branch.isActive) {
+          throw new Error("BRANCH_INACTIVE");
+        }
+
+        return {
+          id: String(branchUser.id),
+          email: branchUser.email,
+          name: branchUser.name,
+          role: branchUser.role,
+          branchId: branchUser.branch.id,
+          branchSlug: branchUser.branch.slug,
+          isSuperAdmin: false,
+        };
+      },
+    }),
   ],
 });
