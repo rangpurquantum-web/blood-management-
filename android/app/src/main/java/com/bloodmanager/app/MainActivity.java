@@ -5,6 +5,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.webkit.CookieManager;
+import android.webkit.PermissionRequest;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -37,6 +39,7 @@ public class MainActivity extends BridgeActivity {
             });
 
         enableThirdPartyCookiesWithRetry(0);
+        enableCameraPermissionWithRetry(0);
     }
 
     // ── Third-party cookie enable (WebView ready hote somoy lagte pare) ──
@@ -55,6 +58,33 @@ public class MainActivity extends BridgeActivity {
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         Log.d("COOKIE_FIX", "Third-party cookies enabled");
+    }
+
+    // ── Camera permission grant for WebView (QR scanner uses getUserMedia) ──
+    // Capacitor-এর ভেতরের WebView ডিফল্টভাবে camera access দেয় না, তাই
+    // WebChromeClient.onPermissionRequest override করে explicitly grant
+    // করতে হচ্ছে — নাহলে navigator.mediaDevices.getUserMedia() silently
+    // fail করবে (QR scanner-এ blank/broken video দেখাবে)।
+    private void enableCameraPermissionWithRetry(int attempt) {
+        WebView webView = this.getBridge() != null ? this.getBridge().getWebView() : null;
+        if (webView == null) {
+            if (attempt >= MAX_RETRIES) {
+                Log.w("CAMERA_FIX", "Giving up enabling camera permission on WebView");
+                return;
+            }
+            new Handler(Looper.getMainLooper()).postDelayed(
+                () -> enableCameraPermissionWithRetry(attempt + 1),
+                RETRY_DELAY_MS
+            );
+            return;
+        }
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                runOnUiThread(() -> request.grant(request.getResources()));
+            }
+        });
+        Log.d("CAMERA_FIX", "WebChromeClient camera permission handler set");
     }
 
     // ── App background/close hoyar somoy cookie disk-e save (flush) kora ──
