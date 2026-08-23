@@ -92,14 +92,18 @@ export default function RequestBloodPage() {
   }
 
   function validateStep(): boolean {
-    setError(null);
-    switch (currentStep.key) {
-      case "branch":
-        if (form.branchIndex === null) {
-          setError("অনুগ্রহ করে একটি শাখা নির্বাচন করুন");
-          return false;
-        }
-        return true;
+  setError(null);
+
+  if (!currentStep) {
+    return false;
+  }
+
+  switch (currentStep.key) {
+    case "branch":
+      if (form.branchIndex === null) {
+        setError("অনুগ্রহ করে একটি শাখা নির্বাচন করুন");
+        return false;
+       }
       case "patient":
         if (!form.patientName.trim()) {
           setError("রোগীর নাম লিখুন");
