@@ -52,8 +52,8 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen font-sans" suppressHydrationWarning>
         <RegisterServiceWorker />
-        <ReceiveFcmToken />
         <AppProviders>
+          <ReceiveFcmToken />
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="top-center" richColors />
         </AppProviders>
