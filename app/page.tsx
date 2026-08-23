@@ -21,10 +21,10 @@ export default function HomePage() {
       </div>
 
       {/* ── Top-right Login ──────────────────────────────────────────── */}
-      <div className="relative z-20 flex justify-end px-6 pt-6 shrink-0">
+      <div className="relative z-20 flex justify-end px-6 pt-4 shrink-0">
         <Link
           href="/login"
-          className="flex items-center justify-center rounded-full bg-blue-600 px-7 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-blue-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-blue-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <span className="text-center font-semibold text-white text-sm">
             Login
@@ -33,19 +33,19 @@ export default function HomePage() {
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10 pb-16 overflow-y-auto">
-        <div className="w-full max-w-md text-center mb-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 gap-3 min-h-0">
+        <div className="w-full max-w-md text-center">
+          <h1 className="text-2xl font-bold tracking-tight text-white">
             Quantum Blood Donor Pool
           </h1>
         </div>
 
-        <div className="w-full max-w-3xl mx-auto my-8">
+        <div className="w-full max-w-xs mx-auto">
           <DonorToPatientHero />
         </div>
 
-        <div className="w-full max-w-md text-center mb-6">
-          <h2 className="text-xl font-semibold text-white mb-1">
+        <div className="w-full max-w-md text-center">
+          <h2 className="text-lg font-semibold text-white mb-1">
             Become a Proud Blood Donor
           </h2>
           <p className="text-xs text-rose-100/60">
@@ -54,10 +54,10 @@ export default function HomePage() {
         </div>
 
         {/* Emergency CTA — priority; needs a /request-blood page + API */}
-        <div className="w-full max-w-md mb-4">
+        <div className="w-full max-w-md">
           <Link
             href="/request-blood"
-            className="flex items-center justify-center w-full rounded-full bg-red-600 px-7 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.35)] hover:bg-red-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center justify-center w-full rounded-full bg-red-600 px-7 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.35)] hover:bg-red-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="text-center font-semibold text-white text-base">
               Request Blood Now
@@ -65,10 +65,10 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
             href="/check-donation"
-            className="flex items-center justify-center w-full rounded-full bg-white/95 px-7 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center justify-center w-full rounded-full bg-white/95 px-7 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-white transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="text-center font-semibold text-[#3D0B12] text-base">
               Check Your Last Donation Date
@@ -77,7 +77,7 @@ export default function HomePage() {
 
           <Link
             href="/register"
-            className="flex items-center justify-center w-full rounded-full bg-white/95 px-7 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center justify-center w-full rounded-full bg-white/95 px-7 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-white transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="text-center font-semibold text-[#3D0B12] text-base">
               Register as a New Donor
