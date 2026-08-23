@@ -10,7 +10,7 @@ import {
   useReactTable,
   SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Search, Phone, Copy, Check, MoreHorizontal, X, MapPin, Filter } from "lucide-react";
+import { ArrowUpDown, Search, Phone, Copy, Check, MoreHorizontal, X, MapPin, Filter, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { useDonors } from "@/features/donors/hooks";
@@ -217,6 +217,17 @@ export function DonorTable() {
           </Button>
         );
       },
+      cell: ({ row }: any) => (
+        <div className="flex items-center gap-1.5">
+          <span>{row.getValue("fullName")}</span>
+          {row.original.isVerified && (
+            <BadgeCheck
+              className="h-4 w-4 text-blue-600 shrink-0"
+              aria-label="Verified Voluntary Donor"
+            />
+          )}
+        </div>
+      ),
     },
     {
       accessorKey: "bloodType",
