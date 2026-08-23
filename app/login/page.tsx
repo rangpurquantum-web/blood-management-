@@ -107,7 +107,7 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 autoComplete="email"
                 disabled={isLoading}
-                className={`bg-background/50 ${form.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                className={`h-12 rounded-xl bg-background/50 text-base ${form.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 {...form.register("email")}
               />
               {form.formState.errors.email && (
@@ -130,7 +130,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   disabled={isLoading}
-                  className={`bg-background/50 pr-10 ${form.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                  className={`h-12 rounded-xl bg-background/50 pr-11 text-base ${form.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   {...form.register("password")}
                 />
                 <button
@@ -150,7 +150,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full shadow-md" disabled={isLoading} size="lg">
+            <Button type="submit" className="h-12 w-full rounded-xl shadow-md" disabled={isLoading} size="lg">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
