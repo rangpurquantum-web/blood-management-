@@ -131,7 +131,7 @@ export default function DonorToPatientHero({
         </g>
 
         {/* ============================================================
-            LEFT HAND
+            LEFT HAND (Donor — healthy)
         ============================================================ */}
 
         <g className="hand-group left-hand">
@@ -149,7 +149,7 @@ export default function DonorToPatientHero({
           />
 
           <path
-            className="draw hand-outline"
+            className="draw hand-outline donor-hand"
             d="
               M329 420
 
@@ -173,7 +173,6 @@ export default function DonorToPatientHero({
 
               L38 468
             "
-            fill="#FFFDF5"
             stroke="#111"
             strokeWidth="7"
             strokeLinecap="round"
@@ -223,7 +222,7 @@ export default function DonorToPatientHero({
         </g>
 
         {/* ============================================================
-            RIGHT HAND
+            RIGHT HAND (Patient — starts pale, heals)
         ============================================================ */}
 
         <g className="hand-group right-hand">
@@ -241,7 +240,7 @@ export default function DonorToPatientHero({
           />
 
           <path
-            className="draw hand-outline"
+            className="draw hand-outline patient-hand"
             d="
               M1171 420
 
@@ -265,7 +264,6 @@ export default function DonorToPatientHero({
 
               L1462 468
             "
-            fill="#FFFDF5"
             stroke="#111"
             strokeWidth="7"
             strokeLinecap="round"
@@ -741,12 +739,24 @@ export default function DonorToPatientHero({
             animation-delay: .12s;
           }
 
-          .left-hand .hand-outline {
+          .donor-hand {
+            fill: #F0B892;
             animation-delay: .15s;
           }
 
-          .right-hand .hand-outline {
-            animation-delay: .2s;
+          .patient-hand {
+            fill: #C9C9D1;
+            animation: dtp-draw 1.25s cubic-bezier(.65,0,.35,1) .2s forwards,
+                       patient-heal 3s ease-in-out 4s forwards;
+          }
+
+          @keyframes patient-heal {
+            0% {
+              fill: #C9C9D1;
+            }
+            100% {
+              fill: #F0B892;
+            }
           }
 
           .inner-line {
@@ -997,6 +1007,16 @@ export default function DonorToPatientHero({
             .draw {
               animation: none !important;
               stroke-dashoffset: 0 !important;
+            }
+
+            .donor-hand,
+            .patient-hand {
+              animation: none !important;
+              stroke-dashoffset: 0 !important;
+            }
+
+            .patient-hand {
+              fill: #F0B892 !important;
             }
 
             .bag-blood {
