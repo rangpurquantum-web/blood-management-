@@ -36,7 +36,7 @@ export default function HomePage() {
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 gap-3 min-h-0">
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold tracking-tight text-white">
-            Quantum Blood Donor Pool
+            Quantum Voluntary Blood Donation Programme
           </h1>
         </div>
 
@@ -48,9 +48,6 @@ export default function HomePage() {
           <h2 className="text-lg font-semibold text-white mb-1">
             Become a Proud Blood Donor
           </h2>
-          <p className="text-xs text-rose-100/60">
-            Life · Silver · Golden · Platinum member recognition for regular donors
-          </p>
         </div>
 
         {/* Emergency CTA — priority; needs a /request-blood page + API */}
