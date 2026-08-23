@@ -34,7 +34,7 @@ export function DonorToPatientStatic() {
       </div>
 
       <p className="mt-6 text-center text-sm text-[#3D0B12]/70">
-        Every donation you make travels this path — from your arm to someone's life.
+        Every donation you make travels this path — from your arm to someone&apos;s life.
       </p>
     </div>
   );
