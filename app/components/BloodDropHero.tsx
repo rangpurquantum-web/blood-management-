@@ -488,8 +488,8 @@ export default function DonorToPatientHero({
         <g className="left-flow-particles">
           <circle r="7" fill="#D6303B">
             <animateMotion
-              dur="2.4s"
-              begin="1.7s"
+              dur="13.2s"
+              begin="9.35s"
               repeatCount="indefinite"
               path="
                 M190 515
@@ -502,8 +502,8 @@ export default function DonorToPatientHero({
 
           <circle r="5" fill="#D6303B">
             <animateMotion
-              dur="2.4s"
-              begin="2.3s"
+              dur="13.2s"
+              begin="12.65s"
               repeatCount="indefinite"
               path="
                 M190 515
@@ -516,8 +516,8 @@ export default function DonorToPatientHero({
 
           <circle r="4" fill="#D6303B">
             <animateMotion
-              dur="2.4s"
-              begin="2.9s"
+              dur="13.2s"
+              begin="15.95s"
               repeatCount="indefinite"
               path="
                 M190 515
@@ -532,8 +532,8 @@ export default function DonorToPatientHero({
         <g className="right-flow-particles">
           <circle r="7" fill="#D6303B">
             <animateMotion
-              dur="2.4s"
-              begin="3.7s"
+              dur="13.2s"
+              begin="20.35s"
               repeatCount="indefinite"
               path="
                 M815 715
@@ -546,8 +546,8 @@ export default function DonorToPatientHero({
 
           <circle r="5" fill="#D6303B">
             <animateMotion
-              dur="2.4s"
-              begin="4.3s"
+              dur="13.2s"
+              begin="23.65s"
               repeatCount="indefinite"
               path="
                 M815 715
@@ -560,8 +560,8 @@ export default function DonorToPatientHero({
 
           <circle r="4" fill="#D6303B">
             <animateMotion
-              dur="2.4s"
-              begin="4.9s"
+              dur="13.2s"
+              begin="26.95s"
               repeatCount="indefinite"
               path="
                 M815 715
@@ -767,7 +767,7 @@ export default function DonorToPatientHero({
             stroke-dasharray: 1600;
             stroke-dashoffset: 1600;
             animation:
-              dtp-draw 1.25s cubic-bezier(.65,0,.35,1)
+              dtp-draw 6.9s cubic-bezier(.65,0,.35,1)
               forwards;
           }
 
@@ -778,47 +778,47 @@ export default function DonorToPatientHero({
           }
 
           .left-bed {
-            animation-delay: .05s;
+            animation-delay: .28s;
           }
 
           .right-bed {
-            animation-delay: .12s;
+            animation-delay: .66s;
           }
 
           .left-hand .hand-outline {
-            animation-delay: .15s;
+            animation-delay: .83s;
           }
 
           .right-hand .hand-outline {
-            animation-delay: .2s;
+            animation-delay: 1.1s;
           }
 
           .inner-line {
-            animation-delay: .65s;
-            animation-duration: .7s;
+            animation-delay: 3.58s;
+            animation-duration: 3.85s;
           }
 
           .wrist-tag {
-            animation-delay: .75s;
-            animation-duration: .55s;
+            animation-delay: 4.13s;
+            animation-duration: 3.03s;
           }
 
           .tube {
-            animation-delay: .65s;
-            animation-duration: 1s;
+            animation-delay: 3.58s;
+            animation-duration: 5.5s;
           }
 
           .bag-hook {
-            animation-delay: .15s;
+            animation-delay: .83s;
           }
 
           .bag-outline {
-            animation-delay: .3s;
+            animation-delay: 1.65s;
           }
 
           .bag-label {
-            animation-delay: 1s;
-            animation-duration: .7s;
+            animation-delay: 5.5s;
+            animation-duration: 3.85s;
           }
 
           /* =========================================
@@ -827,8 +827,8 @@ export default function DonorToPatientHero({
 
           .left-hand {
             animation:
-              donor-breathe 3.5s ease-in-out
-              1.5s infinite;
+              donor-breathe 19.25s ease-in-out
+              8.25s infinite;
           }
 
           @keyframes donor-breathe {
@@ -849,8 +849,8 @@ export default function DonorToPatientHero({
           .right-hand {
             transform-origin: center;
             animation:
-              patient-breathe 3.5s ease-in-out
-              4.5s infinite;
+              patient-breathe 19.25s ease-in-out
+              24.75s infinite;
           }
 
           @keyframes patient-breathe {
@@ -874,14 +874,14 @@ export default function DonorToPatientHero({
 
           .left-hand ~ .tube-blood {
             animation:
-              tube-flow-left 1.1s linear
-              1.5s infinite;
+              tube-flow-left 6.05s linear
+              8.25s infinite;
           }
 
           .right-blood {
             animation:
-              tube-flow-right 1.1s linear
-              4s infinite;
+              tube-flow-right 6.05s linear
+              22s infinite;
           }
 
           @keyframes tube-flow-left {
@@ -924,16 +924,16 @@ export default function DonorToPatientHero({
             transform-box: fill-box;
             transform-origin: center;
             animation:
-              drop-pulse 1.5s ease-in-out
+              drop-pulse 8.25s ease-in-out
               infinite;
           }
 
           .left-drop {
-            animation-delay: 1.7s;
+            animation-delay: 9.35s;
           }
 
           .right-drop {
-            animation-delay: 4s;
+            animation-delay: 22s;
           }
 
           @keyframes drop-pulse {
@@ -960,9 +960,9 @@ export default function DonorToPatientHero({
               scaleY(.02);
 
             animation:
-              bag-fill 2s
+              bag-fill 11s
               cubic-bezier(.45,0,.25,1)
-              1.6s forwards;
+              8.8s forwards;
           }
 
           @keyframes bag-fill {
@@ -983,10 +983,10 @@ export default function DonorToPatientHero({
             opacity: 0;
 
             animation:
-              surface-show .5s ease
-              3s forwards,
-              surface-wave 2s ease-in-out
-              3.5s infinite;
+              surface-show 2.75s ease
+              16.5s forwards,
+              surface-wave 11s ease-in-out
+              19.25s infinite;
           }
 
           @keyframes surface-show {
@@ -1015,9 +1015,9 @@ export default function DonorToPatientHero({
             transform-origin: center;
 
             animation:
-              label-pulse 1.5s
+              label-pulse 8.25s
               ease-in-out
-              3s infinite;
+              16.5s infinite;
           }
 
           @keyframes label-pulse {
@@ -1039,18 +1039,18 @@ export default function DonorToPatientHero({
             opacity: 0;
 
             animation:
-              particles-left-show .3s
+              particles-left-show 1.65s
               ease forwards;
-            animation-delay: 1.7s;
+            animation-delay: 9.35s;
           }
 
           .right-flow-particles {
             opacity: 0;
 
             animation:
-              particles-right-show .3s
+              particles-right-show 1.65s
               ease forwards;
-            animation-delay: 3.8s;
+            animation-delay: 20.9s;
           }
 
           @keyframes particles-left-show {
