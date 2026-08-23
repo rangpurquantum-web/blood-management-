@@ -57,13 +57,13 @@ public class MainActivity extends BridgeActivity {
 
     // ── App background/close hoyar somoy cookie disk-e save (flush) kora ──
     @Override
-    protected void onPause() {
+    public void onPause() {
         super.onPause();
         CookieManager.getInstance().flush();
     }
 
     @Override
-    protected void onStop() {
+    public void onStop() {
         super.onStop();
         CookieManager.getInstance().flush();
     }
