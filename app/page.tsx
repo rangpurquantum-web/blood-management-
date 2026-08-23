@@ -3,7 +3,7 @@ import DonorToPatientHero from "@/components/DonorToPatientHero";
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#3D0B12] flex flex-col">
+    <div className="relative h-screen overflow-hidden bg-[#3D0B12] flex flex-col">
       {/* ── Ambient gradient blobs (signature background) ───────────────── */}
       <div className="pointer-events-none absolute inset-0">
         <div
@@ -21,17 +21,19 @@ export default function HomePage() {
       </div>
 
       {/* ── Top-right Login ──────────────────────────────────────────── */}
-      <div className="relative z-20 flex justify-end px-6 pt-6">
+      <div className="relative z-20 flex justify-end px-6 pt-6 shrink-0">
         <Link
           href="/login"
-          className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-rose-100/80 ring-1 ring-white/15 hover:text-white hover:ring-white/30 transition-colors"
+          className="flex items-center justify-center rounded-full bg-blue-600 px-7 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-blue-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
-          Login
+          <span className="text-center font-semibold text-white text-sm">
+            Login
+          </span>
         </Link>
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10 overflow-y-auto">
         <div className="w-full max-w-md text-center mb-2">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
             Quantum Blood Donor Pool
