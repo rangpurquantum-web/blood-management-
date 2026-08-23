@@ -51,6 +51,7 @@ model Donor {
   publicToken    String            @unique @default(uuid())
   address        String
   isEligible     Boolean           @default(true)
+  isVerified     Boolean           @default(false)
   deferralReason String?
   deferredUntil  DateTime?
   status         DonorStatus       @default(APPROVED)
