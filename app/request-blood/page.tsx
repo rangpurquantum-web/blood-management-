@@ -83,7 +83,7 @@ export default function RequestBloodPage() {
 
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === STEPS.length - 1;
-  const currentStep = STEPS[stepIndex]!;
+  const currentStep = STEPS[stepIndex] ?? STEPS[0];
   const selectedBranch =
     form.branchIndex !== null ? BRANCHES[form.branchIndex] : null;
 
@@ -93,7 +93,6 @@ export default function RequestBloodPage() {
 
   function validateStep(): boolean {
     setError(null);
-
     switch (currentStep.key) {
       case "branch":
         if (form.branchIndex === null) {
