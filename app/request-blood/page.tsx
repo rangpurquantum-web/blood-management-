@@ -4,11 +4,11 @@ import { Phone, MessageCircle, ArrowLeft } from "lucide-react";
 const BRANCHES = [
   {
     name: "Rangpur",
-    phone: "+8801XXXXXXXXX",
+    phone: "+8801783015101",
   },
   {
     name: "Rajshahi",
-    phone: "+8801XXXXXXXXX",
+    phone: "+8801914999446",
   },
 ];
 
