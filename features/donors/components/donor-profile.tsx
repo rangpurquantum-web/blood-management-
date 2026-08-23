@@ -189,7 +189,8 @@ export function DonorProfile({ donorId }: { donorId: number }) {
           reader.onloadend = () => {
             const result = reader.result as string;
             // strip the "data:application/pdf;base64," prefix
-            resolve(result.split(",")[1]);
+            const base64 = result.split(",")[1] ?? "";
+            resolve(base64);
           };
 
           reader.onerror = reject;
