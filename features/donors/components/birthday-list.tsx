@@ -4,8 +4,9 @@ import { useState } from "react";
 import { Phone, Copy, Check, Cake } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -121,34 +122,24 @@ export function BirthdayList({ donors }: { donors: BirthdayDonor[] }) {
             {primaryPhone && (
               <div className="flex items-center gap-1 rounded-full border bg-muted/40 p-1 shrink-0">
                 {/* Call */}
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-                  title="Call"
-                >
-                  <a href={`tel:${primaryPhone.number}`}>
-                    <Phone className="h-3.5 w-3.5" />
-                  </a>
-                </Button>
+                <a
+                href={`tel:${primaryPhone.number}`}
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-7 w-7 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-500/10")}
+                title="Call"
+              >
+                <Phone className="h-3.5 w-3.5" />
+              </a>
 
                 {/* WhatsApp */}
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-                  title="WhatsApp"
-                >
-                  <a
-                    href={getWhatsAppUrl(primaryPhone.number)}
+                <a
+                href={getWhatsAppUrl(primaryPhone.number)}
                     target="_blank"
                     rel="noopener noreferrer"
-                  >
-                    <WhatsAppIcon className="h-3.5 w-3.5" />
-                  </a>
-                </Button>
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-7 w-7 rounded-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10")}
+                title="WhatsApp"
+              >
+                <WhatsAppIcon className="h-3.5 w-3.5" />
+              </a>
 
                 {/* Copy */}
                 <Button

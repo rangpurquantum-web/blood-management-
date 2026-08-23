@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useDonors } from "@/features/donors/hooks";
 import { BLOOD_TYPES } from "@/types";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,6 +36,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 // ─── Helpers & Icons ─────────────────────────────────────────────────────────
 
@@ -98,30 +99,22 @@ function PhoneCellActions({ phoneData }: { phoneData: any }) {
     return (
       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
         {/* Call */}
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10"
-          title="Call"
-        >
-          <a href={`tel:${p.number}`}>
-            <Phone className="h-3 w-3" />
-          </a>
-        </Button>
+        <a
+                href={`tel:${p.number}`}
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10")}
+                title="Call"
+              >
+                <Phone className="h-3 w-3" />
+              </a>
 
         {/* WhatsApp */}
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
-          title="WhatsApp"
-        >
-          <a href={getWhatsAppUrl(p.number)} target="_blank" rel="noopener noreferrer">
-            <WhatsAppIcon className="h-3 w-3" />
-          </a>
-        </Button>
+        <a
+                href={getWhatsAppUrl(p.number)} target="_blank" rel="noopener noreferrer"
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-6 w-6 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10")}
+                title="WhatsApp"
+              >
+                <WhatsAppIcon className="h-3 w-3" />
+              </a>
 
         {/* Copy */}
         <Button

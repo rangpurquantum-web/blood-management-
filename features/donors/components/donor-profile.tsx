@@ -32,7 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
@@ -50,6 +50,7 @@ import { useRecordDonation } from "@/features/donations/hooks";
 import { DeferralForm } from "@/features/donors/components/deferral-form";
 import { DonorForm } from "@/features/donors/components/donor-form";
 import { DeleteDonorDialog } from "@/features/donors/components/delete-donor-dialog";
+import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -325,35 +326,25 @@ export function DonorProfile({ donorId }: { donorId: number }) {
         <div className="flex items-center gap-1 rounded-full border bg-muted/40 p-1">
           {/* Call */}
 
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-            title="Call"
-          >
-            <a href={`tel:${p.number}`}>
-              <Phone className="h-3.5 w-3.5" />
-            </a>
-          </Button>
+          <a
+                href={`tel:${p.number}`}
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-7 w-7 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-500/10")}
+                title="Call"
+              >
+                <Phone className="h-3.5 w-3.5" />
+              </a>
 
           {/* WhatsApp */}
 
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-            title="WhatsApp"
-          >
-            <a
-              href={getWhatsAppUrl(p.number)}
+          <a
+                href={getWhatsAppUrl(p.number)}
               target="_blank"
               rel="noopener noreferrer"
-            >
-              <WhatsAppIcon className="h-3.5 w-3.5" />
-            </a>
-          </Button>
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-7 w-7 rounded-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10")}
+                title="WhatsApp"
+              >
+                <WhatsAppIcon className="h-3.5 w-3.5" />
+              </a>
 
           {/* Copy */}
 
