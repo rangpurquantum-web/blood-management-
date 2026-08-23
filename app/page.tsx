@@ -33,7 +33,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10 overflow-y-auto">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10 pb-16 overflow-y-auto">
         <div className="w-full max-w-md text-center mb-2">
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
             Quantum Blood Donor Pool
