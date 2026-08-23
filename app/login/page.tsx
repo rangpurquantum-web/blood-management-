@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Droplet, Loader2, LogIn, Eye, EyeOff } from "lucide-react";
+import { Droplet, Loader2, LogIn, Eye, EyeOff, QrCode, KeyRound } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { InstallButton } from "@/components/install-button";
+import { QrLoginScanner } from "@/components/qr-login-scanner";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -33,6 +34,8 @@ export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [tab, setTab] = useState<"password" | "qr">("password");
+  const [qrLoading, setQrLoading] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -41,6 +44,23 @@ export default function LoginPage() {
       password: "",
     },
   });
+
+  function handleAuthError(error: string) {
+    if (
+      error.includes("ACCOUNT_INACTIVE") ||
+      error.includes("account_inactive")
+    ) {
+      toast.error("Your account has been deactivated. Please contact the Admin.", {
+        duration: 6000,
+      });
+    } else if (error.includes("BRANCH_INACTIVE")) {
+      toast.error("This branch has been deactivated. Please contact the Admin.", {
+        duration: 6000,
+      });
+    } else {
+      toast.error("Incorrect email or password");
+    }
+  }
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
@@ -53,16 +73,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        if (
-          result.error.includes("ACCOUNT_INACTIVE") ||
-          result.error.includes("account_inactive")
-        ) {
-          toast.error("Your account has been deactivated. Please contact the Admin.", {
-            duration: 6000,
-          });
-        } else {
-          toast.error("Incorrect email or password");
-        }
+        handleAuthError(result.error);
         return;
       }
 
@@ -76,6 +87,37 @@ export default function LoginPage() {
     }
   }
 
+  async function handleQrDetected(token: string) {
+    setQrLoading(true);
+
+    try {
+      const result = await signIn("qr", {
+        token,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        if (
+          result.error.includes("ACCOUNT_INACTIVE") ||
+          result.error.includes("BRANCH_INACTIVE")
+        ) {
+          handleAuthError(result.error);
+        } else {
+          toast.error("QR কোডটি বৈধ নয় বা মেয়াদ শেষ হয়ে গেছে");
+        }
+        return;
+      }
+
+      toast.success("Login successful");
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setQrLoading(false);
+    }
+  }
+
   return (
     <main className="relative flex min-h-screen items-center justify-center p-4 sm:p-8">
       {/* Background Gradients */}
@@ -85,7 +127,7 @@ export default function LoginPage() {
       </div>
 
       <Card className="w-full max-w-md border-muted/40 bg-card/60 shadow-2xl backdrop-blur-xl">
-        <CardHeader className="space-y-2 text-center pb-8">
+        <CardHeader className="space-y-2 text-center pb-6">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-destructive text-primary-foreground shadow-lg">
             <Droplet className="h-8 w-8 fill-current" />
           </div>
@@ -93,79 +135,113 @@ export default function LoginPage() {
           <CardDescription className="text-base text-muted-foreground">
             Sign In
           </CardDescription>
+
+          <div className="mx-auto mt-2 flex w-full max-w-xs rounded-xl bg-muted/50 p-1">
+            <button
+              type="button"
+              onClick={() => setTab("password")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-colors ${
+                tab === "password"
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <KeyRound className="h-4 w-4" />
+              Password
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("qr")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-colors ${
+                tab === "qr" ? "bg-background shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              <QrCode className="h-4 w-4" />
+              QR Code
+            </button>
+          </div>
         </CardHeader>
-        
+
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email" className={form.formState.errors.email ? "text-destructive" : ""}>
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                disabled={isLoading}
-                className={`h-12 rounded-xl bg-background/50 text-base ${form.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                {...form.register("email")}
-              />
-              {form.formState.errors.email && (
-                <p className="text-sm font-medium text-destructive">
-                  {form.formState.errors.email.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className={form.formState.errors.password ? "text-destructive" : ""}>
-                  Password
+          {tab === "password" ? (
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email" className={form.formState.errors.email ? "text-destructive" : ""}>
+                  Email Address
                 </Label>
-              </div>
-              <div className="relative">
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  autoComplete="email"
                   disabled={isLoading}
-                  className={`h-12 rounded-xl bg-background/50 pr-11 text-base ${form.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                  {...form.register("password")}
+                  className={`h-12 rounded-xl bg-background/50 text-base ${form.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                  {...form.register("email")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                {form.formState.errors.email && (
+                  <p className="text-sm font-medium text-destructive">
+                    {form.formState.errors.email.message}
+                  </p>
+                )}
               </div>
-              {form.formState.errors.password && (
-                <p className="text-sm font-medium text-destructive">
-                  {form.formState.errors.password.message}
-                </p>
-              )}
-            </div>
 
-            <Button type="submit" className="h-12 w-full rounded-xl shadow-md" disabled={isLoading} size="lg">
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Authenticating...
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Sign In
-                </>
-              )}
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className={form.formState.errors.password ? "text-destructive" : ""}>
+                    Password
+                  </Label>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    disabled={isLoading}
+                    className={`h-12 rounded-xl bg-background/50 pr-11 text-base ${form.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    {...form.register("password")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {form.formState.errors.password && (
+                  <p className="text-sm font-medium text-destructive">
+                    {form.formState.errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              <Button type="submit" className="h-12 w-full rounded-xl shadow-md" disabled={isLoading} size="lg">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Authenticating...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Sign In
+                  </>
+                )}
+              </Button>
+            </form>
+          ) : (
+            <div className="space-y-4 py-2">
+              <p className="text-center text-sm text-muted-foreground">
+                আপনার QR কোড স্ক্যান করুন অথবা ছবি আপলোড করুন
+              </p>
+              <QrLoginScanner onDetected={handleQrDetected} disabled={qrLoading} />
+            </div>
+          )}
         </CardContent>
-        
+
         <CardFooter className="flex flex-col items-center gap-3 border-t border-border/40 p-4">
           <InstallButton />
           <p className="text-xs text-muted-foreground">
