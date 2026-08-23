@@ -69,11 +69,30 @@ export function UserQrCode({ userId, userName }: UserQrCodeProps) {
     }
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!dataUrl) return;
+
+    const fileName = `${userName.replace(/\s+/g, "-").toLowerCase()}-login-qr.png`;
+
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `${userName} — Login QR`,
+        });
+        return;
+      }
+    } catch {
+      // fall through to plain download below
+    }
+
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = `${userName.replace(/\s+/g, "-").toLowerCase()}-login-qr.png`;
+    a.download = fileName;
     a.click();
   }
 
