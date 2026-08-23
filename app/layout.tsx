@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import ReceiveFcmToken from "@/components/pwa/receive-fcm-token";
 import { UpdateChecker } from "@/components/pwa/update-checker";
+import { AppBootLoader } from "@/components/pwa/app-boot-loader";
 
 import "./globals.css";
 
@@ -56,7 +57,9 @@ export default function RootLayout({
         <AppProviders>
           <ReceiveFcmToken />
           <UpdateChecker />
-          <TooltipProvider>{children}</TooltipProvider>
+          <AppBootLoader>
+            <TooltipProvider>{children}</TooltipProvider>
+          </AppBootLoader>
           <Toaster position="top-center" richColors />
         </AppProviders>
       </body>
