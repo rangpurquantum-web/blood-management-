@@ -19,7 +19,7 @@ export const donorSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   dob: optionalDate.refine(
     (date) => {
-      if (!date) return true; // optional — skip age check if not provided
+      if (!date) return true;
       const ageDiffMs = Date.now() - date.getTime();
       const ageDate = new Date(ageDiffMs);
       const age = Math.abs(ageDate.getUTCFullYear() - 1970);
@@ -52,6 +52,7 @@ export const donorSchema = z.object({
     .transform((val) => (val ? val : undefined)),
   address: z.string().min(1, "Address is required"),
   lastDonationDate: optionalDate,
+  isVerified: z.boolean().optional(),
 });
 
 // ─── Donor Update Schema (all fields optional) ───────────────────────────────
@@ -59,7 +60,6 @@ export const donorSchema = z.object({
 export const donorUpdateSchema = donorSchema.partial().extend({
   status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
   notes: z.string().optional().nullable(),
-  isVerified: z.boolean().optional(),
 });
 
 // ─── Donor Import Schema (relaxed — used only for CSV/Excel bulk import) ────
@@ -108,9 +108,6 @@ export const donorEligibilitySchema = z.object({
 });
 
 // ─── Public Register Schema ──────────────────────────────────────────────────
-// Used only by the public /register page + /api/register route.
-// Same shape as donorSchema, plus branchId so the API route knows which
-// branch DB to write the new donor into.
 
 export const registerSchema = donorSchema.extend({
   branchId: z.string().min(1, "Please select a branch"),
