@@ -214,4 +214,23 @@ ADD COLUMN     "isDeleted" BOOLEAN NOT NULL DEFAULT false`,
       `CREATE INDEX IF NOT EXISTS "AuditLog_timestamp_idx" ON "AuditLog"("timestamp")`,
     ],
   },
+  {
+    name: "add_branch_support",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS "Branch" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "location" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Branch_pkey" PRIMARY KEY ("id")
+)`,
+      `ALTER TABLE "Donor" ADD COLUMN IF NOT EXISTS "branchId" INTEGER`,
+      `ALTER TABLE "Donor" ADD COLUMN IF NOT EXISTS "isVerified" BOOLEAN NOT NULL DEFAULT false`,
+      `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "branchId" INTEGER`,
+      `CREATE INDEX IF NOT EXISTS "Donor_branchId_idx" ON "Donor"("branchId")`,
+      `CREATE INDEX IF NOT EXISTS "User_branchId_idx" ON "User"("branchId")`,
+    ],
+  },
 ];
