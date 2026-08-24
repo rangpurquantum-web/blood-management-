@@ -19,37 +19,71 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
   const [previewStatus, setPreviewStatus] = useState<
     "idle" | "scanning" | "found" | "not-found"
   >("idle");
+  const [debugInfo, setDebugInfo] = useState<string>("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const debugIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopCamera() {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (debugIntervalRef.current) clearInterval(debugIntervalRef.current);
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setMode("idle");
+    setDebugInfo("");
   }
 
   async function startCamera() {
     setCameraError(null);
     setPreviewUrl(null);
     setPreviewStatus("idle");
+    setDebugInfo("ক্যামেরা অনুরোধ পাঠানো হচ্ছে...");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
       streamRef.current = stream;
+      setDebugInfo("স্ট্রিম পাওয়া গেছে, ভিডিওতে যুক্ত করা হচ্ছে...");
+
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        const video = videoRef.current;
+        video.srcObject = stream;
+
+        video.onerror = () => {
+          setDebugInfo(`video error: ${video.error?.message ?? "unknown"}`);
+        };
+        video.onstalled = () => setDebugInfo((d) => d + " | stalled");
+        video.onsuspend = () => setDebugInfo((d) => d + " | suspended");
+
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          track.onended = () => setDebugInfo((d) => d + " | track ended");
+          track.onmute = () => setDebugInfo((d) => d + " | track muted");
+        }
+
+        await video.play();
       }
       setMode("camera");
       scanLoop();
-    } catch {
+
+      // পোলিং: প্রতি সেকেন্ডে ভিডিওর আসল অবস্থা স্ক্রিনে দেখাও
+      debugIntervalRef.current = setInterval(() => {
+        const v = videoRef.current;
+        const track = streamRef.current?.getVideoTracks()[0];
+        if (!v || !track) return;
+        setDebugInfo(
+          `readyState:${v.readyState} size:${v.videoWidth}x${v.videoHeight} ` +
+            `paused:${v.paused} track:${track.readyState}/${track.label || "?"}`,
+        );
+      }, 1000);
+    } catch (err) {
+      const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       setCameraError("ক্যামেরা চালু করা যায়নি। অনুমতি দিয়েছেন কিনা দেখুন।");
+      setDebugInfo(`ব্যর্থ: ${message}`);
     }
   }
 
@@ -158,6 +192,12 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
               QR কোডটি ফ্রেমের মধ্যে রাখুন
             </span>
           </div>
+
+          {debugInfo && (
+            <div className="absolute inset-x-3 top-[calc(env(safe-area-inset-top)+4rem)] rounded-lg bg-black/70 p-2 text-[11px] leading-tight text-lime-300">
+              {debugInfo}
+            </div>
+          )}
 
           <Button
             type="button"
