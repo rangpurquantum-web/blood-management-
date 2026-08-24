@@ -85,6 +85,63 @@ export default function UpdateButton({
     }
   }
 
+  /*
+   * যেকোনো ধরনের error (Error instance, plain object,
+   * Cordova/Capacitor error object, string, ইত্যাদি) থেকে
+   * একটা readable string বের করার জন্য।
+   *
+   * আগে শুধু `error instanceof Error` চেক করা হতো, কিন্তু
+   * Cordova প্লাগিনগুলো (যেমন cordova-plugin-apkupdater)
+   * সাধারণত plain object throw করে (Error instance না),
+   * তাই String(error) করলে "[object Object]" আসতো এবং
+   * আসল কারণ হারিয়ে যেত।
+   */
+  function describeError(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (typeof error === "string") {
+      return error;
+    }
+
+    if (error && typeof error === "object") {
+      // Cordova/Capacitor error object গুলোতে প্রায়ই
+      // message, code, বা error ফিল্ড থাকে।
+      const errObj = error as Record<string, unknown>;
+
+      const parts: string[] = [];
+
+      if (typeof errObj.message === "string") {
+        parts.push(errObj.message);
+      }
+
+      if (typeof errObj.code !== "undefined") {
+        parts.push(`code: ${String(errObj.code)}`);
+      }
+
+      if (
+        typeof errObj.error === "string" &&
+        errObj.error !== errObj.message
+      ) {
+        parts.push(errObj.error);
+      }
+
+      if (parts.length > 0) {
+        return parts.join(" | ");
+      }
+
+      // কোনো চেনা ফিল্ড না পেলে, পুরো object টাই JSON আকারে দেখাই
+      try {
+        return JSON.stringify(errObj);
+      } catch {
+        return Object.prototype.toString.call(errObj);
+      }
+    }
+
+    return String(error);
+  }
+
   async function handleUpdate() {
     if (!updateInfo) {
       return;
@@ -98,8 +155,8 @@ export default function UpdateButton({
        * Load APK updater plugin.
        *
        * IMPORTANT:
-       * এখানে "module" variable ব্যবহার করা হয়নি,
-       * যাতে Next.js ESLint error না দেয়।
+       * এখানে "module" variable ব্যবহার করা হয়নি,
+       * যাতে Next.js ESLint error না দেয়।
        */
       const updaterModule = await import(
         "cordova-plugin-apkupdater"
@@ -211,7 +268,7 @@ export default function UpdateButton({
       );
     } catch (error) {
       console.error(
-        "[Update] Update failed:",
+        "[Update] Update failed (raw):",
         error
       );
 
@@ -221,10 +278,7 @@ export default function UpdateButton({
         setStatus("idle");
       }, 2000);
 
-      const message =
-        error instanceof Error
-          ? error.message
-          : String(error);
+      const message = describeError(error);
 
       alert(
         `Update failed:\n\n${message}`
