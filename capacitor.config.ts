@@ -8,6 +8,15 @@ const config: CapacitorConfig = {
     url: 'https://blood-management-livid.vercel.app',
     cleartext: false,
   },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 0,
+      launchAutoHide: false,
+      showSpinner: true,
+      spinnerColor: '#ffffff',
+      androidSpinnerStyle: 'large',
+    },
+  },
 };
 
 export default config;
