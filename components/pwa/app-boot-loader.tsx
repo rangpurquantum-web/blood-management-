@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLoading from "@/components/loading/dashboard-loading";
+import DashboardLoading from "@/app/dashboard/loading";
 
 const BOOT_DURATION_MS = 1800;
 const FADE_DURATION_MS = 400;
@@ -31,12 +31,12 @@ export function AppBootLoader({
 
   return (
     <>
-      {/* Main application */}
+      {/* Existing application */}
       <div className={booting ? "invisible" : "visible"}>
         {children}
       </div>
 
-      {/* Startup Loading */}
+      {/* Startup loading */}
       {booting && (
         <div
           className={`fixed inset-0 z-[9999] bg-background transition-opacity duration-[400ms] ${
