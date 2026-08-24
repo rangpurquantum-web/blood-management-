@@ -1,5 +1,6 @@
 import Link from "next/link";
 import DonorToPatientHero from "@/components/DonorToPatientHero";
+import UpdateButton from "@/components/UpdateButton";
 
 export default function HomePage() {
   return (
@@ -20,16 +21,20 @@ export default function HomePage() {
         />
       </div>
 
-      {/* ── Top-right Login ──────────────────────────────────────────── */}
+      {/* ── Top-right Login / Update ──────────────────────────────────── */}
       <div className="relative z-20 flex justify-end px-6 pt-8 shrink-0">
-        <Link
-          href="/login"
-          className="flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 shadow-[0_8px_30px_rgba(255,255,255,0.35)] hover:bg-blue-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <span className="text-center font-semibold text-white text-sm">
-            Login
-          </span>
-        </Link>
+        <UpdateButton
+          fallback={
+            <Link
+              href="/login"
+              className="flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 shadow-[0_8px_30px_rgba(255,255,255,0.35)] hover:bg-blue-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span className="text-center font-semibold text-white text-sm">
+                Login
+              </span>
+            </Link>
+          }
+        />
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────── */}
