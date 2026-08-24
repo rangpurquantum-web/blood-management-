@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 
 // Notun version release korle sudhu ei duita line change korbe:
 const LATEST_VERSION_CODE = 1; // android/app/build.gradle er versionCode er sathe match
-const LATEST_VERSION_NAME = "1.0.0";
+const LATEST_VERSION_CODE = 2;
+const LATEST_VERSION_NAME = "1.1";
 
 const APK_DOWNLOAD_URL =
-  "https://blood-management-livid.vercel.app/downloads/app-release.apk";
+  "https://github.com/rangpurquantum-web/blood-management-/releases/download/v1.1/app-release.apk";
 
 export async function GET() {
   return NextResponse.json({
