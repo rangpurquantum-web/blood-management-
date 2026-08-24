@@ -11,6 +11,13 @@ type UpdateInfo = {
   downloadUrl: string;
 };
 
+type DownloadProgress = {
+  progress?: number;
+  percent?: number;
+  bytesWritten?: number;
+  bytes?: number;
+};
+
 export default function UpdateButton({
   fallback,
 }: {
@@ -26,12 +33,13 @@ export default function UpdateButton({
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    checkForUpdate();
+    void checkForUpdate();
   }, []);
 
   // ─────────────────────────────────────────────
-  // Check for new version
+  // Check latest version
   // ─────────────────────────────────────────────
+
   async function checkForUpdate() {
     if (!Capacitor.isNativePlatform()) {
       return;
@@ -40,34 +48,38 @@ export default function UpdateButton({
     try {
       const currentInfo = await App.getInfo();
 
-      const currentVersionCode = parseInt(
-        currentInfo.build,
-        10
+      const currentVersionCode = Number(
+        currentInfo.build
       );
 
       console.log(
-        "Current version code:",
+        "[UPDATE] Current version:",
+        currentInfo.version
+      );
+
+      console.log(
+        "[UPDATE] Current build:",
         currentVersionCode
       );
 
-      const res = await fetch(
+      const response = await fetch(
         "https://blood-management-livid.vercel.app/api/app-version",
         {
           cache: "no-store",
         }
       );
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error(
-          `Version API failed: ${res.status}`
+          `Version API returned ${response.status}`
         );
       }
 
       const latest: UpdateInfo =
-        await res.json();
+        await response.json();
 
       console.log(
-        "Latest version:",
+        "[UPDATE] Latest:",
         latest
       );
 
@@ -79,15 +91,16 @@ export default function UpdateButton({
       }
     } catch (error) {
       console.error(
-        "Update check failed:",
+        "[UPDATE] Version check failed:",
         error
       );
     }
   }
 
   // ─────────────────────────────────────────────
-  // Download + Install
+  // Update
   // ─────────────────────────────────────────────
+
   async function handleUpdate() {
     if (!updateInfo) {
       return;
@@ -95,58 +108,109 @@ export default function UpdateButton({
 
     try {
       console.log(
-        "UPDATE: button clicked"
+        "[UPDATE] Starting update..."
       );
+
+      console.log(
+        "[UPDATE] ApkUpdater:",
+        ApkUpdater
+      );
+
+      // Make sure plugin exists
+      if (!ApkUpdater) {
+        throw new Error(
+          "APK Updater plugin is not available. Rebuild APK after running npx cap sync android."
+        );
+      }
+
+      // Make sure required methods exist
+      if (
+        typeof ApkUpdater.download !==
+        "function"
+      ) {
+        throw new Error(
+          "APK Updater download() is not available in this APK."
+        );
+      }
+
+      if (
+        typeof ApkUpdater.install !==
+        "function"
+      ) {
+        throw new Error(
+          "APK Updater install() is not available in this APK."
+        );
+      }
 
       setStatus("downloading");
       setProgress(0);
 
       // ───────────────────────────────────────
-      // Check install permission
+      // Check installation permission
       // ───────────────────────────────────────
-      const canInstall =
-        await ApkUpdater.canRequestPackageInstalls();
 
-      console.log(
-        "Can install APK:",
-        canInstall
-      );
+      if (
+        typeof ApkUpdater.canRequestPackageInstalls ===
+        "function"
+      ) {
+        const canInstall =
+          await ApkUpdater.canRequestPackageInstalls();
 
-      if (!canInstall) {
-        await ApkUpdater.openInstallSetting();
+        console.log(
+          "[UPDATE] Install permission:",
+          canInstall
+        );
 
-        setStatus("idle");
+        if (!canInstall) {
+          if (
+            typeof ApkUpdater.openInstallSetting ===
+            "function"
+          ) {
+            await ApkUpdater.openInstallSetting();
+          }
 
-        return;
+          setStatus("idle");
+          return;
+        }
+      } else {
+        console.warn(
+          "[UPDATE] canRequestPackageInstalls() not available. Continuing to download."
+        );
       }
 
       // ───────────────────────────────────────
       // Download APK
       // ───────────────────────────────────────
+
       console.log(
-        "Downloading:",
+        "[UPDATE] Download URL:",
         updateInfo.downloadUrl
       );
 
       await ApkUpdater.download(
         updateInfo.downloadUrl,
         {
-          onDownloadProgress: (info) => {
+          onDownloadProgress: (
+            info: DownloadProgress
+          ) => {
             console.log(
-              "Download progress:",
+              "[UPDATE] Download:",
               info
             );
 
-            const percent =
-              Number(info.progress) || 0;
+            const value =
+              info.progress ??
+              info.percent ??
+              0;
+
+            const percent = Math.round(
+              Number(value)
+            );
 
             setProgress(
-              Math.min(
-                100,
-                Math.max(
-                  0,
-                  Math.round(percent)
-                )
+              Math.max(
+                0,
+                Math.min(100, percent)
               )
             );
           },
@@ -154,28 +218,29 @@ export default function UpdateButton({
       );
 
       console.log(
-        "APK download completed"
+        "[UPDATE] Download complete"
       );
 
       setProgress(100);
 
       // ───────────────────────────────────────
-      // Install
+      // Install APK
       // ───────────────────────────────────────
+
       setStatus("installing");
 
       console.log(
-        "Starting APK installation..."
+        "[UPDATE] Installing APK..."
       );
 
       await ApkUpdater.install();
 
       console.log(
-        "APK installation started"
+        "[UPDATE] Install request sent"
       );
     } catch (error) {
       console.error(
-        "UPDATE FAILED:",
+        "[UPDATE] Update failed:",
         error
       );
 
@@ -194,8 +259,9 @@ export default function UpdateButton({
   }
 
   // ─────────────────────────────────────────────
-  // No update
+  // Normal website / no update
   // ─────────────────────────────────────────────
+
   if (!updateInfo) {
     return <>{fallback}</>;
   }
@@ -203,10 +269,11 @@ export default function UpdateButton({
   // ─────────────────────────────────────────────
   // Update button
   // ─────────────────────────────────────────────
+
   return (
     <button
       type="button"
-      onClick={handleUpdate}
+      onClick={() => void handleUpdate()}
       disabled={status !== "idle"}
       className="flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 shadow-[0_8px_30px_rgba(255,255,255,0.35)] transition-all hover:scale-[1.02] hover:bg-blue-500 active:scale-[0.98] disabled:opacity-80"
     >
