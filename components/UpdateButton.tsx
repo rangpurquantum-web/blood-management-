@@ -60,11 +60,11 @@ export default function UpdateButton({
 
       setStatus("downloading");
       setProgress(0);
-      await ApkUpdater.download(updateInfo.downloadUrl, {
-        onDownloadProgress: (info: { percent: number }) => {
-          setProgress(info.percent);
-        },
-      });
+      await await ApkUpdater.download(updateInfo.downloadUrl, {
+  onDownloadProgress: (info) => {
+    setProgress(info.progress); // percent না, progress
+  },
+});
 
       setStatus("installing");
       await ApkUpdater.install();
