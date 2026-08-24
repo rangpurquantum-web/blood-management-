@@ -21,9 +21,11 @@ export default function UpdateButton({
 }: {
   fallback: React.ReactNode;
 }) {
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateInfo, setUpdateInfo] =
+    useState<UpdateInfo | null>(null);
 
-  const [status, setStatus] = useState<UpdateStatus>("idle");
+  const [status, setStatus] =
+    useState<UpdateStatus>("idle");
 
   const [progress, setProgress] = useState(0);
 
@@ -32,7 +34,7 @@ export default function UpdateButton({
   }, []);
 
   async function checkForUpdate() {
-    // Browser / PWA হলে Login দেখাবে
+    // Browser / PWA হলে Login button দেখাবে
     if (!Capacitor.isNativePlatform()) {
       return;
     }
@@ -93,19 +95,18 @@ export default function UpdateButton({
       setProgress(0);
 
       /*
+       * Load APK updater plugin.
+       *
        * IMPORTANT:
-       *
-       * cordova-plugin-apkupdater-এর default export ব্যবহার করছি।
-       *
-       * Dynamic import-এর ক্ষেত্রে module.default পাওয়া না গেলে
-       * পুরো module-টাকেও fallback হিসেবে নেওয়া হচ্ছে।
+       * এখানে "module" variable ব্যবহার করা হয়নি,
+       * যাতে Next.js ESLint error না দেয়।
        */
-      const module = await import(
+      const updaterModule = await import(
         "cordova-plugin-apkupdater"
       );
 
       const ApkUpdater =
-        module.default ?? module;
+        updaterModule.default ?? updaterModule;
 
       console.log(
         "[Update] ApkUpdater:",
@@ -119,10 +120,9 @@ export default function UpdateButton({
       }
 
       /*
-       * Plugin-এর permission API আছে কিনা আগে check করছি।
+       * Check Android install permission.
        *
-       * পুরোনো/ভিন্ন plugin object হলে সরাসরি
-       * canRequestPackageInstalls() call করে crash করবে না।
+       * API না থাকলেও সরাসরি crash করবে না।
        */
       if (
         typeof ApkUpdater.canRequestPackageInstalls ===
@@ -143,9 +143,6 @@ export default function UpdateButton({
           ) {
             await ApkUpdater.openInstallSetting();
 
-            /*
-             * Settings থেকে ফিরে এসে user আবার Update চাপবে।
-             */
             setStatus("idle");
             return;
           }
@@ -157,36 +154,40 @@ export default function UpdateButton({
       }
 
       /*
-       * APK download
+       * Download APK
        */
       console.log(
         "[Update] Downloading:",
         updateInfo.downloadUrl
       );
 
-      const downloaded = await ApkUpdater.download(
-        updateInfo.downloadUrl,
-        {
-          onDownloadProgress: (info: {
-            progress?: number;
-            bytesWritten?: number;
-            bytes?: number;
-          }) => {
-            const value = Math.round(
-              Number(info?.progress ?? 0)
-            );
+      const downloaded =
+        await ApkUpdater.download(
+          updateInfo.downloadUrl,
+          {
+            onDownloadProgress: (info: {
+              progress?: number;
+              bytesWritten?: number;
+              bytes?: number;
+            }) => {
+              const value = Math.round(
+                Number(info?.progress ?? 0)
+              );
 
-            setProgress(
-              Math.max(0, Math.min(100, value))
-            );
+              setProgress(
+                Math.max(
+                  0,
+                  Math.min(100, value)
+                )
+              );
 
-            console.log(
-              "[Update] Download:",
-              value + "%"
-            );
-          },
-        }
-      );
+              console.log(
+                "[Update] Download:",
+                value + "%"
+              );
+            },
+          }
+        );
 
       console.log(
         "[Update] Download completed:",
@@ -194,12 +195,14 @@ export default function UpdateButton({
       );
 
       /*
-       * Install
+       * Install APK
        */
       setProgress(100);
       setStatus("installing");
 
-      console.log("[Update] Installing APK...");
+      console.log(
+        "[Update] Installing APK..."
+      );
 
       await ApkUpdater.install();
 
@@ -214,28 +217,24 @@ export default function UpdateButton({
 
       setStatus("error");
 
-      /*
-       * একটু delay দিয়ে আবার button active করা হবে
-       */
       setTimeout(() => {
         setStatus("idle");
       }, 2000);
 
-      /*
-       * User-friendly error
-       */
       const message =
         error instanceof Error
           ? error.message
           : String(error);
 
-      alert(`Update failed:\n\n${message}`);
+      alert(
+        `Update failed:\n\n${message}`
+      );
     }
   }
 
   /*
    * Browser / PWA:
-   * Login button দেখাবে
+   * Login button দেখাবে।
    */
   if (!updateInfo) {
     return <>{fallback}</>;
@@ -252,17 +251,7 @@ export default function UpdateButton({
       className="flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 shadow-[0_8px_30px_rgba(255,255,255,0.35)] transition-all hover:scale-[1.02] hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80"
     >
       <span className="text-center text-sm font-semibold text-white">
-        {status === "idle" &&
-          `Update to ${updateInfo.versionName}`}
-
-        {status === "downloading" &&
-          `Updating... ${progress}%`}
-
-        {status === "installing" &&
-          "Installing..."}
-
-        {status === "error" &&
-          "Try Update Again"}
+        Update
       </span>
     </button>
   );
