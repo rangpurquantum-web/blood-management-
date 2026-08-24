@@ -2,28 +2,27 @@ package com.bloodmanager.app;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Base64;
 
-import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
-import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.OutputStream;
-import java.util.Base64;
 
 @CapacitorPlugin(name = "QrFileSaver")
 public class QrFileSaverPlugin extends Plugin {
 
-    /**
-     * Save PNG QR code to Android Gallery / Pictures.
-     */
+    // ============================================================
+    // SAVE QR PNG TO GALLERY
+    // ============================================================
+
     @PluginMethod
     public void saveImage(PluginCall call) {
 
@@ -39,66 +38,63 @@ public class QrFileSaverPlugin extends Plugin {
             fileName = "quantum-login-qr.png";
         }
 
-        // Remove data URL prefix if accidentally supplied
+        // data:image/png;base64,XXXXX হলে prefix বাদ
         if (base64.contains(",")) {
-            base64 = base64.substring(
-                base64.indexOf(",") + 1
-            );
+            base64 = base64.substring(base64.indexOf(",") + 1);
         }
 
         try {
+
             byte[] imageBytes =
-                Base64.getDecoder().decode(base64);
+                    Base64.decode(base64, Base64.DEFAULT);
 
             ContentResolver resolver =
-                getContext().getContentResolver();
+                    getContext().getContentResolver();
 
             ContentValues values =
-                new ContentValues();
+                    new ContentValues();
 
             values.put(
-                MediaStore.Images.Media.DISPLAY_NAME,
-                fileName
+                    MediaStore.Images.Media.DISPLAY_NAME,
+                    fileName
             );
 
             values.put(
-                MediaStore.Images.Media.MIME_TYPE,
-                "image/png"
+                    MediaStore.Images.Media.MIME_TYPE,
+                    "image/png"
             );
 
+            // Android 10+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
                 values.put(
-                    MediaStore.Images.Media.RELATIVE_PATH,
-                    Environment.DIRECTORY_PICTURES
-                        + "/Quantum Blood Donor Pool"
+                        MediaStore.Images.Media.RELATIVE_PATH,
+                        Environment.DIRECTORY_PICTURES
+                                + "/Quantum Blood Donor Pool"
                 );
 
                 values.put(
-                    MediaStore.Images.Media.IS_PENDING,
-                    1
+                        MediaStore.Images.Media.IS_PENDING,
+                        1
                 );
             }
 
-            Uri uri =
-                resolver.insert(
+            Uri uri = resolver.insert(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     values
-                );
+            );
 
             if (uri == null) {
-                call.reject(
-                    "Gallery-তে QR Code save করা যায়নি"
-                );
+                call.reject("Gallery-তে QR Code save করা যায়নি");
                 return;
             }
 
             try (OutputStream outputStream =
-                     resolver.openOutputStream(uri)) {
+                         resolver.openOutputStream(uri)) {
 
                 if (outputStream == null) {
                     throw new Exception(
-                        "Output stream পাওয়া যায়নি"
+                            "Output stream পাওয়া যায়নি"
                     );
                 }
 
@@ -106,57 +102,48 @@ public class QrFileSaverPlugin extends Plugin {
                 outputStream.flush();
             }
 
+            // Android 10+ এ file publish করা
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
                 ContentValues complete =
-                    new ContentValues();
+                        new ContentValues();
 
                 complete.put(
-                    MediaStore.Images.Media.IS_PENDING,
-                    0
+                        MediaStore.Images.Media.IS_PENDING,
+                        0
                 );
 
                 resolver.update(
-                    uri,
-                    complete,
-                    null,
-                    null
+                        uri,
+                        complete,
+                        null,
+                        null
                 );
             }
 
-            JSObject result =
-                new JSObject();
+            JSObject result = new JSObject();
 
-            result.put(
-                "success",
-                true
-            );
-
-            result.put(
-                "uri",
-                uri.toString()
-            );
-
-            result.put(
-                "fileName",
-                fileName
-            );
+            result.put("success", true);
+            result.put("uri", uri.toString());
+            result.put("fileName", fileName);
 
             call.resolve(result);
 
         } catch (Exception e) {
 
             call.reject(
-                "QR Code save করা যায়নি: "
-                    + e.getMessage(),
-                e
+                    "QR Code save করা যায়নি: "
+                            + e.getMessage(),
+                    e
             );
         }
     }
 
-    /**
-     * Save PDF to Android Downloads.
-     */
+
+    // ============================================================
+    // SAVE PDF TO DOWNLOADS
+    // ============================================================
+
     @PluginMethod
     public void savePdf(PluginCall call) {
 
@@ -172,66 +159,63 @@ public class QrFileSaverPlugin extends Plugin {
             fileName = "quantum-login-qr.pdf";
         }
 
-        // Remove data URL prefix
+        // data:application/pdf;base64,XXXXX
         if (base64.contains(",")) {
-            base64 = base64.substring(
-                base64.indexOf(",") + 1
-            );
+            base64 = base64.substring(base64.indexOf(",") + 1);
         }
 
         try {
+
             byte[] pdfBytes =
-                Base64.getDecoder().decode(base64);
+                    Base64.decode(base64, Base64.DEFAULT);
 
             ContentResolver resolver =
-                getContext().getContentResolver();
+                    getContext().getContentResolver();
 
             ContentValues values =
-                new ContentValues();
+                    new ContentValues();
 
             values.put(
-                MediaStore.Downloads.DISPLAY_NAME,
-                fileName
+                    MediaStore.Downloads.DISPLAY_NAME,
+                    fileName
             );
 
             values.put(
-                MediaStore.Downloads.MIME_TYPE,
-                "application/pdf"
+                    MediaStore.Downloads.MIME_TYPE,
+                    "application/pdf"
             );
 
+            // Android 10+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
                 values.put(
-                    MediaStore.Downloads.RELATIVE_PATH,
-                    Environment.DIRECTORY_DOWNLOADS
-                        + "/Quantum Blood Donor Pool"
+                        MediaStore.Downloads.RELATIVE_PATH,
+                        Environment.DIRECTORY_DOWNLOADS
+                                + "/Quantum Blood Donor Pool"
                 );
 
                 values.put(
-                    MediaStore.Downloads.IS_PENDING,
-                    1
+                        MediaStore.Downloads.IS_PENDING,
+                        1
                 );
             }
 
-            Uri uri =
-                resolver.insert(
+            Uri uri = resolver.insert(
                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                     values
-                );
+            );
 
             if (uri == null) {
-                call.reject(
-                    "PDF save করা যায়নি"
-                );
+                call.reject("PDF save করা যায়নি");
                 return;
             }
 
             try (OutputStream outputStream =
-                     resolver.openOutputStream(uri)) {
+                         resolver.openOutputStream(uri)) {
 
                 if (outputStream == null) {
                     throw new Exception(
-                        "PDF output stream পাওয়া যায়নি"
+                            "PDF output stream পাওয়া যায়নি"
                     );
                 }
 
@@ -239,50 +223,39 @@ public class QrFileSaverPlugin extends Plugin {
                 outputStream.flush();
             }
 
+            // Android 10+ এ publish
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
                 ContentValues complete =
-                    new ContentValues();
+                        new ContentValues();
 
                 complete.put(
-                    MediaStore.Downloads.IS_PENDING,
-                    0
+                        MediaStore.Downloads.IS_PENDING,
+                        0
                 );
 
                 resolver.update(
-                    uri,
-                    complete,
-                    null,
-                    null
+                        uri,
+                        complete,
+                        null,
+                        null
                 );
             }
 
-            JSObject result =
-                new JSObject();
+            JSObject result = new JSObject();
 
-            result.put(
-                "success",
-                true
-            );
-
-            result.put(
-                "uri",
-                uri.toString()
-            );
-
-            result.put(
-                "fileName",
-                fileName
-            );
+            result.put("success", true);
+            result.put("uri", uri.toString());
+            result.put("fileName", fileName);
 
             call.resolve(result);
 
         } catch (Exception e) {
 
             call.reject(
-                "PDF save করা যায়নি: "
-                    + e.getMessage(),
-                e
+                    "PDF save করা যায়নি: "
+                            + e.getMessage(),
+                    e
             );
         }
     }
