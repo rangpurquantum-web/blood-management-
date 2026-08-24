@@ -5,7 +5,7 @@ const LATEST_VERSION_CODE = 3;
 const LATEST_VERSION_NAME = "1.2";
 
 const APK_DOWNLOAD_URL =
-  "https://github.com/rangpurquantum-web/blood-management-/releases/download/v1.1/app-release.apk";
+  "https://github.com/rangpurquantum-web/blood-management-/releases/download/v1.2/app-release.apk";
 
 export async function GET() {
   return NextResponse.json({
