@@ -74,15 +74,14 @@ public class MainActivity extends BridgeActivity {
     // ============================================================
 
     @Override
-    public void onCreate(
-        Bundle savedInstanceState
-    ) {
+    public void onCreate(Bundle savedInstanceState) {
 
         // IMPORTANT:
         // Register custom native QR saver BEFORE super.onCreate()
         registerPlugin(QrFileSaverPlugin.class);
 
         super.onCreate(savedInstanceState);
+
 
         // ========================================================
         // COOKIE
@@ -95,7 +94,7 @@ public class MainActivity extends BridgeActivity {
 
 
         // ========================================================
-        // FCM TOKEN
+        // FIREBASE FCM
         // ========================================================
 
         FirebaseMessaging.getInstance()
@@ -196,7 +195,7 @@ public class MainActivity extends BridgeActivity {
 
 
     // ============================================================
-    // CAMERA + AUTOPLAY + FILE CHOOSER
+    // CAMERA + FILE CHOOSER
     // ============================================================
 
     private void enableCameraPermissionWithRetry(
@@ -240,9 +239,7 @@ public class MainActivity extends BridgeActivity {
 
         webView
             .getSettings()
-            .setMediaPlaybackRequiresUserGesture(
-                false
-            );
+            .setMediaPlaybackRequiresUserGesture(false);
 
 
         // ========================================================
@@ -253,7 +250,7 @@ public class MainActivity extends BridgeActivity {
             new WebChromeClient() {
 
                 // ==================================================
-                // CAMERA PERMISSION
+                // CAMERA
                 // ==================================================
 
                 @Override
@@ -263,14 +260,15 @@ public class MainActivity extends BridgeActivity {
 
                     runOnUiThread(() -> {
 
-                        boolean hasOsPermission =
+                        boolean hasPermission =
                             ContextCompat.checkSelfPermission(
                                 MainActivity.this,
                                 Manifest.permission.CAMERA
                             ) ==
                             PackageManager.PERMISSION_GRANTED;
 
-                        if (hasOsPermission) {
+
+                        if (hasPermission) {
 
                             request.grant(
                                 request.getResources()
@@ -294,7 +292,7 @@ public class MainActivity extends BridgeActivity {
 
 
                 // ==================================================
-                // FILE CHOOSER
+                // FILE UPLOAD
                 // ==================================================
 
                 @Override
@@ -318,6 +316,7 @@ public class MainActivity extends BridgeActivity {
 
                     intent.setType("*/*");
 
+
                     String[] acceptTypes =
                         fileChooserParams
                             .getAcceptTypes();
@@ -333,6 +332,7 @@ public class MainActivity extends BridgeActivity {
                             acceptTypes[0]
                         );
                     }
+
 
                     try {
 
@@ -351,7 +351,8 @@ public class MainActivity extends BridgeActivity {
                             e
                         );
 
-                        filePathCallback = null;
+                        filePathCallback =
+                            null;
 
                         return false;
                     }
@@ -360,6 +361,7 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         );
+
 
         Log.d(
             "CAMERA_FIX",
@@ -385,6 +387,7 @@ public class MainActivity extends BridgeActivity {
             grantResults
         );
 
+
         if (
             requestCode ==
                 CAMERA_PERMISSION_REQUEST_CODE &&
@@ -396,6 +399,7 @@ public class MainActivity extends BridgeActivity {
                 grantResults[0] ==
                     PackageManager.PERMISSION_GRANTED;
 
+
             if (granted) {
 
                 pendingWebPermissionRequest.grant(
@@ -403,22 +407,13 @@ public class MainActivity extends BridgeActivity {
                         .getResources()
                 );
 
-                Log.d(
-                    "CAMERA_FIX",
-                    "Camera permission granted"
-                );
-
             } else {
 
                 pendingWebPermissionRequest.deny();
-
-                Log.w(
-                    "CAMERA_FIX",
-                    "Camera permission denied"
-                );
             }
 
-            pendingWebPermissionRequest = null;
+            pendingWebPermissionRequest =
+                null;
         }
     }
 
@@ -450,7 +445,7 @@ public class MainActivity extends BridgeActivity {
 
 
     // ============================================================
-    // SEND FCM TOKEN
+    // FCM TOKEN
     // ============================================================
 
     private void sendTokenToWebViewWithRetry(
@@ -465,12 +460,6 @@ public class MainActivity extends BridgeActivity {
 
         if (webView == null) {
 
-            Log.w(
-                "FCM_TOKEN",
-                "WebView not ready, attempt "
-                    + attempt
-            );
-
             scheduleRetry(
                 token,
                 attempt
@@ -478,6 +467,7 @@ public class MainActivity extends BridgeActivity {
 
             return;
         }
+
 
         webView.post(() -> {
 
@@ -488,16 +478,18 @@ public class MainActivity extends BridgeActivity {
                     .replace("\n", "\\n")
                     .replace("\r", "\\r");
 
+
             String js =
                 "(function(){"
-                    + "if (window.receiveFcmToken) {"
-                    + "window.receiveFcmToken('"
-                    + safeToken
-                    + "');"
-                    + "return true;"
-                    + "}"
-                    + "return false;"
-                    + "})();";
+                + "if(window.receiveFcmToken){"
+                + "window.receiveFcmToken('"
+                + safeToken
+                + "');"
+                + "return true;"
+                + "}"
+                + "return false;"
+                + "})();";
+
 
             webView.evaluateJavascript(
                 js,
@@ -507,13 +499,6 @@ public class MainActivity extends BridgeActivity {
                         result != null &&
                         result.equals("true");
 
-                    Log.d(
-                        "FCM_TOKEN",
-                        "Delivery attempt "
-                            + attempt
-                            + " result: "
-                            + result
-                    );
 
                     if (!delivered) {
 
@@ -527,10 +512,6 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
-
-    // ============================================================
-    // FCM RETRY
-    // ============================================================
 
     private void scheduleRetry(
         String token,
