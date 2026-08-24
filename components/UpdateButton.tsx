@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
+import ApkUpdater from "cordova-plugin-apkupdater";
 
 type UpdateInfo = {
   versionCode: number;
@@ -15,7 +16,8 @@ export default function UpdateButton({
 }: {
   fallback: React.ReactNode;
 }) {
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateInfo, setUpdateInfo] =
+    useState<UpdateInfo | null>(null);
 
   const [status, setStatus] = useState<
     "idle" | "downloading" | "installing"
@@ -28,10 +30,9 @@ export default function UpdateButton({
   }, []);
 
   // ─────────────────────────────────────────────
-  // Check latest version
+  // Check for new version
   // ─────────────────────────────────────────────
   async function checkForUpdate() {
-    // Browser/PWA-তে update button দেখাবে না
     if (!Capacitor.isNativePlatform()) {
       return;
     }
@@ -39,10 +40,13 @@ export default function UpdateButton({
     try {
       const currentInfo = await App.getInfo();
 
-      const currentVersionCode = parseInt(currentInfo.build, 10);
+      const currentVersionCode = parseInt(
+        currentInfo.build,
+        10
+      );
 
       console.log(
-        "Current Android versionCode:",
+        "Current version code:",
         currentVersionCode
       );
 
@@ -59,26 +63,24 @@ export default function UpdateButton({
         );
       }
 
-      const latest: UpdateInfo = await res.json();
+      const latest: UpdateInfo =
+        await res.json();
 
-      console.log("Latest version:", latest);
+      console.log(
+        "Latest version:",
+        latest
+      );
 
       if (
-        latest.versionCode > currentVersionCode
+        latest.versionCode >
+        currentVersionCode
       ) {
-        console.log(
-          "Update available:",
-          latest.versionName
-        );
-
         setUpdateInfo(latest);
-      } else {
-        console.log("App is already up to date.");
       }
-    } catch (err) {
+    } catch (error) {
       console.error(
         "Update check failed:",
-        err
+        error
       );
     }
   }
@@ -92,42 +94,25 @@ export default function UpdateButton({
     }
 
     try {
-      console.log("UPDATE: button clicked");
+      console.log(
+        "UPDATE: button clicked"
+      );
 
       setStatus("downloading");
       setProgress(0);
 
-      // Load native APK updater plugin
-      console.log(
-        "UPDATE: loading ApkUpdater..."
-      );
-
-      const { default: ApkUpdater } =
-        await import(
-          "cordova-plugin-apkupdater"
-        );
-
-      console.log(
-        "UPDATE: ApkUpdater loaded",
-        ApkUpdater
-      );
-
       // ───────────────────────────────────────
-      // Check Android install permission
+      // Check install permission
       // ───────────────────────────────────────
       const canInstall =
         await ApkUpdater.canRequestPackageInstalls();
 
       console.log(
-        "UPDATE: can install =",
+        "Can install APK:",
         canInstall
       );
 
       if (!canInstall) {
-        console.log(
-          "UPDATE: opening install settings"
-        );
-
         await ApkUpdater.openInstallSetting();
 
         setStatus("idle");
@@ -139,7 +124,7 @@ export default function UpdateButton({
       // Download APK
       // ───────────────────────────────────────
       console.log(
-        "UPDATE: downloading APK:",
+        "Downloading:",
         updateInfo.downloadUrl
       );
 
@@ -148,71 +133,59 @@ export default function UpdateButton({
         {
           onDownloadProgress: (info) => {
             console.log(
-              "UPDATE: download progress:",
+              "Download progress:",
               info
             );
 
-            const downloadInfo =
-              info as unknown as {
-                progress?: number;
-                percent?: number;
-                progressPercentage?: number;
-              };
+            const percent =
+              Number(info.progress) || 0;
 
-            const value =
-              downloadInfo.progressPercentage ??
-              downloadInfo.percent ??
-              downloadInfo.progress ??
-              0;
-
-            const safeProgress = Math.min(
-              100,
-              Math.max(
-                0,
-                Math.round(value)
+            setProgress(
+              Math.min(
+                100,
+                Math.max(
+                  0,
+                  Math.round(percent)
+                )
               )
             );
-
-            setProgress(safeProgress);
           },
         }
       );
 
-      // Download finished
       console.log(
-        "UPDATE: download complete"
+        "APK download completed"
       );
 
       setProgress(100);
 
       // ───────────────────────────────────────
-      // Install APK
+      // Install
       // ───────────────────────────────────────
       setStatus("installing");
 
       console.log(
-        "UPDATE: installing APK..."
+        "Starting APK installation..."
       );
 
       await ApkUpdater.install();
 
       console.log(
-        "UPDATE: install started"
+        "APK installation started"
       );
-    } catch (err) {
+    } catch (error) {
       console.error(
         "UPDATE FAILED:",
-        err
+        error
       );
 
       setStatus("idle");
       setProgress(0);
 
-      // Show actual error on phone
       const message =
-        err instanceof Error
-          ? err.message
-          : String(err);
+        error instanceof Error
+          ? error.message
+          : String(error);
 
       alert(
         `Update failed:\n\n${message}`
@@ -221,7 +194,7 @@ export default function UpdateButton({
   }
 
   // ─────────────────────────────────────────────
-  // No update available
+  // No update
   // ─────────────────────────────────────────────
   if (!updateInfo) {
     return <>{fallback}</>;
