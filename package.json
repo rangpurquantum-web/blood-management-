@@ -48,6 +48,7 @@
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cordova-plugin-apkupdater": "^4.0.0",
     "date-fns": "^4.4.0",
     "dotenv": "^17.4.2",
     "firebase-admin": "^12.7.0",
