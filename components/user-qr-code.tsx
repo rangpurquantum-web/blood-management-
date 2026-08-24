@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { registerPlugin, Capacitor } from "@capacitor/core";
 import {
   Loader2,
   Download,
   Printer,
   RotateCw,
   FileDown,
+  ImageDown,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +19,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 
 import { toast } from "sonner";
@@ -26,43 +29,99 @@ interface UserQrCodeProps {
   userName: string;
 }
 
+interface QrFileSaverPlugin {
+  savePng(options: {
+    base64: string;
+    fileName: string;
+  }): Promise<{ success: boolean; path?: string }>;
+
+  savePdf(options: {
+    base64: string;
+    fileName: string;
+  }): Promise<{ success: boolean; path?: string }>;
+}
+
+const QrFileSaver = registerPlugin<QrFileSaverPlugin>("QrFileSaver");
+
 export function UserQrCode({ userId, userName }: UserQrCodeProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [dataUrl, setDataUrl] = useState<string | null>(null);
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // ─────────────────────────────────────────────
-  // Load QR from server
+  // Load QR token from API
   // ─────────────────────────────────────────────
   async function loadQr() {
     setLoading(true);
+    setError(null);
     setDataUrl(null);
+    setToken(null);
 
     try {
       const res = await fetch(`/api/users/${userId}/qr`, {
         method: "GET",
+        credentials: "include",
         cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
       });
 
+      const contentType = res.headers.get("content-type") || "";
+
       if (!res.ok) {
-        throw new Error("Failed to load QR");
+        let serverMessage = "";
+
+        try {
+          if (contentType.includes("application/json")) {
+            const body = await res.json();
+            serverMessage =
+              body?.error ||
+              body?.message ||
+              `HTTP ${res.status}`;
+          } else {
+            serverMessage = `HTTP ${res.status}`;
+          }
+        } catch {
+          serverMessage = `HTTP ${res.status}`;
+        }
+
+        throw new Error(serverMessage);
       }
 
-      const data = await res.json();
+      const body = await res.json();
 
-      if (!data?.token) {
-        throw new Error("QR token not found");
+      if (!body?.token || typeof body.token !== "string") {
+        throw new Error("API থেকে QR token পাওয়া যায়নি");
       }
 
-      // Canvas render হওয়ার জন্য ছোট delay
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const qrToken = body.token;
 
-      await renderQr(data.token);
-    } catch (error) {
-      console.error("QR load error:", error);
+      // QR তৈরি
+      const generatedQr = await QRCode.toDataURL(qrToken, {
+        width: 900,
+        margin: 4,
+        errorCorrectionLevel: "H",
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+
+      setToken(qrToken);
+      setDataUrl(generatedQr);
+    } catch (err) {
+      console.error("QR LOAD ERROR:", err);
+
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Unknown QR loading error";
+
+      setError(`QR কোড লোড করা যায়নি: ${message}`);
       toast.error("QR কোড লোড করা যায়নি");
     } finally {
       setLoading(false);
@@ -70,107 +129,204 @@ export function UserQrCode({ userId, userName }: UserQrCodeProps) {
   }
 
   // ─────────────────────────────────────────────
-  // Render QR
+  // Regenerate QR
   // ─────────────────────────────────────────────
-  async function renderQr(token: string) {
-    const canvas = canvasRef.current;
+  async function handleRegenerate() {
+    const confirmed = window.confirm(
+      "নতুন QR কোড বানালে আগের QR কোড আর কাজ করবে না।\n\nএগোতে চান?",
+    );
 
-    if (!canvas) {
-      throw new Error("QR canvas not ready");
+    if (!confirmed) return;
+
+    setRegenerating(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/users/${userId}/qr`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const body = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          body?.error ||
+            body?.message ||
+            `HTTP ${res.status}`,
+        );
+      }
+
+      if (!body?.token) {
+        throw new Error("নতুন QR token পাওয়া যায়নি");
+      }
+
+      const generatedQr = await QRCode.toDataURL(body.token, {
+        width: 900,
+        margin: 4,
+        errorCorrectionLevel: "H",
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+
+      setToken(body.token);
+      setDataUrl(generatedQr);
+
+      toast.success("নতুন QR কোড তৈরি হয়েছে");
+    } catch (err) {
+      console.error("QR REGENERATE ERROR:", err);
+
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Unknown error";
+
+      setError(`QR রিজেনারেট করা যায়নি: ${message}`);
+      toast.error("QR রিজেনারেট করা যায়নি");
+    } finally {
+      setRegenerating(false);
     }
-
-    await QRCode.toCanvas(canvas, token, {
-      width: 320,
-      margin: 4,
-      errorCorrectionLevel: "H",
-      color: {
-        dark: "#000000",
-        light: "#ffffff",
-      },
-    });
-
-    const generatedDataUrl = canvas.toDataURL("image/png");
-
-    setDataUrl(generatedDataUrl);
   }
 
   // ─────────────────────────────────────────────
-  // Download QR PNG
+  // Convert data URL → base64
   // ─────────────────────────────────────────────
-  async function handleDownload() {
+  function getBase64(data: string) {
+    return data.replace(/^data:image\/png;base64,/, "");
+  }
+
+  // ─────────────────────────────────────────────
+  // PNG Download
+  // ─────────────────────────────────────────────
+  async function handleDownloadPng() {
     if (!dataUrl) {
-      toast.error("QR কোড প্রস্তুত নয়");
+      toast.error("QR কোড প্রস্তুত হয়নি");
       return;
     }
 
-    const safeName =
-      userName
-        .trim()
-        .replace(/[^\p{L}\p{N}]+/gu, "-")
-        .replace(/^-+|-+$/g, "")
-        .toLowerCase() || "user";
-
-    const fileName = `${safeName}-login-qr.png`;
+    const fileName = `${userName
+      .trim()
+      .replace(/\s+/g, "-")
+      .toLowerCase()}-login-qr.png`;
 
     try {
-      // Data URL → Blob
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-
-      // Android / WebView-এর জন্য File share চেষ্টা
-      const file = new File([blob], fileName, {
-        type: "image/png",
-      });
-
-      if (
-        typeof navigator !== "undefined" &&
-        "canShare" in navigator &&
-        navigator.canShare?.({ files: [file] })
-      ) {
-        await navigator.share({
-          files: [file],
-          title: `${userName} — Login QR Code`,
+      // Android APK
+      if (Capacitor.isNativePlatform()) {
+        await QrFileSaver.savePng({
+          base64: getBase64(dataUrl),
+          fileName,
         });
 
+        toast.success("QR কোড Gallery-তে সংরক্ষণ করা হয়েছে");
         return;
       }
 
-      // Normal browser/PWA download
+      // PWA / Chrome
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
       const blobUrl = URL.createObjectURL(blob);
 
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = fileName;
-      link.style.display = "none";
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      a.style.display = "none";
 
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
 
       setTimeout(() => {
         URL.revokeObjectURL(blobUrl);
       }, 1000);
 
-      toast.success("QR কোড ডাউনলোড শুরু হয়েছে");
-    } catch (error) {
-      console.error("QR download error:", error);
+      toast.success("QR কোড ডাউনলোড হয়েছে");
+    } catch (err) {
+      console.error("PNG DOWNLOAD ERROR:", err);
+      toast.error("QR কোড সংরক্ষণ করা যায়নি");
+    }
+  }
 
-      // শেষ fallback
-      try {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = fileName;
-        link.target = "_blank";
-        link.rel = "noopener";
+  // ─────────────────────────────────────────────
+  // PDF Download
+  // ─────────────────────────────────────────────
+  async function handleDownloadPdf() {
+    if (!dataUrl) {
+      toast.error("QR কোড প্রস্তুত হয়নি");
+      return;
+    }
 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    try {
+      const { jsPDF } = await import("jspdf");
 
-        toast.success("QR কোড ডাউনলোড শুরু হয়েছে");
-      } catch {
-        toast.error("QR কোড ডাউনলোড করা যায়নি");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      pdf.setFontSize(18);
+      pdf.text("Quantum Blood Donor Pool", 105, 25, {
+        align: "center",
+      });
+
+      pdf.setFontSize(14);
+      pdf.text(userName, 105, 35, {
+        align: "center",
+      });
+
+      pdf.addImage(
+        dataUrl,
+        "PNG",
+        55,
+        50,
+        100,
+        100,
+      );
+
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+
+      pdf.text(
+        "Staff Login QR Code",
+        105,
+        160,
+        {
+          align: "center",
+        },
+      );
+
+      const fileName = `${userName
+        .trim()
+        .replace(/\s+/g, "-")
+        .toLowerCase()}-login-qr.pdf`;
+
+      // Android APK
+      if (Capacitor.isNativePlatform()) {
+        const pdfBase64 = pdf.output("datauristring")
+          .replace(/^data:application\/pdf;base64,/, "");
+
+        await QrFileSaver.savePdf({
+          base64: pdfBase64,
+          fileName,
+        });
+
+        toast.success("PDF Downloads-এ সংরক্ষণ করা হয়েছে");
+        return;
       }
+
+      // PWA / Chrome
+      pdf.save(fileName);
+
+      toast.success("PDF ডাউনলোড হয়েছে");
+    } catch (err) {
+      console.error("PDF ERROR:", err);
+      toast.error("PDF তৈরি/সংরক্ষণ করা যায়নি");
     }
   }
 
@@ -179,14 +335,14 @@ export function UserQrCode({ userId, userName }: UserQrCodeProps) {
   // ─────────────────────────────────────────────
   function handlePrint() {
     if (!dataUrl) {
-      toast.error("QR কোড প্রস্তুত নয়");
+      toast.error("QR কোড প্রস্তুত হয়নি");
       return;
     }
 
     const printWindow = window.open(
       "",
       "_blank",
-      "width=600,height=700",
+      "width=600,height=800",
     );
 
     if (!printWindow) {
@@ -194,54 +350,46 @@ export function UserQrCode({ userId, userName }: UserQrCodeProps) {
       return;
     }
 
-    const escapedName = userName
-      .replace(/&/g, "&amp;")
+    const safeName = userName
       .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/>/g, "&gt;");
 
     printWindow.document.write(`
       <!DOCTYPE html>
-      <html lang="bn">
+      <html>
         <head>
-          <meta charset="UTF-8" />
-          <title>${escapedName} — Login QR</title>
+          <title>${safeName} - Login QR</title>
 
           <style>
-            * {
-              box-sizing: border-box;
-            }
-
             body {
               margin: 0;
-              padding: 40px 20px;
+              padding: 40px;
               text-align: center;
               font-family: Arial, sans-serif;
               background: white;
-              color: #111;
             }
 
             h2 {
-              margin-bottom: 25px;
+              margin-bottom: 8px;
             }
 
             img {
-              width: 320px;
-              height: 320px;
+              width: 280px;
+              height: 280px;
               image-rendering: pixelated;
+              margin-top: 25px;
             }
 
             p {
-              margin-top: 25px;
               color: #666;
-              font-size: 13px;
+              font-size: 12px;
+              margin-top: 20px;
             }
           </style>
         </head>
 
         <body>
-          <h2>${escapedName}</h2>
+          <h2>${safeName}</h2>
 
           <img
             src="${dataUrl}"
@@ -264,167 +412,105 @@ export function UserQrCode({ userId, userName }: UserQrCodeProps) {
   }
 
   // ─────────────────────────────────────────────
-  // Regenerate QR
-  // ─────────────────────────────────────────────
-  async function handleRegenerate() {
-    const confirmed = window.confirm(
-      "নতুন QR কোড বানালে আগের QR কোড আর কাজ করবে না।\n\nএগোতে চান?",
-    );
-
-    if (!confirmed) return;
-
-    setRegenerating(true);
-
-    try {
-      const res = await fetch(`/api/users/${userId}/qr`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to regenerate QR");
-      }
-
-      const data = await res.json();
-
-      if (!data?.token) {
-        throw new Error("New QR token not found");
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      await renderQr(data.token);
-
-      toast.success("নতুন QR কোড তৈরি হয়েছে");
-    } catch (error) {
-      console.error("QR regenerate error:", error);
-      toast.error("QR কোড রিজেনারেট করা যায়নি");
-    } finally {
-      setRegenerating(false);
-    }
-  }
-
-  // ─────────────────────────────────────────────
-  // Open / close
+  // Dialog open
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!open) {
       setDataUrl(null);
+      setToken(null);
+      setError(null);
+      setLoading(false);
       return;
     }
 
     loadQr();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, userId]);
 
-  // ─────────────────────────────────────────────
-  // UI
-  // ─────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          QR কোড
-        </Button>
-      </DialogTrigger>
+      {/* Trigger */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+      >
+        QR কোড
+      </Button>
 
-      <DialogContent className="w-[calc(100%-2rem)] max-w-sm">
+      <DialogContent className="w-[calc(100%-24px)] max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="pr-8 text-lg">
             {userName} — লগইন QR কোড
           </DialogTitle>
+
+          <DialogClose className="absolute right-4 top-4 rounded-md opacity-70 hover:opacity-100">
+            <X className="h-5 w-5" />
+          </DialogClose>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4 py-2">
-
           {/* QR Preview */}
-          <div
-            className="
-              flex
-              min-h-[320px]
-              w-full
-              max-w-[320px]
-              items-center
-              justify-center
-              overflow-hidden
-              rounded-2xl
-              border
-              bg-white
-              p-2
-            "
-          >
+          <div className="flex aspect-square w-full max-w-[360px] items-center justify-center overflow-hidden rounded-2xl border bg-white p-4 shadow-sm">
             {loading ? (
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-
-                <span className="text-sm text-muted-foreground">
-                  QR কোড তৈরি হচ্ছে...
+              <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                <Loader2 className="h-10 w-10 animate-spin" />
+                <span className="text-sm">
+                  QR কোড লোড হচ্ছে...
                 </span>
               </div>
             ) : dataUrl ? (
-              <canvas
-                ref={canvasRef}
-                className="block h-auto w-full max-w-[320px]"
+              <img
+                src={dataUrl}
+                alt={`${userName} Login QR Code`}
+                className="h-full w-full object-contain"
+                draggable={false}
               />
             ) : (
-              <span className="text-lg text-muted-foreground">
-                QR Code নেই
-              </span>
+              <div className="px-6 text-center">
+                <p className="text-lg font-medium text-muted-foreground">
+                  QR Code নেই
+                </p>
+
+                {error && (
+                  <p className="mt-3 break-words text-xs text-red-600">
+                    {error}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
           {/* Buttons */}
-          {!loading && dataUrl && (
-            <div className="flex w-full flex-col gap-2">
-
-              {/* Download row */}
-              <div className="flex gap-2">
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleDownload}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  QR ডাউনলোড
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handlePrint}
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  প্রিন্ট
-                </Button>
-
-              </div>
-
-              {/* PDF button placeholder */}
+          {dataUrl && (
+            <div className="grid w-full grid-cols-2 gap-2">
               <Button
-                type="button"
                 variant="outline"
-                className="w-full"
-                onClick={() => {
-                  toast.info(
-                    "PDF download চালু করতে jsPDF যোগ করতে হবে।",
-                  );
-                }}
+                onClick={handleDownloadPng}
+              >
+                <ImageDown className="mr-2 h-4 w-4" />
+                QR ডাউনলোড
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={handleDownloadPdf}
               >
                 <FileDown className="mr-2 h-4 w-4" />
                 PDF ডাউনলোড
               </Button>
 
-              {/* Regenerate */}
               <Button
-                type="button"
+                variant="outline"
+                className="col-span-2"
+                onClick={handlePrint}
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                প্রিন্ট
+              </Button>
+
+              <Button
                 variant="destructive"
-                className="w-full"
+                className="col-span-2"
                 onClick={handleRegenerate}
                 disabled={regenerating}
               >
@@ -436,18 +522,20 @@ export function UserQrCode({ userId, userName }: UserQrCodeProps) {
 
                 নতুন QR তৈরি করুন
               </Button>
-
             </div>
           )}
 
-          {/* Loading */}
-          {loading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              QR কোড লোড হচ্ছে...
-            </div>
+          {/* Retry */}
+          {!loading && !dataUrl && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={loadQr}
+            >
+              <RotateCw className="mr-2 h-4 w-4" />
+              আবার চেষ্টা করুন
+            </Button>
           )}
-
         </div>
       </DialogContent>
     </Dialog>
