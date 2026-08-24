@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Sync Capacitor Android
+      - name: Sync Capacitor
         run: npx cap sync android
 
       - name: Set up JDK 21
