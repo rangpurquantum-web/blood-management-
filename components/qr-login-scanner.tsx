@@ -49,9 +49,10 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
       // এটা Google-এর নিজস্ব ফুলস্ক্রিন নেটিভ স্ক্যানার UI খুলবে
       // (WebView video element ব্যবহার করে না, তাই আগের বাগটা এড়িয়ে যায়)
       const { barcodes } = await BarcodeScanner.scan();
+      const firstBarcode = barcodes[0];
 
-      if (barcodes.length > 0 && barcodes[0].rawValue) {
-        onDetected(barcodes[0].rawValue);
+      if (firstBarcode?.rawValue) {
+        onDetected(firstBarcode.rawValue);
       } else {
         setCameraError("কোনো QR কোড শনাক্ত করা যায়নি।");
       }
