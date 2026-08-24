@@ -20,6 +20,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends BridgeActivity {
@@ -240,6 +241,42 @@ public class MainActivity extends BridgeActivity {
         webView
             .getSettings()
             .setMediaPlaybackRequiresUserGesture(false);
+
+
+        // ========================================================
+        // HIDE SPLASH WHEN PAGE ACTUALLY FINISHES LOADING
+        // ========================================================
+        //
+        // capacitor.config.ts sets SplashScreen.launchAutoHide=false,
+        // so the splash (logo + spinner) stays visible until we
+        // explicitly hide it here, once the remote page has
+        // actually finished loading. This avoids a blank/white
+        // gap between the splash disappearing and the page content
+        // appearing.
+        //
+        // We extend BridgeWebViewClient (not plain WebViewClient)
+        // so Capacitor's own URL/deep-link handling keeps working;
+        // we only add behavior on top of it.
+        // ========================================================
+
+        webView.setWebViewClient(
+            new BridgeWebViewClient(this.getBridge()) {
+
+                @Override
+                public void onPageFinished(WebView view, String url) {
+
+                    super.onPageFinished(view, url);
+
+                    view.post(() ->
+                        getBridge().eval(
+                            "window.Capacitor && window.Capacitor.Plugins.SplashScreen "
+                            + "&& window.Capacitor.Plugins.SplashScreen.hide();",
+                            null
+                        )
+                    );
+                }
+            }
+        );
 
 
         // ========================================================
