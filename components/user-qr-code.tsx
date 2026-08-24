@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Capacitor } from "@capacitor/core";
-import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Share } from "@capacitor/share";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { jsPDF } from "jspdf";
 
 import {
   Loader2,
   Download,
+  FileDown,
   Printer,
   RotateCw,
 } from "lucide-react";
@@ -30,15 +30,47 @@ interface UserQrCodeProps {
   userName: string;
 }
 
+interface QrFileSaverPlugin {
+  saveImage(options: {
+    base64: string;
+    fileName: string;
+  }): Promise<{
+    success: boolean;
+    uri: string;
+    fileName: string;
+  }>;
+
+  savePdf(options: {
+    base64: string;
+    fileName: string;
+  }): Promise<{
+    success: boolean;
+    uri: string;
+    fileName: string;
+  }>;
+}
+
+const QrFileSaver =
+  registerPlugin<QrFileSaverPlugin>(
+    "QrFileSaver"
+  );
+
 export function UserQrCode({
   userId,
   userName,
 }: UserQrCodeProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const [loading, setLoading] =
+    useState(false);
+
   const [regenerating, setRegenerating] =
     useState(false);
-  const [downloading, setDownloading] =
+
+  const [downloadingQr, setDownloadingQr] =
+    useState(false);
+
+  const [downloadingPdf, setDownloadingPdf] =
     useState(false);
 
   const [dataUrl, setDataUrl] =
@@ -47,200 +79,147 @@ export function UserQrCode({
   const canvasRef =
     useRef<HTMLCanvasElement>(null);
 
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
+  // Safe filename
+  // ─────────────────────────────────────────
+
+  function safeFileName(name: string) {
+    return (
+      name
+        .trim()
+        .replace(/[^\p{L}\p{N}]+/gu, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase() || "user"
+    );
+  }
+
+  // ─────────────────────────────────────────
   // Load QR
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
 
   async function loadQr() {
     setLoading(true);
 
     try {
       const res = await fetch(
-        `/api/users/${userId}/qr`,
+        `/api/users/${userId}/qr`
       );
 
       if (!res.ok) {
-        throw new Error("Failed to load QR");
+        throw new Error(
+          "Failed to load QR"
+        );
       }
 
-      const { token } = await res.json();
+      const { token } =
+        await res.json();
 
       await renderQr(token);
+
     } catch {
       toast.error(
-        "QR কোড লোড করা যায়নি",
+        "QR কোড লোড করা যায়নি"
       );
     } finally {
       setLoading(false);
     }
   }
 
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
   // Render QR
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
 
-  async function renderQr(token: string) {
+  async function renderQr(
+    token: string
+  ) {
     if (!canvasRef.current) return;
 
     await QRCode.toCanvas(
       canvasRef.current,
       token,
       {
-        width: 280,
-        margin: 2,
-
-        // QR readability improve
+        width: 800,
+        margin: 4,
         errorCorrectionLevel: "H",
-      },
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      }
     );
 
     setDataUrl(
       canvasRef.current.toDataURL(
-        "image/png",
-      ),
+        "image/png"
+      )
     );
   }
 
-  // ─────────────────────────────────────────────
-  // Regenerate
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
+  // Get base64
+  // ─────────────────────────────────────────
 
-  async function handleRegenerate() {
+  function getBase64(
+    dataUrl: string
+  ) {
+    const comma =
+      dataUrl.indexOf(",");
+
+    if (comma === -1) {
+      throw new Error(
+        "Invalid image data"
+      );
+    }
+
+    return dataUrl.substring(
+      comma + 1
+    );
+  }
+
+  // ─────────────────────────────────────────
+  // Download QR
+  // ─────────────────────────────────────────
+
+  async function handleDownloadQr() {
     if (
-      !confirm(
-        "নতুন QR কোড বানালে আগের QR কোড (প্রিন্ট করা থাকলেও) আর কাজ করবে না। এগোতে চান?",
-      )
+      !dataUrl ||
+      downloadingQr
     ) {
       return;
     }
 
-    setRegenerating(true);
+    setDownloadingQr(true);
+
+    const fileName =
+      `${safeFileName(userName)}-login-qr.png`;
 
     try {
-      const res = await fetch(
-        `/api/users/${userId}/qr`,
-        {
-          method: "POST",
-        },
-      );
 
-      if (!res.ok) {
-        throw new Error(
-          "Failed to regenerate",
-        );
-      }
+      // ─────────────────────────────
+      // Android APK
+      // ─────────────────────────────
 
-      const { token } = await res.json();
-
-      await renderQr(token);
-
-      toast.success(
-        "নতুন QR কোড তৈরি হয়েছে",
-      );
-    } catch {
-      toast.error(
-        "QR কোড রিজেনারেট করা যায়নি",
-      );
-    } finally {
-      setRegenerating(false);
-    }
-  }
-
-  // ─────────────────────────────────────────────
-  // Filename
-  // ─────────────────────────────────────────────
-
-  function getFileName() {
-    const safeName = userName
-      .trim()
-      .replace(/[^\p{L}\p{N}]+/gu, "-")
-      .replace(/^-+|-+$/g, "")
-      .toLowerCase();
-
-    return `${safeName || "user"}-login-qr.png`;
-  }
-
-  // ─────────────────────────────────────────────
-  // PNG → Base64
-  // ─────────────────────────────────────────────
-
-  function getBase64FromDataUrl(
-    url: string,
-  ) {
-    const commaIndex = url.indexOf(",");
-
-    if (commaIndex === -1) {
-      throw new Error(
-        "Invalid QR image",
-      );
-    }
-
-    return url.slice(commaIndex + 1);
-  }
-
-  // ─────────────────────────────────────────────
-  // Download QR
-  // ─────────────────────────────────────────────
-
-  async function handleDownload() {
-    if (!dataUrl || downloading) return;
-
-    setDownloading(true);
-
-    const fileName = getFileName();
-
-    try {
-      // ═══════════════════════════════════════
-      // ANDROID / iOS CAPACITOR APP
-      // ═══════════════════════════════════════
-
-      if (Capacitor.isNativePlatform()) {
-        const base64 =
-          getBase64FromDataUrl(dataUrl);
-
-        /*
-         * Save inside App's Documents directory.
-         *
-         * This is reliable inside Capacitor.
-         */
-        const result =
-          await Filesystem.writeFile({
-            path: fileName,
-            data: base64,
-            directory: Directory.Documents,
-          });
-
-        /*
-         * Open Android/iOS share/save sheet.
-         *
-         * User can choose:
-         * - Files
-         * - Downloads
-         * - Drive
-         * - WhatsApp
-         * - etc.
-         */
-        await Share.share({
-          title: `${userName} — Login QR`,
-          text: "Quantum Blood Donor Pool — Login QR Code",
-          url: result.uri,
-          dialogTitle: "QR Code Save করুন",
+      if (
+        Capacitor.isNativePlatform()
+      ) {
+        await QrFileSaver.saveImage({
+          base64: getBase64(dataUrl),
+          fileName,
         });
 
         toast.success(
-          "QR Code প্রস্তুত হয়েছে",
+          "QR Code Gallery-তে save হয়েছে"
         );
 
         return;
       }
 
-      // ═══════════════════════════════════════
-      // PWA / NORMAL BROWSER
-      // ═══════════════════════════════════════
+      // ─────────────────────────────
+      // PWA / Browser
+      // ─────────────────────────────
 
-      const response = await fetch(
-        dataUrl,
-      );
+      const response =
+        await fetch(dataUrl);
 
       const blob =
         await response.blob();
@@ -265,52 +244,249 @@ export function UserQrCode({
       }, 1000);
 
       toast.success(
-        "QR Code ডাউনলোড হয়েছে",
+        "QR Code ডাউনলোড হয়েছে"
       );
+
     } catch (error) {
+
       console.error(
-        "QR download failed:",
-        error,
+        "QR download error:",
+        error
       );
-
-      /*
-       * Native share/save fail করলে
-       * native browser fallback চেষ্টা করবে।
-       */
-      try {
-        if (Capacitor.isNativePlatform()) {
-          await Share.share({
-            title: `${userName} — Login QR`,
-            text: "Quantum Blood Donor Pool — Login QR Code",
-          });
-
-          return;
-        }
-      } catch {
-        // Ignore fallback error
-      }
 
       toast.error(
-        "QR Code ডাউনলোড করা যায়নি",
+        "QR Code save করা যায়নি"
       );
+
     } finally {
-      setDownloading(false);
+      setDownloadingQr(false);
     }
   }
 
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
+  // Download PDF
+  // ─────────────────────────────────────────
+
+  async function handleDownloadPdf() {
+    if (
+      !dataUrl ||
+      downloadingPdf
+    ) {
+      return;
+    }
+
+    setDownloadingPdf(true);
+
+    const fileName =
+      `${safeFileName(userName)}-login-qr.pdf`;
+
+    try {
+
+      // Create PDF
+      const pdf =
+        new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
+
+      const pageWidth =
+        pdf.internal.pageSize.getWidth();
+
+      // Header
+      pdf.setFontSize(18);
+
+      pdf.text(
+        "Quantum Blood Donor Pool",
+        pageWidth / 2,
+        25,
+        {
+          align: "center",
+        }
+      );
+
+      pdf.setFontSize(14);
+
+      pdf.text(
+        "Staff Login QR Code",
+        pageWidth / 2,
+        35,
+        {
+          align: "center",
+        }
+      );
+
+      pdf.setFontSize(13);
+
+      pdf.text(
+        userName,
+        pageWidth / 2,
+        48,
+        {
+          align: "center",
+        }
+      );
+
+      // QR
+      const qrSize = 70;
+
+      const qrX =
+        (pageWidth - qrSize) / 2;
+
+      pdf.addImage(
+        dataUrl,
+        "PNG",
+        qrX,
+        60,
+        qrSize,
+        qrSize
+      );
+
+      // Footer
+      pdf.setFontSize(9);
+
+      pdf.setTextColor(
+        100,
+        100,
+        100
+      );
+
+      pdf.text(
+        "Quantum Blood Donor Pool",
+        pageWidth / 2,
+        145,
+        {
+          align: "center",
+        }
+      );
+
+      pdf.text(
+        "Use this QR Code for staff login.",
+        pageWidth / 2,
+        152,
+        {
+          align: "center",
+        }
+      );
+
+      // PDF data URL
+      const pdfDataUrl =
+        pdf.output("datauristring");
+
+      // ─────────────────────────────
+      // Android APK
+      // ─────────────────────────────
+
+      if (
+        Capacitor.isNativePlatform()
+      ) {
+
+        await QrFileSaver.savePdf({
+          base64:
+            getBase64(pdfDataUrl),
+          fileName,
+        });
+
+        toast.success(
+          "PDF Downloads folder-এ save হয়েছে"
+        );
+
+        return;
+      }
+
+      // ─────────────────────────────
+      // PWA / Browser
+      // ─────────────────────────────
+
+      pdf.save(fileName);
+
+      toast.success(
+        "PDF ডাউনলোড হয়েছে"
+      );
+
+    } catch (error) {
+
+      console.error(
+        "PDF download error:",
+        error
+      );
+
+      toast.error(
+        "PDF save করা যায়নি"
+      );
+
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // Regenerate
+  // ─────────────────────────────────────────
+
+  async function handleRegenerate() {
+    if (
+      !confirm(
+        "নতুন QR কোড বানালে আগের QR কোড (প্রিন্ট করা থাকলেও) আর কাজ করবে না। এগোতে চান?"
+      )
+    ) {
+      return;
+    }
+
+    setRegenerating(true);
+
+    try {
+
+      const res =
+        await fetch(
+          `/api/users/${userId}/qr`,
+          {
+            method: "POST",
+          }
+        );
+
+      if (!res.ok) {
+        throw new Error(
+          "Failed to regenerate"
+        );
+      }
+
+      const { token } =
+        await res.json();
+
+      await renderQr(token);
+
+      toast.success(
+        "নতুন QR কোড তৈরি হয়েছে"
+      );
+
+    } catch {
+
+      toast.error(
+        "QR কোড রিজেনারেট করা যায়নি"
+      );
+
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  // ─────────────────────────────────────────
   // Print
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
 
   function handlePrint() {
     if (!dataUrl) return;
 
     const win =
-      window.open("", "_blank");
+      window.open(
+        "",
+        "_blank"
+      );
 
     if (!win) {
       toast.error(
-        "Print window খোলা যায়নি",
+        "Print window খোলা যায়নি"
       );
       return;
     }
@@ -318,7 +494,9 @@ export function UserQrCode({
     win.document.write(`
       <html>
         <head>
-          <title>${userName} — Login QR</title>
+          <title>
+            ${userName} — Login QR
+          </title>
         </head>
 
         <body
@@ -328,14 +506,20 @@ export function UserQrCode({
             padding:24px;
           "
         >
-          <h3>${userName}</h3>
+
+          <h2>
+            Quantum Blood Donor Pool
+          </h2>
+
+          <h3>
+            ${userName}
+          </h3>
 
           <img
             src="${dataUrl}"
             style="
-              width:280px;
-              height:280px;
-              image-rendering:auto;
+              width:300px;
+              height:300px;
             "
           />
 
@@ -345,9 +529,9 @@ export function UserQrCode({
               font-size:12px;
             "
           >
-            Quantum Blood Donor Pool —
-            Staff Login QR
+            Staff Login QR Code
           </p>
+
         </body>
       </html>
     `);
@@ -360,11 +544,12 @@ export function UserQrCode({
     };
   }
 
-  // ─────────────────────────────────────────────
-  // Dialog open
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────
+  // Dialog
+  // ─────────────────────────────────────────
 
   useEffect(() => {
+
     if (open) {
       loadQr();
     } else {
@@ -374,15 +559,12 @@ export function UserQrCode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // ─────────────────────────────────────────────
-  // UI
-  // ─────────────────────────────────────────────
-
   return (
     <Dialog
       open={open}
       onOpenChange={setOpen}
     >
+
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -393,66 +575,104 @@ export function UserQrCode({
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-sm">
+
         <DialogHeader>
+
           <DialogTitle>
             {userName} — লগইন QR কোড
           </DialogTitle>
+
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4 py-2">
-          {/* Loading */}
+
           {loading && (
             <div className="flex h-[280px] w-[280px] items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+
+              <Loader2
+                className="h-8 w-8 animate-spin text-muted-foreground"
+              />
+
             </div>
           )}
 
-          {/* QR Canvas */}
           <canvas
             ref={canvasRef}
             className={
               loading
                 ? "hidden"
-                : "rounded-lg border"
+                : "w-[280px] rounded-lg border"
             }
           />
 
-          {/* Buttons */}
           {!loading && (
             <div className="flex w-full flex-col gap-2">
-              <div className="flex gap-2">
-                {/* Download */}
+
+              {/* Download buttons */}
+              <div className="grid grid-cols-2 gap-2">
+
+                {/* PNG */}
                 <Button
                   variant="outline"
-                  className="flex-1"
-                  onClick={handleDownload}
+                  onClick={
+                    handleDownloadQr
+                  }
                   disabled={
                     !dataUrl ||
-                    downloading
+                    downloadingQr ||
+                    downloadingPdf
                   }
                 >
-                  {downloading ? (
+
+                  {downloadingQr ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
                   )}
 
-                  {downloading
+                  {downloadingQr
                     ? "সেভ হচ্ছে..."
-                    : "ডাউনলোড"}
+                    : "QR ডাউনলোড"}
                 </Button>
 
-                {/* Print */}
+                {/* PDF */}
                 <Button
                   variant="outline"
-                  className="flex-1"
-                  onClick={handlePrint}
-                  disabled={!dataUrl}
+                  onClick={
+                    handleDownloadPdf
+                  }
+                  disabled={
+                    !dataUrl ||
+                    downloadingQr ||
+                    downloadingPdf
+                  }
                 >
-                  <Printer className="mr-2 h-4 w-4" />
-                  প্রিন্ট
+
+                  {downloadingPdf ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-2 h-4 w-4" />
+                  )}
+
+                  {downloadingPdf
+                    ? "সেভ হচ্ছে..."
+                    : "PDF ডাউনলোড"}
                 </Button>
+
               </div>
+
+              {/* Print */}
+              <Button
+                variant="outline"
+                onClick={handlePrint}
+                disabled={!dataUrl}
+              >
+
+                <Printer className="mr-2 h-4 w-4" />
+
+                প্রিন্ট
+
+              </Button>
 
               {/* Regenerate */}
               <Button
@@ -462,9 +682,11 @@ export function UserQrCode({
                 }
                 disabled={
                   regenerating ||
-                  downloading
+                  downloadingQr ||
+                  downloadingPdf
                 }
               >
+
                 {regenerating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -473,11 +695,16 @@ export function UserQrCode({
 
                 নতুন QR তৈরি করুন
                 (আগেরটা বাতিল হবে)
+
               </Button>
+
             </div>
           )}
+
         </div>
+
       </DialogContent>
+
     </Dialog>
   );
 }
