@@ -194,7 +194,7 @@ export default async function SettingsPage() {
           <div className="text-center space-y-2 mb-5">
 
             <h3 className="font-semibold">
-              {userName}'s Login QR
+              {userName}&apos;s Login QR
             </h3>
 
             <p className="text-sm text-muted-foreground">
