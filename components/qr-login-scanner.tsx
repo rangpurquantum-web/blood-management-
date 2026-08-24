@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import jsQR from "jsqr";
+import { BarcodeScanner } from "@capacitor-mlkit/barcode-scanning";
 import { Camera, Upload, X, Loader2, ImageOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 interface QrLoginScannerProps {
   onDetected: (token: string) => void;
@@ -13,104 +13,53 @@ interface QrLoginScannerProps {
 }
 
 export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
-  const [mode, setMode] = useState<"idle" | "camera">("idle");
+  const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewStatus, setPreviewStatus] = useState<
     "idle" | "scanning" | "found" | "not-found"
   >("idle");
-  const [debugInfo, setDebugInfo] = useState<string>("");
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const debugIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  function stopCamera() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    if (debugIntervalRef.current) clearInterval(debugIntervalRef.current);
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setMode("idle");
-    setDebugInfo("");
+  async function ensureCameraPermission(): Promise<boolean> {
+    const { camera } = await BarcodeScanner.checkPermissions();
+    if (camera === "granted" || camera === "limited") return true;
+    if (camera === "denied") return false;
+
+    const { camera: requested } = await BarcodeScanner.requestPermissions();
+    return requested === "granted" || requested === "limited";
   }
 
   async function startCamera() {
     setCameraError(null);
     setPreviewUrl(null);
     setPreviewStatus("idle");
-    setDebugInfo("ক্যামেরা অনুরোধ পাঠানো হচ্ছে...");
+    setScanning(true);
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      streamRef.current = stream;
-      setDebugInfo("স্ট্রিম পাওয়া গেছে, ভিডিওতে যুক্ত করা হচ্ছে...");
-
-      if (videoRef.current) {
-        const video = videoRef.current;
-        video.srcObject = stream;
-
-        video.onerror = () => {
-          setDebugInfo(`video error: ${video.error?.message ?? "unknown"}`);
-        };
-        video.onstalled = () => setDebugInfo((d) => d + " | stalled");
-        video.onsuspend = () => setDebugInfo((d) => d + " | suspended");
-
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          track.onended = () => setDebugInfo((d) => d + " | track ended");
-          track.onmute = () => setDebugInfo((d) => d + " | track muted");
-        }
-
-        await video.play();
-      }
-      setMode("camera");
-      scanLoop();
-
-      // পোলিং: প্রতি সেকেন্ডে ভিডিওর আসল অবস্থা স্ক্রিনে দেখাও
-      debugIntervalRef.current = setInterval(() => {
-        const v = videoRef.current;
-        const track = streamRef.current?.getVideoTracks()[0];
-        if (!v || !track) return;
-        setDebugInfo(
-          `readyState:${v.readyState} size:${v.videoWidth}x${v.videoHeight} ` +
-            `paused:${v.paused} track:${track.readyState}/${track.label || "?"}`,
+      const hasPermission = await ensureCameraPermission();
+      if (!hasPermission) {
+        setCameraError(
+          "ক্যামেরা পারমিশন দেওয়া হয়নি। ফোনের সেটিংস থেকে অনুমতি দিন।",
         );
-      }, 1000);
-    } catch (err) {
-      const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-      setCameraError("ক্যামেরা চালু করা যায়নি। অনুমতি দিয়েছেন কিনা দেখুন।");
-      setDebugInfo(`ব্যর্থ: ${message}`);
+        return;
+      }
+
+      // এটা Google-এর নিজস্ব ফুলস্ক্রিন নেটিভ স্ক্যানার UI খুলবে
+      // (WebView video element ব্যবহার করে না, তাই আগের বাগটা এড়িয়ে যায়)
+      const { barcodes } = await BarcodeScanner.scan();
+
+      if (barcodes.length > 0 && barcodes[0].rawValue) {
+        onDetected(barcodes[0].rawValue);
+      } else {
+        setCameraError("কোনো QR কোড শনাক্ত করা যায়নি।");
+      }
+    } catch {
+      setCameraError("ক্যামেরা চালু করা যায়নি। আবার চেষ্টা করুন।");
+    } finally {
+      setScanning(false);
     }
-  }
-
-  function scanLoop() {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
-      rafRef.current = requestAnimationFrame(scanLoop);
-      return;
-    }
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-    if (code?.data) {
-      stopCamera();
-      onDetected(code.data);
-      return;
-    }
-
-    rafRef.current = requestAnimationFrame(scanLoop);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -157,69 +106,9 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
     setCameraError(null);
   }
 
-  useEffect(() => {
-    return () => {
-      stopCamera();
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div className="flex flex-col items-center gap-4">
-      {mode === "camera" ? (
-        <div className="fixed inset-0 z-50 bg-black">
-          <video
-            ref={videoRef}
-            className="h-full w-full object-cover"
-            muted
-            playsInline
-          />
-          <canvas ref={canvasRef} className="hidden" />
-
-          {/* Lens-style reticle: wide-set, rounded arc corners */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
-            <div className="relative h-[32%] w-full max-w-sm">
-              <Corner className="left-0 top-0 rounded-tl-3xl border-l-[3px] border-t-[3px]" />
-              <Corner className="right-0 top-0 rounded-tr-3xl border-r-[3px] border-t-[3px]" />
-              <Corner className="bottom-0 left-0 rounded-bl-3xl border-b-[3px] border-l-[3px]" />
-              <Corner className="bottom-0 right-0 rounded-br-3xl border-b-[3px] border-r-[3px]" />
-            </div>
-          </div>
-
-          <div className="absolute inset-x-0 bottom-10 flex justify-center">
-            <span className="rounded-full bg-black/50 px-4 py-1.5 text-sm text-white/90">
-              QR কোডটি ফ্রেমের মধ্যে রাখুন
-            </span>
-          </div>
-
-          {debugInfo && (
-            <div className="absolute inset-x-3 top-[calc(env(safe-area-inset-top)+4rem)] rounded-lg bg-black/70 p-2 text-[11px] leading-tight text-lime-300">
-              {debugInfo}
-            </div>
-          )}
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="absolute right-4 top-[calc(env(safe-area-inset-top)+1rem)] h-10 w-10 rounded-full bg-black/50 text-white hover:bg-black/70"
-            onClick={stopCamera}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="absolute bottom-10 left-6 h-11 w-11 rounded-full bg-black/50 text-white hover:bg-black/70"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-5 w-5" />
-          </Button>
-        </div>
-      ) : previewUrl ? (
+      {previewUrl ? (
         <div className="relative w-full max-w-xs overflow-hidden rounded-2xl border border-red-900/20 bg-muted shadow-lg shadow-red-950/10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -261,17 +150,21 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
             type="button"
             variant="outline"
             className="flex-1 border-red-900/20 hover:border-red-600/40 hover:bg-red-50 hover:text-red-700"
-            disabled={disabled}
+            disabled={disabled || scanning}
             onClick={startCamera}
           >
-            <Camera className="mr-2 h-4 w-4" />
+            {scanning ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="mr-2 h-4 w-4" />
+            )}
             স্ক্যান করুন
           </Button>
           <Button
             type="button"
             variant="outline"
             className="flex-1 border-red-900/20 hover:border-red-600/40 hover:bg-red-50 hover:text-red-700"
-            disabled={disabled}
+            disabled={disabled || scanning}
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="mr-2 h-4 w-4" />
@@ -298,18 +191,6 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
           লগইন হচ্ছে...
         </div>
       )}
-
     </div>
-  );
-}
-
-function Corner({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "absolute h-9 w-9 border-white/90",
-        className,
-      )}
-    />
   );
 }
