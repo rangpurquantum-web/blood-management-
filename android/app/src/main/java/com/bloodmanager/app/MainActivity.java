@@ -51,14 +51,19 @@ public class MainActivity extends BridgeActivity {
                     result.getData() != null
                 ) {
 
-                    Uri data = result.getData().getData();
+                    Uri data =
+                        result.getData().getData();
 
                     if (data != null) {
-                        resultUris = new Uri[]{data};
+                        resultUris =
+                            new Uri[]{data};
                     }
                 }
 
-                filePathCallback.onReceiveValue(resultUris);
+                filePathCallback.onReceiveValue(
+                    resultUris
+                );
+
                 filePathCallback = null;
             }
         );
@@ -69,20 +74,18 @@ public class MainActivity extends BridgeActivity {
     // ============================================================
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onCreate(
+        Bundle savedInstanceState
+    ) {
 
-        // ========================================================
         // IMPORTANT:
-        // Register custom QR file saver plugin
-        // ========================================================
-
+        // Register custom native QR saver BEFORE super.onCreate()
         registerPlugin(QrFileSaverPlugin.class);
 
         super.onCreate(savedInstanceState);
 
-
         // ========================================================
-        // COOKIE PERSISTENCE
+        // COOKIE
         // ========================================================
 
         CookieManager cookieManager =
@@ -92,7 +95,7 @@ public class MainActivity extends BridgeActivity {
 
 
         // ========================================================
-        // FIREBASE FCM TOKEN
+        // FCM TOKEN
         // ========================================================
 
         FirebaseMessaging.getInstance()
@@ -110,19 +113,23 @@ public class MainActivity extends BridgeActivity {
                     return;
                 }
 
-                String token = task.getResult();
+                String token =
+                    task.getResult();
 
                 Log.d(
                     "FCM_TOKEN",
                     "Token: " + token
                 );
 
-                sendTokenToWebViewWithRetry(token, 0);
+                sendTokenToWebViewWithRetry(
+                    token,
+                    0
+                );
             });
 
 
         // ========================================================
-        // ENABLE THIRD PARTY COOKIES
+        // THIRD PARTY COOKIES
         // ========================================================
 
         enableThirdPartyCookiesWithRetry(0);
@@ -140,7 +147,9 @@ public class MainActivity extends BridgeActivity {
     // THIRD PARTY COOKIES
     // ============================================================
 
-    private void enableThirdPartyCookiesWithRetry(int attempt) {
+    private void enableThirdPartyCookiesWithRetry(
+        int attempt
+    ) {
 
         WebView webView =
             this.getBridge() != null
@@ -162,9 +171,10 @@ public class MainActivity extends BridgeActivity {
             new Handler(
                 Looper.getMainLooper()
             ).postDelayed(
-                () -> enableThirdPartyCookiesWithRetry(
-                    attempt + 1
-                ),
+                () ->
+                    enableThirdPartyCookiesWithRetry(
+                        attempt + 1
+                    ),
                 RETRY_DELAY_MS
             );
 
@@ -189,7 +199,9 @@ public class MainActivity extends BridgeActivity {
     // CAMERA + AUTOPLAY + FILE CHOOSER
     // ============================================================
 
-    private void enableCameraPermissionWithRetry(int attempt) {
+    private void enableCameraPermissionWithRetry(
+        int attempt
+    ) {
 
         WebView webView =
             this.getBridge() != null
@@ -211,9 +223,10 @@ public class MainActivity extends BridgeActivity {
             new Handler(
                 Looper.getMainLooper()
             ).postDelayed(
-                () -> enableCameraPermissionWithRetry(
-                    attempt + 1
-                ),
+                () ->
+                    enableCameraPermissionWithRetry(
+                        attempt + 1
+                    ),
                 RETRY_DELAY_MS
             );
 
@@ -222,12 +235,14 @@ public class MainActivity extends BridgeActivity {
 
 
         // ========================================================
-        // WEBVIEW MEDIA AUTOPLAY
+        // AUTOPLAY
         // ========================================================
 
         webView
             .getSettings()
-            .setMediaPlaybackRequiresUserGesture(false);
+            .setMediaPlaybackRequiresUserGesture(
+                false
+            );
 
 
         // ========================================================
@@ -252,8 +267,8 @@ public class MainActivity extends BridgeActivity {
                             ContextCompat.checkSelfPermission(
                                 MainActivity.this,
                                 Manifest.permission.CAMERA
-                            ) == PackageManager.PERMISSION_GRANTED;
-
+                            ) ==
+                            PackageManager.PERMISSION_GRANTED;
 
                         if (hasOsPermission) {
 
@@ -279,7 +294,7 @@ public class MainActivity extends BridgeActivity {
 
 
                 // ==================================================
-                // FILE UPLOAD / FILE PICKER
+                // FILE CHOOSER
                 // ==================================================
 
                 @Override
@@ -289,7 +304,8 @@ public class MainActivity extends BridgeActivity {
                     FileChooserParams fileChooserParams
                 ) {
 
-                    filePathCallback = callback;
+                    filePathCallback =
+                        callback;
 
                     Intent intent =
                         new Intent(
@@ -302,9 +318,9 @@ public class MainActivity extends BridgeActivity {
 
                     intent.setType("*/*");
 
-
                     String[] acceptTypes =
-                        fileChooserParams.getAcceptTypes();
+                        fileChooserParams
+                            .getAcceptTypes();
 
                     if (
                         acceptTypes != null &&
@@ -317,7 +333,6 @@ public class MainActivity extends BridgeActivity {
                             acceptTypes[0]
                         );
                     }
-
 
                     try {
 
@@ -346,7 +361,6 @@ public class MainActivity extends BridgeActivity {
             }
         );
 
-
         Log.d(
             "CAMERA_FIX",
             "WebChromeClient configured"
@@ -371,7 +385,6 @@ public class MainActivity extends BridgeActivity {
             grantResults
         );
 
-
         if (
             requestCode ==
                 CAMERA_PERMISSION_REQUEST_CODE &&
@@ -383,11 +396,11 @@ public class MainActivity extends BridgeActivity {
                 grantResults[0] ==
                     PackageManager.PERMISSION_GRANTED;
 
-
             if (granted) {
 
                 pendingWebPermissionRequest.grant(
-                    pendingWebPermissionRequest.getResources()
+                    pendingWebPermissionRequest
+                        .getResources()
                 );
 
                 Log.d(
@@ -404,7 +417,6 @@ public class MainActivity extends BridgeActivity {
                     "Camera permission denied"
                 );
             }
-
 
             pendingWebPermissionRequest = null;
         }
@@ -438,7 +450,7 @@ public class MainActivity extends BridgeActivity {
 
 
     // ============================================================
-    // SEND FCM TOKEN TO WEBVIEW
+    // SEND FCM TOKEN
     // ============================================================
 
     private void sendTokenToWebViewWithRetry(
@@ -451,12 +463,12 @@ public class MainActivity extends BridgeActivity {
                 ? this.getBridge().getWebView()
                 : null;
 
-
         if (webView == null) {
 
             Log.w(
                 "FCM_TOKEN",
-                "WebView not ready, attempt " + attempt
+                "WebView not ready, attempt "
+                    + attempt
             );
 
             scheduleRetry(
@@ -467,17 +479,14 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-
         webView.post(() -> {
 
-            // Escape token safely
             String safeToken =
                 token
                     .replace("\\", "\\\\")
                     .replace("'", "\\'")
                     .replace("\n", "\\n")
                     .replace("\r", "\\r");
-
 
             String js =
                 "(function(){"
@@ -490,7 +499,6 @@ public class MainActivity extends BridgeActivity {
                     + "return false;"
                     + "})();";
 
-
             webView.evaluateJavascript(
                 js,
                 result -> {
@@ -499,7 +507,6 @@ public class MainActivity extends BridgeActivity {
                         result != null &&
                         result.equals("true");
 
-
                     Log.d(
                         "FCM_TOKEN",
                         "Delivery attempt "
@@ -507,7 +514,6 @@ public class MainActivity extends BridgeActivity {
                             + " result: "
                             + result
                     );
-
 
                     if (!delivered) {
 
@@ -543,14 +549,14 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-
         new Handler(
             Looper.getMainLooper()
         ).postDelayed(
-            () -> sendTokenToWebViewWithRetry(
-                token,
-                attempt + 1
-            ),
+            () ->
+                sendTokenToWebViewWithRetry(
+                    token,
+                    attempt + 1
+                ),
             RETRY_DELAY_MS
         );
     }
