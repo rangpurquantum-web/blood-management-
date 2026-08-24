@@ -46,6 +46,15 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
         return;
       }
 
+      // প্রথমবার ব্যবহারে Google-এর ML Kit বারকোড স্ক্যানার মডিউল
+      // ডিভাইসে ডাউনলোড/ইনস্টল করা না থাকলে এখানে করে নেওয়া হচ্ছে
+      const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+      if (!available) {
+        setCameraError("QR স্ক্যানার মডিউল প্রস্তুত করা হচ্ছে, একটু অপেক্ষা করুন...");
+        await BarcodeScanner.installGoogleBarcodeScannerModule();
+        setCameraError(null);
+      }
+
       // এটা Google-এর নিজস্ব ফুলস্ক্রিন নেটিভ স্ক্যানার UI খুলবে
       // (WebView video element ব্যবহার করে না, তাই আগের বাগটা এড়িয়ে যায়)
       const { barcodes } = await BarcodeScanner.scan();
@@ -56,8 +65,9 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
       } else {
         setCameraError("কোনো QR কোড শনাক্ত করা যায়নি।");
       }
-    } catch {
-      setCameraError("ক্যামেরা চালু করা যায়নি। আবার চেষ্টা করুন।");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setCameraError(`ক্যামেরা চালু করা যায়নি: ${message}`);
     } finally {
       setScanning(false);
     }
