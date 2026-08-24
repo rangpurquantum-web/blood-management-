@@ -16,24 +16,35 @@ export default function UpdateButton({
   fallback: React.ReactNode;
 }) {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [status, setStatus] = useState<"idle" | "downloading" | "installing">(
-    "idle"
-  );
+
+  const [status, setStatus] = useState<
+    "idle" | "downloading" | "installing"
+  >("idle");
+
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     checkForUpdate();
   }, []);
 
+  // ─────────────────────────────────────────────
+  // Check latest version
+  // ─────────────────────────────────────────────
   async function checkForUpdate() {
-    // শুধুমাত্র native Android app-এ update check করবে
-    if (!Capacitor.isNativePlatform()) return;
+    // Browser/PWA-তে update button দেখাবে না
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
 
     try {
       const currentInfo = await App.getInfo();
 
-      // Android build versionCode
       const currentVersionCode = parseInt(currentInfo.build, 10);
+
+      console.log(
+        "Current Android versionCode:",
+        currentVersionCode
+      );
 
       const res = await fetch(
         "https://blood-management-livid.vercel.app/api/app-version",
@@ -43,91 +54,198 @@ export default function UpdateButton({
       );
 
       if (!res.ok) {
-        throw new Error(`Update API failed: ${res.status}`);
+        throw new Error(
+          `Version API failed: ${res.status}`
+        );
       }
 
       const latest: UpdateInfo = await res.json();
 
-      console.log("Current version code:", currentVersionCode);
-      console.log("Latest version code:", latest.versionCode);
+      console.log("Latest version:", latest);
 
-      if (latest.versionCode > currentVersionCode) {
+      if (
+        latest.versionCode > currentVersionCode
+      ) {
+        console.log(
+          "Update available:",
+          latest.versionName
+        );
+
         setUpdateInfo(latest);
+      } else {
+        console.log("App is already up to date.");
       }
     } catch (err) {
-      console.error("Update check failed:", err);
+      console.error(
+        "Update check failed:",
+        err
+      );
     }
   }
 
+  // ─────────────────────────────────────────────
+  // Download + Install
+  // ─────────────────────────────────────────────
   async function handleUpdate() {
-    if (!updateInfo) return;
+    if (!updateInfo) {
+      return;
+    }
 
     try {
-      const { default: ApkUpdater } = await import(
-        "cordova-plugin-apkupdater"
-      );
-
-      const canInstall = await ApkUpdater.canRequestPackageInstalls();
-
-      if (!canInstall) {
-        await ApkUpdater.openInstallSetting();
-        return;
-      }
+      console.log("UPDATE: button clicked");
 
       setStatus("downloading");
       setProgress(0);
 
-      await ApkUpdater.download(updateInfo.downloadUrl, {
-        onDownloadProgress: (info) => {
-          /**
-           * cordova-plugin-apkupdater এর Progress object
-           * plugin version অনুযায়ী progress/progressPercentage
-           * আলাদা হতে পারে।
-           *
-           * TypeScript build ঠিক রাখার জন্য runtime value
-           * safely handle করা হচ্ছে।
-           */
-          const downloadInfo = info as unknown as {
-            progress?: number;
-            percent?: number;
-            progressPercentage?: number;
-          };
+      // Load native APK updater plugin
+      console.log(
+        "UPDATE: loading ApkUpdater..."
+      );
 
-          const value =
-            downloadInfo.progressPercentage ??
-            downloadInfo.percent ??
-            downloadInfo.progress ??
-            0;
+      const { default: ApkUpdater } =
+        await import(
+          "cordova-plugin-apkupdater"
+        );
 
-          setProgress(Math.min(100, Math.max(0, Math.round(value))));
-        },
-      });
+      console.log(
+        "UPDATE: ApkUpdater loaded",
+        ApkUpdater
+      );
+
+      // ───────────────────────────────────────
+      // Check Android install permission
+      // ───────────────────────────────────────
+      const canInstall =
+        await ApkUpdater.canRequestPackageInstalls();
+
+      console.log(
+        "UPDATE: can install =",
+        canInstall
+      );
+
+      if (!canInstall) {
+        console.log(
+          "UPDATE: opening install settings"
+        );
+
+        await ApkUpdater.openInstallSetting();
+
+        setStatus("idle");
+
+        return;
+      }
+
+      // ───────────────────────────────────────
+      // Download APK
+      // ───────────────────────────────────────
+      console.log(
+        "UPDATE: downloading APK:",
+        updateInfo.downloadUrl
+      );
+
+      await ApkUpdater.download(
+        updateInfo.downloadUrl,
+        {
+          onDownloadProgress: (info) => {
+            console.log(
+              "UPDATE: download progress:",
+              info
+            );
+
+            const downloadInfo =
+              info as unknown as {
+                progress?: number;
+                percent?: number;
+                progressPercentage?: number;
+              };
+
+            const value =
+              downloadInfo.progressPercentage ??
+              downloadInfo.percent ??
+              downloadInfo.progress ??
+              0;
+
+            const safeProgress = Math.min(
+              100,
+              Math.max(
+                0,
+                Math.round(value)
+              )
+            );
+
+            setProgress(safeProgress);
+          },
+        }
+      );
+
+      // Download finished
+      console.log(
+        "UPDATE: download complete"
+      );
 
       setProgress(100);
+
+      // ───────────────────────────────────────
+      // Install APK
+      // ───────────────────────────────────────
       setStatus("installing");
 
+      console.log(
+        "UPDATE: installing APK..."
+      );
+
       await ApkUpdater.install();
+
+      console.log(
+        "UPDATE: install started"
+      );
     } catch (err) {
-      console.error("Update failed:", err);
+      console.error(
+        "UPDATE FAILED:",
+        err
+      );
+
       setStatus("idle");
       setProgress(0);
+
+      // Show actual error on phone
+      const message =
+        err instanceof Error
+          ? err.message
+          : String(err);
+
+      alert(
+        `Update failed:\n\n${message}`
+      );
     }
   }
 
+  // ─────────────────────────────────────────────
+  // No update available
+  // ─────────────────────────────────────────────
   if (!updateInfo) {
     return <>{fallback}</>;
   }
 
+  // ─────────────────────────────────────────────
+  // Update button
+  // ─────────────────────────────────────────────
   return (
     <button
+      type="button"
       onClick={handleUpdate}
       disabled={status !== "idle"}
       className="flex items-center justify-center rounded-full bg-blue-600 px-6 py-2 shadow-[0_8px_30px_rgba(255,255,255,0.35)] transition-all hover:scale-[1.02] hover:bg-blue-500 active:scale-[0.98] disabled:opacity-80"
     >
       <span className="text-center text-sm font-semibold text-white">
-        {status === "idle" && "Update"}
-        {status === "downloading" && `Updating... ${progress}%`}
-        {status === "installing" && "Installing..."}
+        {status === "idle" &&
+          `Update to ${updateInfo.versionName}`}
+
+        {status === "downloading" &&
+          `Updating... ${progress}%`}
+
+        {status === "installing" &&
+          "Installing..."}
       </span>
     </button>
   );
