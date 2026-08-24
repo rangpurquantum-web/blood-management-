@@ -67,7 +67,7 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setCameraError(`ক্যামেরা চালু করা যায়নি: ${message}`);
+      setCameraError(`scan: ${message}`);
     } finally {
       setScanning(false);
     }
@@ -169,7 +169,7 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
             ) : (
               <Camera className="mr-2 h-4 w-4" />
             )}
-            স্ক্যান করুন
+            scan
           </Button>
           <Button
             type="button"
@@ -179,7 +179,7 @@ export function QrLoginScanner({ onDetected, disabled }: QrLoginScannerProps) {
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="mr-2 h-4 w-4" />
-            ছবি আপলোড
+            upload 
           </Button>
         </div>
       )}
