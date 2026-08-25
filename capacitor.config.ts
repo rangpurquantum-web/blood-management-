@@ -11,6 +11,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: false,
+      backgroundColor: '#3D0B12',
       showSpinner: true,
       spinnerColor: '#ffffff',
       androidSpinnerStyle: 'large',
