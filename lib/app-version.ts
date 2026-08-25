@@ -1,2 +1,15 @@
-export const LATEST_APK_VERSION = "1.0.0";
-export const APK_DOWNLOAD_URL = "https://blood-management-livid.vercel.app/app-latest.apk";
+// ============================================================
+// APP VERSION CONFIG
+// ============================================================
+//
+// প্রতিবার নতুন APK build করে GitHub Release-এ আপলোড করার পর,
+// এই দুটো ভ্যালু আপডেট করে commit+push করুন।
+// এইটুকু বদলালেই সব ইউজারের Update বাটন সক্রিয় হয়ে যাবে —
+// কোনো workflow বা native কোড বদলাতে হবে না।
+//
+// ============================================================
+
+export const APP_VERSION = "1.2";
+
+export const APP_DOWNLOAD_URL =
+  "https://github.com/rangpurquantum-web/blood-management-/releases/download/v1.2/app-release.apk";
