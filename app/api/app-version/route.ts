@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
-
-// Notun version release korle sudhu ei duita line change korbe:
-const LATEST_VERSION_CODE = 3;
-const LATEST_VERSION_NAME = "1.2";
-
-const APK_DOWNLOAD_URL =
-  "https://github.com/rangpurquantum-web/blood-management-/releases/download/v1.2/app-release.apk";
+import { APP_VERSION, APP_DOWNLOAD_URL } from "@/lib/app-version";
 
 export async function GET() {
-  return NextResponse.json({
-    versionCode: LATEST_VERSION_CODE,
-    versionName: LATEST_VERSION_NAME,
-    downloadUrl: APK_DOWNLOAD_URL,
-  });
+
+  return NextResponse.json(
+    {
+      version: APP_VERSION,
+      downloadUrl: APP_DOWNLOAD_URL,
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }
+  );
 }
