@@ -128,12 +128,8 @@
     font-family: 'Siam Rupali', 'SiamRupali', 'SiamRupaliANSI', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif !important;
   }
 
-  html, body {
-    background-color: #3D0B12;
-  }
-
   body {
-    @apply antialiased text-foreground;
+    @apply antialiased bg-background text-foreground;
     font-family: 'Siam Rupali', 'SiamRupali', 'SiamRupaliANSI', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif !important;
   }
   html {
