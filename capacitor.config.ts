@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.bloodmanager.app',
-  appName: 'Blood Management System',
+  appName: 'QBlood',
   webDir: 'public',
   server: {
     url: 'https://blood-management-livid.vercel.app',
