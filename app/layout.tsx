@@ -60,6 +60,11 @@ export default function RootLayout({
 
           ব্র্যান্ড কালার এখানে হোমপেজের background (#3D0B12) এর সাথে
           মিলিয়ে রাখা হয়েছে। হোমপেজের রঙ বদলালে এখানেও বদলাতে হবে।
+
+          NOTE: body-তে bg-background ক্লাস যোগ করা হয়েছে যাতে CSS
+          লোড হওয়ার পর এই ম্যারুন কালার থিমের সঠিক background দিয়ে
+          ওভাররাইড হয়ে যায় — নাহলে এটা স্থায়ীভাবে থেকে যাচ্ছিল
+          (Chrome-এ scroll/overscroll bounce করলে দেখা যাচ্ছিল)।
           ============================================================
         */}
         <style
@@ -77,7 +82,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ekushey/fonts@master/siam-rupali/siamrupali.css" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" />
       </head>
-      <body className="min-h-screen font-sans" suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans" suppressHydrationWarning>
         <RegisterServiceWorker />
         <AppProviders>
           <ReceiveFcmToken />
