@@ -1,91 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
-import { centralPrisma } from "@/lib/central-db";
+const JWT_SECRET = process.env.MOBILE_JWT_SECRET!;
 
-const MOBILE_JWT_SECRET = process.env.MOBILE_JWT_SECRET!;
-const TOKEN_EXPIRY = "30d";
-
-export type MobileTokenPayload = {
-  userId: number;
+export type MobileJwtPayload = {
+  id: number;
   email: string;
-  name: string;
   role: string;
   branchId: number | null;
-  branchSlug: string | null;
-  isSuperAdmin: boolean;
+  isSuperAdmin?: boolean;
 };
 
-export function generateMobileToken(payload: MobileTokenPayload): string {
-  return jwt.sign(payload, MOBILE_JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
-}
+export type MobileAuthResult =
+  | { ok: true; payload: MobileJwtPayload }
+  | { ok: false; response: NextResponse };
 
-function verifyMobileTokenString(token: string): MobileTokenPayload | null {
-  try {
-    return jwt.verify(token, MOBILE_JWT_SECRET) as MobileTokenPayload;
-  } catch {
-    return null;
-  }
-}
-
-export function getMobileSession(req: NextRequest): MobileTokenPayload | null {
+// অথরাইজেশন হেডার থেকে JWT বের করে ভেরিফাই করে।
+// প্রতিটা mobile/* রুটের একদম শুরুতে এটা কল করবে।
+export function verifyMobileAuth(req: NextRequest): MobileAuthResult {
   const authHeader = req.headers.get("authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      ),
+    };
   }
 
-  const token = authHeader.slice(7);
-  return verifyMobileTokenString(token);
+  const token = authHeader.substring(7).trim();
+
+  if (!token) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      ),
+    };
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as MobileJwtPayload;
+    return { ok: true, payload };
+  } catch (error) {
+    console.error("Mobile JWT verify error:", error);
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { success: false, error: "Invalid or expired token" },
+        { status: 401 },
+      ),
+    };
+  }
 }
 
-type MobileRouteHandler = (
-  req: NextRequest,
-  session: MobileTokenPayload,
-) => Promise<NextResponse>;
+// branchId লাগবে এমন রুটের জন্য — SuperAdmin ছাড়া বাকি সবার branchId থাকা আবশ্যক।
+export function requireBranch(
+  payload: MobileJwtPayload,
+): { ok: true; branchId: number } | { ok: false; response: NextResponse } {
+  if (!payload.branchId) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { success: false, error: "Branch access required" },
+        { status: 403 },
+      ),
+    };
+  }
+  return { ok: true, branchId: payload.branchId };
+}
 
-export function withMobileAuth(handler: MobileRouteHandler) {
-  return async (req: NextRequest): Promise<NextResponse> => {
-    const session = getMobileSession(req);
-
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized — invalid or missing token" },
-        { status: 401 },
-      );
-    }
-
-    // Re-verify the account is still active (in case it was
-    // deactivated after this token was issued)
-    if (session.isSuperAdmin) {
-      const admin = await centralPrisma.superAdmin.findUnique({
-        where: { id: session.userId },
-        select: { isActive: true },
-      });
-
-      if (!admin || !admin.isActive) {
-        return NextResponse.json(
-          { success: false, error: "ACCOUNT_INACTIVE" },
-          { status: 401 },
-        );
-      }
-    } else {
-      const branchUser = await centralPrisma.branchUser.findUnique({
-        where: { id: session.userId },
-        select: {
-          isActive: true,
-          branch: { select: { isActive: true } },
-        },
-      });
-
-      if (!branchUser || !branchUser.isActive || !branchUser.branch.isActive) {
-        return NextResponse.json(
-          { success: false, error: "ACCOUNT_INACTIVE" },
-          { status: 401 },
-        );
-      }
-    }
-
-    return handler(req, session);
+// admin/coordinator-only রুটের জন্য (যেমন user/branch management)।
+export function requireAdmin(
+  payload: MobileJwtPayload,
+): { ok: true } | { ok: false; response: NextResponse } {
+  if (payload.isSuperAdmin || payload.role === "ADMIN") {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    response: NextResponse.json(
+      { success: false, error: "Forbidden — admin access required" },
+      { status: 403 },
+    ),
   };
 }
