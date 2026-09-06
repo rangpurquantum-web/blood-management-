@@ -8,6 +8,7 @@ declare module "next-auth" {
       role?: Role;
       permissions?: unknown;
       branchId?: number | null;
+      isSuperAdmin?: boolean;
     } & DefaultSession["user"];
   }
 
@@ -15,6 +16,7 @@ declare module "next-auth" {
     role?: Role;
     permissions?: unknown;
     branchId?: number | null;
+    isSuperAdmin?: boolean;
   }
 }
 
@@ -23,5 +25,6 @@ declare module "next-auth/jwt" {
     role?: Role;
     permissions?: unknown;
     branchId?: number | null;
+    isSuperAdmin?: boolean;
   }
-}
+}
