@@ -165,3 +165,26 @@ export function useDeferDonor(id: number) {
     },
   });
 }
+
+// ─── Public Hooks (no auth required) ─────────────────────────────────────────
+
+export interface PublicBranch {
+  id: number;
+  name: string;
+  district: string;
+  slug: string;
+}
+
+async function fetchPublicBranches(): Promise<PublicBranch[]> {
+  const res = await fetch("/api/branches/public");
+  if (!res.ok) throw new Error("Failed to fetch branches");
+  return res.json();
+}
+
+export function usePublicBranches() {
+  return useQuery({
+    queryKey: ["branches", "public"],
+    queryFn: fetchPublicBranches,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}

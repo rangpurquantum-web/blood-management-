@@ -154,16 +154,14 @@ export default function UpdateButton({
       /*
        * Load APK updater plugin.
        *
-       * IMPORTANT:
-       * এখানে "module" variable ব্যবহার করা হয়নি,
-       * যাতে Next.js ESLint error না দেয়।
+       * cordova-plugin-apkupdater is a native Cordova plugin — it is NOT
+       * a regular npm package and should NOT be imported via webpack/ESM.
+       * At runtime inside a Cordova/Capacitor app it is available globally
+       * via `window.cordova.plugins.apkupdater`.  We access it that way
+       * so Next.js / webpack never tries to bundle it.
        */
-      const updaterModule = await import(
-        "cordova-plugin-apkupdater"
-      );
-
-      const ApkUpdater =
-        updaterModule.default ?? updaterModule;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ApkUpdater = (window as any)?.cordova?.plugins?.apkupdater ?? null;
 
       console.log(
         "[Update] ApkUpdater:",
