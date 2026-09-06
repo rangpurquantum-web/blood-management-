@@ -93,7 +93,7 @@ export const GET = withAuth(
     const baseUrl = `${protocol}://${host}`;
 
     const publicUrl =
-      `${baseUrl}/d/${donor.publicToken}`;
+      `${baseUrl}/d/${donor.id}`;
 
     // --------------------------------------------------
     // Generate QR
