@@ -13,7 +13,7 @@ import { donorUpdateSchema } from "@/features/donors";
 // ─── GET /api/donors/[id] ─────────────────────────────────────────────────────
 
 export const GET = withAuth(
-  async (_req: NextRequest, _session, params) => {
+  async (_req: NextRequest, session, params) => {
     const id = Number(params?.id);
 
     if (isNaN(id)) return apiError("Invalid donor ID", 400);
