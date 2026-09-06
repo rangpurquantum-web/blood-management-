@@ -145,6 +145,7 @@ export const POST = withAuth(
   const donor = await branchPrisma.donor.create({
     data: {
       ...donorData,
+      email: donorData.email ?? "",
       isEligible: true,
       phone: {
         create: phoneData.map((p) => ({
