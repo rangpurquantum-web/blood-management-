@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "../../generated/branch";
+import { Prisma } from "@generated/branch";
 import { getTenantPrisma } from "@/lib/tenant-db";
 import {
   withAuth,
