@@ -17,6 +17,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
+    "db:push:main": "prisma db push --schema=./prisma/schema.prisma",
+    "db:push:central": "prisma db push --schema=./prisma-central/schema.prisma",
     "db:push:control": "prisma db push --schema=./prisma/schema.prisma",
     "db:migrate:all": "ts-node scripts/migrate-all-branches.ts",
     "db:seed": "prisma db seed",
