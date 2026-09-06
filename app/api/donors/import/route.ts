@@ -102,6 +102,7 @@ export const POST = withAuth(
       await branchDb.donor.create({
         data: {
           ...donorData,
+          email: donorData.email ?? "",
           isEligible: true,
           phone: {
             create: phoneData.map((p) => ({
