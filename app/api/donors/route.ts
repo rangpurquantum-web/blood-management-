@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from ".prisma/branch-client";
+import { Prisma } from "../../generated/branch";
 import { getTenantPrisma } from "@/lib/tenant-db";
 import {
   withAuth,
@@ -14,7 +14,7 @@ import { donorSchema } from "@/features/donors";
 // Query params: q (name/phone search), bloodGroup, eligible (true/false), area
 
 export const GET = withAuth(
-  async (req: NextRequest) => {
+  async (req: NextRequest, session) => {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q") ?? "";
   const bloodGroup = searchParams.get("bloodGroup") ?? "";
