@@ -2,7 +2,7 @@
 
 *   **Purpose:** Logs structural design choices, scoping constraints, architectural directions, and technical trade-offs agreed on by product owners and architects.
 *   **Information Contained:** Architecture Decision Records (ADRs) detailing constraints, contexts, decisions made, and post-implementation consequences.
-*   **Recommended Headings:** `# Document Metadata`, `# Architectural Decision Records (ADRs)`, `## ADR-001: Complete Exclusion of Physical Inventory Tracking`, `## ADR-002: Restricted Access Bounds (Internal Management Only)`, `## ADR-003: Unified Next.js API Routes (No Python/FastAPI)`, `## ADR-004: shadcn/ui & TanStack Table for Client Interfaces`, `## ADR-005: Zustand for Client State Management`, `## ADR-006: React Hook Form & Zod for Validation`, `## ADR-007: Playwright for Integration Testing`.
+*   **Recommended Headings:** `# Document Metadata`, `# Architectural Decision Records (ADRs)`, `## ADR-001: Complete Exclusion of Physical Inventory Tracking`, `## ADR-002: Restricted Access Bounds (Internal Management Only)`, `## ADR-003: Unified Next.js API Routes (No Python/FastAPI)`, `## ADR-004: shadcn/ui & TanStack Table for Client Interfaces`, `## ADR-005: Zustand for Client State Management`, `## ADR-006: React Hook Form & Zod for Validation`, `## ADR-007: Playwright for Integration Testing`, `## ADR-008: Multi-Branch Database-per-Branch Isolation`.
 *   **Dependencies:** None (provides historical context for decisions made).
 
 ---
@@ -101,3 +101,16 @@ Unit tests are insufficient to guarantee that complex, multi-page data flows (li
 
 ### Decision
 We selected **Playwright** as the E2E and integration testing suite. It runs tests in headless chromium/firefox contexts, validating form states, redirects, and file uploads.
+
+---
+
+## ADR-008: Multi-Branch Database-per-Branch Isolation
+
+### Status
+**Accepted**
+
+### Context
+A single shared database shares free-tier row and storage limits across all branch operations. Large uploads at one branch could block other branches. A shared database also increases the risk of cross-branch data leaks.
+
+### Decision
+We decided to convert the database architecture into a database-per-branch structure. A single small control database manages user credentials and branch registrations, while each branch runs on its own independent PostgreSQL instance. Databases are dynamically connected, pooled using an LRU cache, and connection strings are encrypted at rest using AES-256-GCM.

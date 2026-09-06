@@ -5,47 +5,16 @@ import {
   Users,
   UserCheck,
   Heart,
-  Cake,
 } from "lucide-react";
 import { auth } from "@/auth";
-import { getBranchDb } from "@/lib/branch-db";
-import { centralPrisma } from "@/lib/central-db";
-import { cookies } from "next/headers";
-import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
+import { getTenantPrismaFromSession } from "@/lib/tenant-db";
 import { DashboardCharts } from "@/features/dashboard/components/dashboard-charts";
-import { BirthdayList } from "@/features/donors/components/birthday-list";
-import { getTodaysBirthdays } from "@/features/donors/birthday-helpers";
 
 export default async function DashboardPage() {
   const session = await auth();
+  if (!session?.user) return <div>Access Denied</div>;
 
-  const isSuperAdmin = session?.user?.isSuperAdmin === true;
-  let branchId: number | null =
-    typeof session?.user?.branchId === "number" ? session.user.branchId : null;
-
-  // SuperAdmin: resolve the branch they've selected via the branch-switcher cookie
-  if (isSuperAdmin) {
-    const cookieStore = await cookies();
-    const raw = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value ?? null;
-    branchId = raw ? Number(raw) : null;
-  }
-
-  if (!branchId || !Number.isInteger(branchId) || branchId <= 0) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
-          <p className="text-muted-foreground">
-            {isSuperAdmin
-              ? "Please select a branch to view its dashboard."
-              : "Your account is not associated with a valid branch."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const prisma = await getBranchDb(branchId);
+  const branchPrisma = await getTenantPrismaFromSession(session);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -57,15 +26,14 @@ export default async function DashboardPage() {
     recentDonations,
     donorsByBloodType,
     donationsLast7Days,
-    todaysBirthdays,
   ] = await Promise.all([
     // 1. Total Active Donors — APPROVED + not deleted
-    prisma.donor.count({
+    branchPrisma.donor.count({
       where: { isDeleted: false, status: "APPROVED" },
     }),
 
     // 2. Eligible Donors — APPROVED, not deleted, isEligible true OR deferredUntil <= today
-    prisma.donor.count({
+    branchPrisma.donor.count({
       where: {
         isDeleted: false,
         status: "APPROVED",
@@ -77,38 +45,35 @@ export default async function DashboardPage() {
     }),
 
     // 3. Pending Approvals
-    prisma.donor.count({
+    branchPrisma.donor.count({
       where: { isDeleted: false, status: "PENDING" },
     }),
 
     // 4. Recent Donations (last 30 days)
-    prisma.donationHistory.count({
+    branchPrisma.donationHistory.count({
       where: {
         donationDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
       },
     }),
 
     // 5. Blood group breakdown — APPROVED donors only
-    prisma.donor.groupBy({
+    branchPrisma.donor.groupBy({
       where: { isDeleted: false, status: "APPROVED" },
       by: ["bloodType"],
       _count: true,
     }),
 
-    prisma.donationHistory.findMany({
+    branchPrisma.donationHistory.findMany({
       where: {
         donationDate: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
       },
       select: { donationDate: true },
     }),
-
-    // 7. Today's birthdays (this branch only, Asia/Dhaka "today")
-    getTodaysBirthdays(prisma),
   ]);
 
   // Aggregate donations by day
   const donationsByDay = donationsLast7Days.reduce(
-    (acc, curr) => {
+    (acc: Record<string, number>, curr: { donationDate: Date }) => {
       const dateStr = curr.donationDate.toISOString().split("T")[0];
       if (dateStr) acc[dateStr] = (acc[dateStr] || 0) + 1;
       return acc;
@@ -117,11 +82,11 @@ export default async function DashboardPage() {
   );
 
   const trendData = Object.entries(donationsByDay)
-    .map(([date, count]) => ({ date, count }))
+    .map(([date, count]) => ({ date, count: Number(count) }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const bloodTypeData = donorsByBloodType
-    .map((d) => ({ name: d.bloodType, value: d._count }))
+    .map((d: any) => ({ name: d.bloodType as string, value: d._count as number }))
     .sort((a, b) => b.value - a.value);
 
   // Ineligible percentage for display
@@ -229,7 +194,7 @@ export default async function DashboardPage() {
               <p className="text-xs text-muted-foreground">No donor data available.</p>
             ) : (
               <div className="space-y-2">
-                {bloodTypeData.map((bt) => {
+                {bloodTypeData.map((bt: { name: string, value: number }) => {
                   const pct =
                     totalActiveDonors > 0
                       ? Math.round((bt.value / totalActiveDonors) * 100)
@@ -256,27 +221,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* ── Row 3: Today's Birthdays ── */}
-      <Card className="bg-card shadow-sm border-muted/50">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-medium">Today&apos;s Birthdays</CardTitle>
-            <Cake className="h-4 w-4 text-pink-500" />
-          </div>
-          {todaysBirthdays.length > 0 && (
-            <Link
-              href="/dashboard/birthdays"
-              className="text-xs text-primary hover:underline"
-            >
-              View all branches →
-            </Link>
-          )}
-        </CardHeader>
-        <CardContent>
-          <BirthdayList donors={todaysBirthdays} />
-        </CardContent>
-      </Card>
 
       {/* ── Charts ── */}
       <DashboardCharts bloodTypeData={bloodTypeData} trendData={trendData} />

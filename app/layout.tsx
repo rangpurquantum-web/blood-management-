@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#3D0B12",
+  themeColor: "#1E3A8A",
 };
 
 export default function RootLayout({
@@ -48,30 +48,11 @@ export default function RootLayout({
   return (
     <html lang="bn" suppressHydrationWarning>
       <head>
-        {/*
-          ============================================================
-          BOOT BACKGROUND FIX
-          ============================================================
-          Native splash হাইড হওয়ার পর, Tailwind CSS bundle লোড হওয়ার
-          আগ পর্যন্ত WebView-এর ডিফল্ট সাদা background এক মুহূর্তের
-          জন্য দেখা যায় ("white flash"). এই raw inline <style> ট্যাগটা
-          সবার আগে paint হয় (কোনো external CSS ফাইলের অপেক্ষা ছাড়াই),
-          তাই html/body সবসময় ব্র্যান্ড কালারে থাকে — সাদা flash হয় না।
-
-          ব্র্যান্ড কালার এখানে হোমপেজের background (#3D0B12) এর সাথে
-          মিলিয়ে রাখা হয়েছে। হোমপেজের রঙ বদলালে এখানেও বদলাতে হবে।
-
-          NOTE: body-তে bg-background ক্লাস যোগ করা হয়েছে যাতে CSS
-          লোড হওয়ার পর এই ম্যারুন কালার থিমের সঠিক background দিয়ে
-          ওভাররাইড হয়ে যায় — নাহলে এটা স্থায়ীভাবে থেকে যাচ্ছিল
-          (Chrome-এ scroll/overscroll bounce করলে দেখা যাচ্ছিল)।
-          ============================================================
-        */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
               html, body {
-                background-color: #3D0B12;
+                background-color: #0F172A;
                 margin: 0;
               }
             `,

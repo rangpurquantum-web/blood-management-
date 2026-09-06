@@ -1,0 +1,107 @@
+// ─── Branch Database Schema ────────────────────────────────────────────────
+// This schema is replicated into EACH branch's independent PostgreSQL database.
+// It is NOT used by the app's primary Prisma client — it is used only by the
+// migration runner script (scripts/migrate-all-branches.ts) to push/migrate
+// each branch DB to the latest schema.
+//
+// Donors no longer have a branchId column — the whole DB is the branch.
+// BloodRequest is back in the branch DB (as specified in update-1.md §6).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/branch"
+}
+
+datasource db {
+  provider = "postgresql"
+  // URL is injected at runtime by the migration runner, not from .env
+  url      = env("BRANCH_DATABASE_URL")
+}
+
+enum DonorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── Donor ─────────────────────────────────────────────────────────────────
+
+model Donor {
+  id             Int               @id @default(autoincrement())
+  fullName       String
+  dob            DateTime?
+  gender         String
+  bloodType      String
+  phone          DonorPhone[]
+  email          String            @unique
+  address        String
+  isEligible     Boolean           @default(true)
+  deferralReason String?
+  deferredUntil  DateTime?
+  status         DonorStatus       @default(APPROVED)
+  isDeleted      Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  deletedAt      DateTime?
+  notes          String?
+  donations      DonationHistory[]
+
+  @@index([fullName])
+  @@index([isDeleted])
+  @@index([status])
+}
+
+// ─── DonorPhone ────────────────────────────────────────────────────────────
+
+model DonorPhone {
+  id        Int     @id @default(autoincrement())
+  donorId   Int
+  donor     Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  number    String
+  label     String
+  isPrimary Boolean
+
+  @@index([number])
+}
+
+// ─── DonationHistory ───────────────────────────────────────────────────────
+
+model DonationHistory {
+  id           Int      @id @default(autoincrement())
+  donorId      Int
+  donor        Donor    @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  patientName  String
+  hospitalName String
+  donationDate DateTime
+  notes        String?
+}
+
+// ─── BloodRequest ──────────────────────────────────────────────────────────
+// Blood requests exist per-branch. Status workflow: Pending → Fulfilled | Cancelled.
+
+model BloodRequest {
+  id            Int      @id @default(autoincrement())
+  patientName   String
+  bloodGroup    String
+  requiredUnits Int
+  requiredDate  DateTime
+  contactPerson String
+  contactNumber String
+  notes         String?
+  status        String   @default("Pending") // Pending | Fulfilled | Cancelled
+  createdAt     DateTime @default(now())
+
+  @@index([status, requiredDate])
+}
+
+// ─── AuditLog ──────────────────────────────────────────────────────────────
+// Branch-level audit log. Records operations performed against this branch DB.
+// userId here is the user's ID from the Control DB (stored as plain Int — no FK
+// because this is a separate database).
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     // Control DB User.id — no FK constraint across databases
+  action    String
+  details   String
+  timestamp DateTime @default(now())
+}

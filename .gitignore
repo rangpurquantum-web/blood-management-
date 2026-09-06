@@ -51,4 +51,6 @@ public/icons/placeholder.txt
 scratch/
 scratch-test.ts
 check-users.ts
+/generated
+
 

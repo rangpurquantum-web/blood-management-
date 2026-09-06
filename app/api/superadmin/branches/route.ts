@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { centralPrisma } from "@/lib/central-db";
-import { Role } from "@/generated/branch";
+import { Role } from "@prisma/client";
 import {
   withAuth,
   apiError,

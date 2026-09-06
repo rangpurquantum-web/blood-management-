@@ -1,133 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBranchDb } from "@/lib/branch-db";
+import { Role } from "@prisma/client";
+import { getTenantPrisma } from "@/lib/tenant-db";
 import {
   withAuth,
   writeAuditLog,
   apiError,
   apiSuccess,
   validationError,
-  eligibilityFromDonation,
 } from "@/lib/api-helpers";
 import { donorUpdateSchema } from "@/features/donors";
-
-// ─── Helper: validate branch + get branch DB ─────────────────────────────────
-
-async function getValidatedBranchDb(branchId: number | null) {
-  if (
-    typeof branchId !== "number" ||
-    !Number.isInteger(branchId) ||
-    branchId <= 0
-  ) {
-    return {
-      branchDb: null,
-      error: apiError(
-        "Your account is not associated with a valid branch",
-        403,
-      ),
-    };
-  }
-
-  try {
-    const branchDb = await getBranchDb(branchId);
-    return { branchDb, error: null };
-  } catch (error) {
-    console.error(`Failed to connect to branch database: ${branchId}`, error);
-    return {
-      branchDb: null,
-      error: apiError("Could not connect to branch database", 503),
-    };
-  }
-}
 
 // ─── GET /api/donors/[id] ─────────────────────────────────────────────────────
 
 export const GET = withAuth(
-  async (_req: NextRequest, session, params) => {
+  async (_req: NextRequest, _session, params) => {
     const id = Number(params?.id);
 
-    if (isNaN(id)) {
-      return apiError("Invalid donor ID", 400);
-    }
+    if (isNaN(id)) return apiError("Invalid donor ID", 400);
 
-    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
+    const branchPrisma = await getTenantPrisma(session.userId, session.branchId!);
 
-    if (error) {
-      return error;
-    }
-
-    const donor = await branchDb!.donor.findFirst({
-      where: {
-        id,
-        isDeleted: false,
-      },
+    const donor = await branchPrisma.donor.findFirst({
+      where: { id, isDeleted: false },
       include: {
         phone: true,
         donations: {
-          orderBy: {
-            donationDate: "desc",
-          },
+          orderBy: { donationDate: "desc" },
         },
       },
     });
 
-    if (!donor) {
-      return apiError("Donor not found", 404);
-    }
+    if (!donor) return apiError("Donor not found", 404);
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Calculate eligibility from the donor's latest donation
-    // ─────────────────────────────────────────────────────────────────────────
-
-    const latestDonation = donor.donations[0];
-
-    let isEligible = true;
-    let deferredUntil: Date | null = null;
-    let deferralReason: string | null = null;
-
-    if (latestDonation) {
-      const eligibility = eligibilityFromDonation(
-        latestDonation.donationDate,
-      );
-
-      isEligible = eligibility.isEligible;
-      deferredUntil = eligibility.deferredUntil;
-
-      if (!isEligible) {
-        deferralReason = "Recent donation — 120-day rest period";
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Sync calculated eligibility with database
-    // ─────────────────────────────────────────────────────────────────────────
-
-    if (
-      donor.isEligible !== isEligible ||
-      donor.deferredUntil?.getTime() !==
-        deferredUntil?.getTime() ||
-      donor.deferralReason !== deferralReason
-    ) {
-      await branchDb!.donor.update({
-        where: {
-          id,
-        },
-        data: {
-          isEligible,
-          deferredUntil,
-          deferralReason,
-        },
-      });
-    }
-
-    // Return the freshly calculated eligibility
-    return NextResponse.json({
-      ...donor,
-      isEligible,
-      deferredUntil,
-      deferralReason,
-    });
+    return NextResponse.json(donor);
   },
-  { permission: "donorView" },
+  { permission: "donorView" }
 );
 
 // ─── PATCH /api/donors/[id] ───────────────────────────────────────────────────
@@ -136,18 +43,9 @@ export const PATCH = withAuth(
   async (req: NextRequest, session, params) => {
     const id = Number(params?.id);
 
-    if (isNaN(id)) {
-      return apiError("Invalid donor ID", 400);
-    }
-
-    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
-
-    if (error) {
-      return error;
-    }
+    if (isNaN(id)) return apiError("Invalid donor ID", 400);
 
     let body: unknown;
-
     try {
       body = await req.json();
     } catch {
@@ -156,62 +54,32 @@ export const PATCH = withAuth(
 
     const parsed = donorUpdateSchema.safeParse(body);
 
-    if (!parsed.success) {
-      return validationError(parsed.error);
-    }
+    if (!parsed.success) return validationError(parsed.error);
 
-    const existing = await branchDb!.donor.findFirst({
-      where: {
-        id,
-        isDeleted: false,
-      },
-    });
+    const branchPrisma = await getTenantPrisma(session.userId, session.branchId!);
+    const existing = await branchPrisma.donor.findFirst({ where: { id, isDeleted: false } });
 
-    if (!existing) {
-      return apiError("Donor not found", 404);
-    }
+    if (!existing) return apiError("Donor not found", 404);
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Check uniqueness if phone or email are being updated
-    // (scoped to this branch's database only)
-    // ─────────────────────────────────────────────────────────────────────────
-
     const data = parsed.data;
 
     if (data.email || data.phone) {
-      const phoneNumbers = data.phone
-        ? data.phone.map((p) => p.number)
-        : [];
-
-      const conflict = await branchDb!.donor.findFirst({
+      const phoneNumbers = data.phone ? data.phone.map((p) => p.number) : [];
+      const conflict = await branchPrisma.donor.findFirst({
         where: {
           AND: [
-            {
-              id: {
-                not: id,
-              },
-            },
-            {
-              isDeleted: false,
-            },
+            { id: { not: id } },
+            { isDeleted: false },
             {
               OR: [
-                ...(data.email
-                  ? [
-                      {
-                        email: data.email,
-                      },
-                    ]
-                  : []),
-
+                ...(data.email ? [{ email: data.email }] : []),
                 ...(phoneNumbers.length > 0
                   ? [
                       {
                         phone: {
                           some: {
-                            number: {
-                              in: phoneNumbers,
-                            },
+                            number: { in: phoneNumbers },
                           },
                         },
                       },
@@ -226,43 +94,31 @@ export const PATCH = withAuth(
       if (conflict) {
         if (conflict.email === data.email) {
           return apiError(
-            `এই ইমেইল দিয়ে ইতিমধ্যে অন্য একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
+            `এই ইমেইল দিয়ে ইতিমধ্যে অন্য একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
+            409,
+          );
+        } else {
+          return apiError(
+            `এই নম্বর দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
             409,
           );
         }
-
-        return apiError(
-          `এই নম্বর দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${conflict.fullName})`,
-          409,
-        );
       }
     }
 
-    const {
-      phone: phoneData,
-      ...donorData
-    } = data;
+    const { phone: phoneData, ...donorData } = data;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Update donor (inside branch DB transaction)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    const updated = await branchDb!.$transaction(async (tx) => {
+    const updated = await branchPrisma.$transaction(async (tx) => {
       if (phoneData) {
         await tx.donorPhone.deleteMany({
-          where: {
-            donorId: id,
-          },
+          where: { donorId: id },
         });
       }
 
       return await tx.donor.update({
-        where: {
-          id,
-        },
+        where: { id },
         data: {
           ...donorData,
-
           ...(phoneData
             ? {
                 phone: {
@@ -284,15 +140,12 @@ export const PATCH = withAuth(
     await writeAuditLog(
       session.userId,
       "Donor Updated",
-      `Updated donor: ${updated.fullName} — ID ${updated.id} — Branch ${session.branchId}`,
+      `Updated donor: ${updated.fullName} — ID ${updated.id}`,
     );
 
-    return apiSuccess({
-      message: "Donor updated",
-      donor: updated,
-    });
+    return apiSuccess({ message: "Donor updated", donor: updated });
   },
-  { permission: "donorEdit" },
+  { permission: "donorEdit" }
 );
 
 // ─── DELETE /api/donors/[id] ──────────────────────────────────────────────────
@@ -301,44 +154,28 @@ export const DELETE = withAuth(
   async (_req: NextRequest, session, params) => {
     const id = Number(params?.id);
 
-    if (isNaN(id)) {
-      return apiError("Invalid donor ID", 400);
-    }
+    if (isNaN(id)) return apiError("Invalid donor ID", 400);
 
-    const { branchDb, error } = await getValidatedBranchDb(session.branchId);
+    const branchPrisma = await getTenantPrisma(session.userId, session.branchId!);
+    const existing = await branchPrisma.donor.findFirst({ where: { id, isDeleted: false } });
 
-    if (error) {
-      return error;
-    }
+    if (!existing) return apiError("Donor not found", 404);
 
-    const existing = await branchDb!.donor.findFirst({
-      where: {
-        id,
-      },
-    });
-
-    if (!existing) {
-      return apiError("Donor not found", 404);
-    }
-
-    // Permanently delete donor.
-    // Related DonorPhone and DonationHistory records
-    // are removed via onDelete: Cascade.
-    await branchDb!.donor.delete({
-      where: {
-        id,
+    await branchPrisma.donor.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
       },
     });
 
     await writeAuditLog(
       session.userId,
       "Donor Deleted",
-      `Permanently deleted donor: ${existing.fullName} (${existing.bloodType}) — ID ${id} — Branch ${session.branchId}`,
+      `Deleted donor: ${existing.fullName} (${existing.bloodType}) — ID ${id}`,
     );
 
-    return apiSuccess({
-      message: "Donor permanently deleted",
-    });
+    return apiSuccess({ message: "Donor deleted successfully" });
   },
-  { permission: "donorDelete" },
+  { permission: "donorDelete" }
 );

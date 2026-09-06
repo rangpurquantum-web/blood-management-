@@ -105,16 +105,16 @@ export default function PublicRegisterPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#3D0B12]">
-      {/* Ambient gradient blobs — matches homepage & check-donation */}
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900">
+      {/* Ambient gradient blobs — matches homepage (Red, White & Blue palette) */}
       <div className="pointer-events-none absolute inset-0">
         <div
           className="absolute -top-24 -left-24 h-[420px] w-[420px] rounded-full blur-3xl opacity-70"
-          style={{ background: "radial-gradient(circle at 30% 30%, #FF7A8A, #B91C3C 60%, transparent 75%)" }}
+          style={{ background: "radial-gradient(circle at 30% 30%, #EF4444, #B91C3C 60%, transparent 75%)" }}
         />
         <div
-          className="absolute top-1/4 -right-32 h-[480px] w-[480px] rounded-full blur-3xl opacity-50"
-          style={{ background: "radial-gradient(circle at 60% 40%, #F0576B, #7A1220 65%, transparent 75%)" }}
+          className="absolute top-1/4 -right-32 h-[480px] w-[480px] rounded-full blur-3xl opacity-60"
+          style={{ background: "radial-gradient(circle at 60% 40%, #3B82F6, #1E3A8A 65%, transparent 75%)" }}
         />
       </div>
 

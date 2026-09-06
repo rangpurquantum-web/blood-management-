@@ -1,79 +1,74 @@
-# Document Metadata: Implementation Tasks & Sprint Checklists (tasks.md)
+# Document Metadata: Implementation Checklists (tasks.md)
 
-*   **Purpose:** Provides developers with sequential development checklists broken down by system module and milestone phase.
-*   **Information Contained:** System configuration deliverables, validation schemas, frontend component tasks, and test automation tasks.
-*   **Recommended Headings:** `# Document Metadata`, `# Implementation Sprint Checklists`, `## Phase 1: Environment & Database Foundations`, `## Phase 2: Authentication & RBAC Guard`, `## Phase 3: Shared UI Components (shadcn/ui)`, `## Phase 4: Donor Management Module`, `## Phase 5: Donation History & Eligibility Logs`, `## Phase 6: Blood Request Management`, `## Phase 7: Administrative Tools & Spreadsheet Operations`, `## Phase 8: Testing & Ops Deployment`.
-*   **Dependencies:** [user-story.md](file:///d:/blood%20donetion%20softwere/docs/user-story.md) (breaks stories down into logical developer code tasks).
-
----
-
-# Implementation Sprint Checklists
-
-This checklist tracks development deliverables needed to build the Internal Blood Management System.
+*   **Purpose:** Outlines developer implementation steps, sprint checklists, and validation phases.
+*   **Information Contained:** Database setup checklists, backend integration modules, security checkpoints, and verification instructions.
+*   **Recommended Headings:** `# Document Metadata`, `# Developer Implementation Checklist`, `## Phase 1: Control Database & Security Setup`, `## Phase 2: Dynamic Connection Router & Caching`, `## 3. Phase 3: Super Admin Branch Provisioning Panel`, `## Phase 4: Cross-Branch Permission Grants & UI`, `## Phase 5: Verification & System Audit`.
+*   **Dependencies:** [user-story.md](file:///d:/blood%20donetion%20softwere/docs/user-story.md) (translates user stories into actionable sprint tickets).
 
 ---
 
-## Phase 1: Environment & Database Foundations
-*   [ ] Configure local PostgreSQL instance.
-*   [ ] Initialize Next.js project with App Router, TypeScript, and Tailwind CSS.
-*   [ ] Install Prisma ORM. Define models (`User`, `Donor`, `DonationHistory`, `BloodRequest`, `AuditLog`) in the schema file.
-*   [ ] Run initial migration scripts to create tables and seed admin credentials.
-*   [ ] Create shared cached Prisma client in [lib/db.ts](file:///d:/blood%20donetion%20softwere/lib/db.ts).
+# Developer Implementation Checklist
+
+This checklist tracks developer tasks for implementing the **Multi-Branch Database Architecture (Update 1)**.
 
 ---
 
-## Phase 2: Authentication & RBAC Guard
-*   [ ] Setup Auth.js (NextAuth) credential validation login flows.
-*   [ ] Implement middleware route guards protecting `/donors`, `/requests`, and `/logs`.
-*   [ ] Build user session stores using **Zustand**.
-*   [ ] Verify role verification layers (`Staff` vs. `Admin`) on API Route Handlers.
+## Phase 1: Control Database & Security Setup
+
+Initialize system configurations and secure properties:
+*   [ ] **Create Control DB Schema:** Write `control.schema` in `prisma/` containing `SuperAdmin`, `Branch`, `User`, `PermissionGrant`, and `AuditLogCentral` tables.
+*   [ ] **Generate Types:** Configure schema generator hooks for Control DB Prisma client compilation.
+*   [ ] **Setup Encryption Helper:** Create `lib/crypto.ts` with AES-256-GCM encryption/decryption utilities.
+*   [ ] **Configure Environment Variables:** Add `CONTROL_DATABASE_URL` and `ENCRYPTION_KEY` checks.
+*   [ ] **Write Database Migrations Runner:** Create a script (`npm run db:migrate:all`) that:
+    *   Iterates through all branches in the Control DB.
+    *   Decrypts target connection URLs.
+    *   Runs migrations schema against each reachable instance.
 
 ---
 
-## Phase 3: Shared UI Components (shadcn/ui)
-*   [ ] Initialize **shadcn/ui** CLI configurations.
-*   [ ] Install required shadcn base component UI primitives (Button, Input, Form, Toast, Select, Dialog).
-*   [ ] Configure the global Next.js page layout shell.
-*   [ ] Install and configure **TanStack Query** (React Query) wrapper providers.
+## Phase 2: Dynamic Connection Router & Caching
+
+Implement the routing layer to handle database context switches:
+*   [ ] **Create LRU Client Cache:** Write `lib/tenant-db.ts` to manage active Prisma clients.
+*   [ ] **Define Context Resolver Middleware:**
+    *   Extract active session token cookies.
+    *   Map default `branchId` or override target context ID.
+    *   Verify access permissions against the `PermissionGrant` table.
+*   [ ] **Configure Context Switcher Cookie Handler:** Route dynamic path queries through context selectors.
 
 ---
 
-## Phase 4: Donor Management Module
-*   [ ] Write donor validation schemas using **Zod** (checking unique email, phone formats, age >= 18).
-*   [ ] Build the donor registration form using **React Hook Form** and Zod validation schemas.
-*   [ ] Implement `POST /api/donors` API Route Handlers.
-*   [ ] Build the Donor Directory list using **TanStack Table** with pagination, sorting, and name filtering.
-*   [ ] Develop the Donor Profile detail view displaying histories.
+## Phase 3: Super Admin Branch Provisioning Panel
+
+Develop tools for database provisioning:
+*   [ ] **Build Create Branch Form:**
+    *   Create input form fields in `/dashboard/branches`.
+    *   Configure test connection button hooks.
+*   [ ] **Implement Connection Validator API:**
+    *   Validate PostgreSQL strings.
+    *   Run schema pushes upon successful connections.
+    *   Save branch profile status as `connected` in Control DB.
+*   [ ] **Create Credential Inspection Tool:**
+    *   Build secure credential inspection views with authorization checks.
+    *   Log inspections to the centralized audit trail.
 
 ---
 
-## Phase 5: Donation History & Eligibility Logs
-*   [ ] Build the **Record Donation History** modal form (vitals are out of scope, fields: patient, hospital, date, notes).
-*   [ ] Implement API Route Handler `POST /api/donors/[id]/history` to record histories.
-*   [ ] Write database transaction logic to update the donor's `isEligible` to `false` and calculate the `deferredUntil` date (+56 days).
-*   [ ] Configure TanStack Query invalidation to automatically refresh donor profile details upon successful registry.
+## Phase 4: Cross-Branch Permission Grants & UI
+
+Develop user access controls:
+*   [ ] **Implement Grants Form API:**
+    *   Build CRUD forms to map user permissions to branch profiles.
+*   [ ] **Build Sidebar Branch Switcher:**
+    *   Add conditional dropdown controls for users with active permission grants.
+    *   Hook dropdown selections to trigger query cache invalidations.
 
 ---
 
-## Phase 6: Blood Request Management
-*   [ ] Build the **Create Blood Request** form using React Hook Form and Zod schemas.
-*   [ ] Implement API Route Handler `POST /api/requests` with status set to `'Pending'` by default.
-*   [ ] Create the requests tracking list grid using TanStack Table.
-*   [ ] Add the status update toggle action (Pending ➡️ Fulfilled / Cancelled) with TanStack Query mutations.
+## Phase 5: Verification & System Audit
 
----
-
-## Phase 7: Administrative Tools & Spreadsheet Operations
-*   [ ] Implement spreadsheet parsing utility hooks using **papaparse** (for CSVs) and **xlsx** (for Excel sheets).
-*   [ ] Write validation checkers validating spreadsheet rows against Zod donor schemas.
-*   [ ] Create route handler `POST /api/donors/import` to insert spreadsheet data.
-*   [ ] Implement search query results downloader to export CSV spreadsheets.
-*   [ ] Build the **Activity Audit Log** page grid (TanStack Table, restricted to admins).
-
----
-
-## Phase 8: Testing & Ops Deployment
-*   [ ] Configure **Jest** and **React Testing Library** for component unit checks.
-*   [ ] Write **Playwright** integration scripts testing forms, imports, and request state changes.
-*   [ ] Write a production-ready **Docker** configuration file.
-*   [ ] Set up reverse proxies for target VPS deployment environments.
+Validate security and routing isolation:
+*   [ ] **Run Database Isolation Tests:** Verify connection blocks when resolving unauthorized branch IDs.
+*   [ ] **Run Performance Benchmarks:** Check database query response times.
+*   [ ] **Review Centralized Audit Trail Logs:** Confirm logs match branch creations and credential reveals.

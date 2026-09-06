@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { Role } from "@/generated/branch";
+import { Role } from "@prisma/client";
 import { hasPermission } from "@/lib/permissions";
 import Link from "next/link";
 import {

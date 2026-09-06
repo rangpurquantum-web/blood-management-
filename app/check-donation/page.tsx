@@ -61,17 +61,29 @@ export default function CheckDonationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/20 py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
-      <div className="w-full max-w-md mb-6 text-center space-y-2">
-        <Link href="/" className="inline-flex items-center justify-center text-primary font-bold text-2xl tracking-tight">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900 py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
+      {/* Ambient gradient blobs — matches homepage (Red, White & Blue palette) */}
+      <div className="pointer-events-none absolute inset-0">
+        <div
+          className="absolute -top-24 -left-24 h-[420px] w-[420px] rounded-full blur-3xl opacity-70"
+          style={{ background: "radial-gradient(circle at 30% 30%, #EF4444, #B91C3C 60%, transparent 75%)" }}
+        />
+        <div
+          className="absolute top-1/4 -right-32 h-[480px] w-[480px] rounded-full blur-3xl opacity-60"
+          style={{ background: "radial-gradient(circle at 60% 40%, #3B82F6, #1E3A8A 65%, transparent 75%)" }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md mb-6 text-center space-y-2">
+        <Link href="/" className="inline-flex items-center justify-center text-white font-bold text-2xl tracking-tight">
           <span>Quantum Blood Donor Pool</span>
         </Link>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-300">
           আপনার সর্বশেষ রক্তদানের তারিখ যাচাই করুন
         </p>
       </div>
 
-      <Card className="w-full max-w-md shadow-lg border-muted bg-card">
+      <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white">
         <CardHeader className="border-b pb-4">
           <CardTitle className="text-xl">
             Check Your Last Donation Date
