@@ -24,18 +24,22 @@ enum Role {
 // dbUrlEncrypted holds the AES-256-GCM-encrypted connection string.
 // Donor/Donation data never touches this database.
 
+
 model Branch {
-  id               Int               @id @default(autoincrement())
-  name             String            @unique
-  location         String?
-  dbUrlEncrypted   String            // AES-256-GCM encrypted PostgreSQL URL
-  dbStatus         String            @default("connected") // connected | unreachable | migrating
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  users            User[]
-  permissionGrants PermissionGrant[]
-  auditLogs        AuditLogCentral[]
+  id                Int               @id @default(autoincrement())
+  name              String            @unique
+  slug              String            @unique
+  location          String?
+  databaseUrlSecret String
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  users             User[]
+  permissionGrants  PermissionGrant[]
+  auditLogs         AuditLogCentral[]
 }
+
 
 // ─── User ──────────────────────────────────────────────────────────────────
 
