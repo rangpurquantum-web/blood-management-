@@ -101,25 +101,23 @@ export async function POST(req: NextRequest) {
 
     const data = parsed.data;
     const phoneNumbers = data.phone.map((p) => p.number);
+    const email = data.email?.trim() || "";
 
     // ডুপ্লিকেট ইমেইল/ফোন চেক (এই ব্রাঞ্চের মধ্যে)
+    // ইমেইল ফাঁকা থাকলে ইমেইল দিয়ে চেক করা হবে না
     const existing = await branchDb.donor.findFirst({
       where: {
-        AND: [
-          { isDeleted: false },
-          {
-            OR: [
-              { email: data.email },
-              { phone: { some: { number: { in: phoneNumbers } } } },
-            ],
-          },
+        isDeleted: false,
+        OR: [
+          ...(email ? [{ email }] : []),
+          { phone: { some: { number: { in: phoneNumbers } } } },
         ],
       },
     });
 
     if (existing) {
       const message =
-        existing.email === data.email
+        email && existing.email === email
           ? `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`
           : `এই নম্বর দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`;
       return NextResponse.json(
@@ -153,6 +151,7 @@ export async function POST(req: NextRequest) {
     const donor = await branchDb.donor.create({
       data: {
         ...donorData,
+        email,
         isEligible,
         deferredUntil,
         deferralReason,
