@@ -35,6 +35,7 @@ model Donor {
   phone          DonorPhone[]
   email          String            @unique
   address        String
+  publicToken    String?           @unique
   isEligible     Boolean           @default(true)
   deferralReason String?
   deferredUntil  DateTime?
