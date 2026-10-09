@@ -1,4 +1,5 @@
-import admin from './firebase-admin';
+import { getMessaging } from "firebase-admin/messaging";
+import "./firebase-admin";
 
 interface SendResult {
   successCount: number;
@@ -15,7 +16,9 @@ export async function sendFCMNotification(
   const tokenList = Array.isArray(tokens) ? tokens : [tokens];
 
   if (tokenList.length === 0) {
-    console.warn('sendFCMNotification: no tokens provided, skipping');
+    console.warn(
+      "sendFCMNotification: no tokens provided, skipping"
+    );
     return;
   }
 
@@ -26,16 +29,28 @@ export async function sendFCMNotification(
   };
 
   try {
-    const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`FCM: ${response.successCount} success, ${response.failureCount} failed`);
+    const response =
+      await getMessaging().sendEachForMulticast(message);
+
+    console.log(
+      `FCM: ${response.successCount} success, ${response.failureCount} failed`
+    );
 
     if (response.failureCount > 0) {
       const invalidTokens: string[] = [];
+
       response.responses.forEach((res, idx) => {
         if (!res.success) {
           const token = tokenList[idx];
-            if (token) invalidTokens.push(token);
-          console.error(`FCM error for token ${idx}:`, res.error?.message);
+
+          if (token) {
+            invalidTokens.push(token);
+          }
+
+          console.error(
+            `FCM error for token ${idx}:`,
+            res.error?.message
+          );
         }
       });
 
@@ -46,9 +61,12 @@ export async function sendFCMNotification(
       };
     }
 
-    return { successCount: response.successCount };
+    return {
+      successCount: response.successCount,
+      failureCount: 0,
+    };
   } catch (err) {
-    console.error('FCM send error:', err);
+    console.error("FCM send error:", err);
     throw err;
   }
 }
