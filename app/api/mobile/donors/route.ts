@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getBranchDb } from "@/lib/branch-db";
 import { verifyMobileAuth, requireBranch } from "@/lib/mobile-auth";
@@ -152,6 +153,7 @@ export async function POST(req: NextRequest) {
       data: {
         ...donorData,
         email,
+        publicToken: randomUUID(),
         isEligible,
         deferredUntil,
         deferralReason,
