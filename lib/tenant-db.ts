@@ -1,28 +1,21 @@
+
 /**
  * lib/tenant-db.ts
  *
  * Dynamic Prisma connection registry for the database-per-branch architecture.
  *
- * Usage in a Route Handler:
- *   import { getTenantPrisma } from "@/lib/tenant-db";
+ * Uses the existing Control Database Branch fields:
+ *   - databaseUrlSecret
+ *   - isActive
  *
- *   const branchPrisma = await getTenantPrisma(session.user.branchId);
- *   const donors = await branchPrisma.donor.findMany({ ... });
- *
- * Rules (enforced here, NOT just in the UI):
- *  - A user whose session branchId does not match a real Branch row → 403.
- *  - A user accessing a different branch must have a PermissionGrant row.
- *  - LRU cache is capped at MAX_CLIENTS to stay within free-tier connection limits.
- *  - When an entry is evicted from the LRU it is disconnected cleanly.
+ * Donor data stays in each branch's own database.
  */
 
 import { PrismaClient } from "@/generated/branch";
 import { prisma as controlPrisma } from "@/lib/db";
-import { decryptDatabaseUrl as decrypt } from "@/lib/crypto";
+import { decryptDatabaseUrl } from "@/lib/crypto";
 
-// ─── LRU Cache ────────────────────────────────────────────────────────────────
-// Simple Map-based LRU: evicts the oldest entry when capacity is reached.
-
+// Maximum number of branch database clients kept in memory.
 const MAX_CLIENTS = 20;
 
 class LRUClientCache {
@@ -30,77 +23,82 @@ class LRUClientCache {
 
   get(url: string): PrismaClient | undefined {
     const client = this.cache.get(url);
+
     if (client) {
-      // Refresh position (delete + re-insert = move to end = "most recently used")
+      // Move recently used client to the end of the Map.
       this.cache.delete(url);
       this.cache.set(url, client);
     }
+
     return client;
   }
 
   set(url: string, client: PrismaClient): void {
-    if (this.cache.size >= MAX_CLIENTS) {
-      // Evict oldest (first) entry
+    const existing = this.cache.get(url);
+
+    if (existing) {
+      this.cache.delete(url);
+    }
+
+    while (this.cache.size >= MAX_CLIENTS) {
       const oldestKey = this.cache.keys().next().value;
-      if (oldestKey) {
-        const oldClient = this.cache.get(oldestKey);
-        if (oldClient) {
-          // Disconnect asynchronously — don't block the request
-          oldClient.$disconnect().catch(() => {});
-        }
-        this.cache.delete(oldestKey);
+
+      if (oldestKey === undefined) break;
+
+      const oldClient = this.cache.get(oldestKey);
+      this.cache.delete(oldestKey);
+
+      if (oldClient) {
+        void oldClient.$disconnect().catch(() => {});
       }
     }
-    this.cache.set(url, client);
-  }
 
-  has(url: string): boolean {
-    return this.cache.has(url);
+    this.cache.set(url, client);
   }
 }
 
-// Singleton cache — persists across hot-reloads in development via globalThis
+// Reuse the cache during development hot reloads.
 const globalForTenantDb = globalThis as unknown as {
-  tenantClientCache: LRUClientCache | undefined;
+  tenantClientCache?: LRUClientCache;
 };
 
-const clientCache: LRUClientCache =
+const clientCache =
   globalForTenantDb.tenantClientCache ?? new LRUClientCache();
 
 if (process.env.NODE_ENV !== "production") {
   globalForTenantDb.tenantClientCache = clientCache;
 }
 
-// ─── Access Validator ─────────────────────────────────────────────────────────
-
 /**
- * Checks that a user is authorised to access a given branch.
- * A user is authorised if:
- *   (a) the requested branchId matches their own session branchId, OR
- *   (b) there is a PermissionGrant row for (userId, branchId).
- *
- * Returns the Branch row on success, throws an error on failure.
+ * Find an active branch and verify that the user is allowed to access it.
  */
 async function resolveBranch(userId: number, branchId: number) {
   const branch = await controlPrisma.branch.findUnique({
     where: { id: branchId },
-    select: { id: true, dbUrlEncrypted: true, dbStatus: true, isActive: true },
+    select: {
+      id: true,
+      databaseUrlSecret: true,
+      isActive: true,
+    },
   });
 
   if (!branch || !branch.isActive) {
     throw new Error(`BRANCH_NOT_FOUND:${branchId}`);
   }
 
-  if (branch.dbStatus === "unreachable") {
-    throw new Error(`BRANCH_UNREACHABLE:${branchId}`);
+  if (!branch.databaseUrlSecret) {
+    throw new Error(`BRANCH_DATABASE_NOT_CONFIGURED:${branchId}`);
   }
 
-  // Load the user's own branchId from the Control DB (authoritative source)
+  // The Control Database is the authoritative source for user access.
   const user = await controlPrisma.user.findUnique({
     where: { id: userId },
     select: {
       branchId: true,
-      permissionGrants: { where: { branchId }, select: { id: true } },
+      permissionGrants: {
+        where: { branchId },
+        select: { id: true },
+      },
     },
   });
 
@@ -118,53 +116,75 @@ async function resolveBranch(userId: number, branchId: number) {
   return branch;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 /**
- * Returns a PrismaClient connected to the given branch database.
- *
- * @param userId   — The Control DB User.id from the session (for access check).
- * @param branchId — The branch to connect to.
- * @throws         — If user is not authorised or branch is unreachable.
+ * Return a Prisma client connected to the selected branch database.
  */
 export async function getTenantPrisma(
   userId: number,
   branchId: number,
 ): Promise<PrismaClient> {
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("INVALID_USER_ID");
+  }
+
+  if (!Number.isInteger(branchId) || branchId <= 0) {
+    throw new Error("INVALID_BRANCH_ID");
+  }
+
   const branch = await resolveBranch(userId, branchId);
 
-  // Decrypt the connection URL
-  const dbUrl = decrypt(branch.dbUrlEncrypted);
+  // databaseUrlSecret is already encrypted in the Control Database.
+  const dbUrl = decryptDatabaseUrl(branch.databaseUrlSecret);
 
-  // Return cached client or create a new one
   const cached = clientCache.get(dbUrl);
-  if (cached) return cached;
+
+  if (cached) {
+    return cached;
+  }
 
   const client = new PrismaClient({
-    datasources: { db: { url: dbUrl } },
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    datasources: {
+      db: {
+        url: dbUrl,
+      },
+    },
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["error", "warn"]
+        : ["error"],
   });
 
   clientCache.set(dbUrl, client);
+
   return client;
 }
 
 /**
- * Convenience helper — resolves the tenant Prisma client from a Next.js
- * Auth.js session without requiring callers to unpack user/branchId.
- *
- * @param session — The Auth.js session object (must include user.id & user.branchId).
- * @param overrideBranchId — Optional: switch to a different branch (requires PermissionGrant).
+ * Convenience helper for an Auth.js session.
  */
 export async function getTenantPrismaFromSession(
-  session: { user: { id?: string | null; branchId?: number | null } },
+  session: {
+    user: {
+      id?: string | null;
+      branchId?: number | null;
+    };
+  },
   overrideBranchId?: number,
 ): Promise<PrismaClient> {
-  const userId = session.user?.id ? Number(session.user.id) : null;
-  const branchId = overrideBranchId ?? session.user?.branchId ?? null;
+  const userId = session.user?.id
+    ? Number(session.user.id)
+    : null;
 
-  if (!userId) throw new Error("SESSION_MISSING_USER_ID");
-  if (!branchId) throw new Error("SESSION_MISSING_BRANCH_ID");
+  const branchId =
+    overrideBranchId ?? session.user?.branchId ?? null;
+
+  if (!userId || !Number.isInteger(userId)) {
+    throw new Error("SESSION_MISSING_USER_ID");
+  }
+
+  if (!branchId || !Number.isInteger(branchId)) {
+    throw new Error("SESSION_MISSING_BRANCH_ID");
+  }
 
   return getTenantPrisma(userId, branchId);
 }
