@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+import { NextRequest } from "next/server";
 import { getBranchDb } from "@/lib/branch-db";
 import { centralPrisma } from "@/lib/central-db";
 import { sendFCMNotification } from "@/lib/send-notification";
@@ -38,30 +39,29 @@ export async function POST(req: NextRequest) {
     return apiError("Could not connect to branch database", 503);
   }
 
+  // ইমেইল ঐচ্ছিক — ফাঁকা থাকলে খালি স্ট্রিং, আর ডুপ্লিকেট চেকে ইমেইল ধরা হবে না
+  const email = donorData.email?.trim() || "";
+
   // Uniqueness checks against active donors (isDeleted: false) IN THIS BRANCH
   const phoneNumbers = phoneData.map((p) => p.number);
   const existing = await branchDb.donor.findFirst({
     where: {
-      AND: [
-        { isDeleted: false },
+      isDeleted: false,
+      OR: [
+        ...(email ? [{ email }] : []),
         {
-          OR: [
-            { email: donorData.email },
-            {
-              phone: {
-                some: {
-                  number: { in: phoneNumbers },
-                },
-              },
+          phone: {
+            some: {
+              number: { in: phoneNumbers },
             },
-          ],
+          },
         },
       ],
     },
   });
 
   if (existing) {
-    if (existing.email === donorData.email) {
+    if (email && existing.email === email) {
       return apiError(
         `এই ইমেইল দিয়ে ইতিমধ্যে একজন ডোনার রেজিস্টার্ড আছেন (${existing.fullName})`,
         409,
@@ -109,6 +109,8 @@ export async function POST(req: NextRequest) {
   const donor = await branchDb.donor.create({
     data: {
       ...donorData,
+      email,
+      publicToken: randomUUID(),
       status: "PENDING",
       isEligible,
       deferredUntil,
