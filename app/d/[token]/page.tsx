@@ -1,3 +1,4 @@
+
 import { centralPrisma } from "@/lib/central-db";
 import { getBranchDb } from "@/lib/branch-db";
 import { notFound } from "next/navigation";
@@ -66,41 +67,29 @@ export default async function PublicDonorPage({
     notFound();
   }
 
-  // ─────────────────────────────────────────────
   // DOB
-  // ─────────────────────────────────────────────
-
   let dobText = "Not available";
 
   if (donor.dob) {
     const dob = new Date(donor.dob);
 
     const day = String(dob.getDate()).padStart(2, "0");
-    const month = String(
-      dob.getMonth() + 1
-    ).padStart(2, "0");
+    const month = String(dob.getMonth() + 1).padStart(2, "0");
     const year = dob.getFullYear();
 
     dobText = `${day}/${month}/${year}`;
   }
 
-  // ─────────────────────────────────────────────
   // Last Donation
-  // ─────────────────────────────────────────────
-
   const lastDonation = donor.donations[0] ?? null;
 
   let lastDonationText = "No donation record";
 
   if (lastDonation) {
-    const date = new Date(
-      lastDonation.donationDate
-    );
+    const date = new Date(lastDonation.donationDate);
 
     const day = String(date.getDate()).padStart(2, "0");
-    const month = String(
-      date.getMonth() + 1
-    ).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
 
     lastDonationText = `${day}/${month}/${year}`;
@@ -110,9 +99,7 @@ export default async function PublicDonorPage({
     <main className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="overflow-hidden rounded-2xl border bg-white shadow-xl">
-
           {/* Header */}
-
           <div className="bg-emerald-800 px-6 py-7 text-center text-white">
             <h1 className="text-lg font-bold tracking-wide">
               QUANTUM VOLENTARY
@@ -128,7 +115,6 @@ export default async function PublicDonorPage({
           </div>
 
           {/* Blood Group */}
-
           <div className="flex justify-center pt-7">
             <div className="flex h-36 w-36 items-center justify-center rounded-full border-4 border-red-600 bg-red-50">
               <span className="text-5xl font-black text-red-600">
@@ -138,12 +124,9 @@ export default async function PublicDonorPage({
           </div>
 
           {/* Information */}
-
           <div className="px-6 py-7">
             <div className="space-y-5">
-
               {/* Name */}
-
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Donor Name
@@ -155,7 +138,6 @@ export default async function PublicDonorPage({
               </div>
 
               {/* Blood Group */}
-
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Blood Group
@@ -167,7 +149,6 @@ export default async function PublicDonorPage({
               </div>
 
               {/* DOB */}
-
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Date of Birth
@@ -179,7 +160,6 @@ export default async function PublicDonorPage({
               </div>
 
               {/* Last Donation */}
-
               <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-red-700">
                   Last Donation Date
@@ -189,26 +169,31 @@ export default async function PublicDonorPage({
                   {lastDonationText}
                 </p>
 
-                <DonationEditor
-                  token={donor.publicToken}
-                  currentDate={
-                    lastDonation
-                      ? lastDonation.donationDate.toISOString()
-                      : null
-                  }
-                  isEligible={donor.isEligible}
-                  deferredUntil={
-                    donor.deferredUntil
-                      ? donor.deferredUntil.toISOString()
-                      : null
-                  }
-                />
+                {/* FIX: Render DonationEditor only when token is a string */}
+                {donor.publicToken ? (
+                  <DonationEditor
+                    token={donor.publicToken}
+                    currentDate={
+                      lastDonation
+                        ? lastDonation.donationDate.toISOString()
+                        : null
+                    }
+                    isEligible={donor.isEligible}
+                    deferredUntil={
+                      donor.deferredUntil
+                        ? donor.deferredUntil.toISOString()
+                        : null
+                    }
+                  />
+                ) : (
+                  <p className="mt-4 text-sm text-slate-500">
+                    Donation date editing is unavailable for this donor.
+                  </p>
+                )}
               </div>
-
             </div>
 
             {/* Verification */}
-
             <div className="mt-7 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
               <p className="text-sm font-bold text-emerald-800">
                 VERIFIED DONOR
@@ -222,13 +207,11 @@ export default async function PublicDonorPage({
           </div>
 
           {/* Footer */}
-
           <div className="border-t bg-slate-50 px-6 py-4 text-center">
             <p className="break-all text-xs text-slate-500">
-              Donor ID: {donor.publicToken}
+              Donor ID: {donor.publicToken ?? "Not available"}
             </p>
           </div>
-
         </div>
       </div>
     </main>
