@@ -1,34 +1,33 @@
-
 import { DefaultSession } from "next-auth";
 
-type Role = "SUPER_ADMIN" | "ADMIN" | "VOLUNTEER";
+type Role = "SUPER_ADMIN" | "ADMIN" | "COORDINATOR" | "VOLUNTEER";
 
 declare module "next-auth" {
-  interface Session {
-    user: {
-      role?: Role;
-      permissions?: unknown;
-      branchId?: number | null;
-      branchSlug?: string | null;
-      isSuperAdmin?: boolean;
-    } & DefaultSession["user"];
-  }
+interface Session {
+user: {
+role?: Role;
+permissions?: unknown;
+branchId?: number | null;
+branchSlug?: string | null;
+isSuperAdmin?: boolean;
+} & DefaultSession["user"];
+}
 
-  interface User {
-    role?: Role;
-    permissions?: unknown;
-    branchId?: number | null;
-    branchSlug?: string | null;
-    isSuperAdmin?: boolean;
-  }
+interface User {
+role?: Role;
+permissions?: unknown;
+branchId?: number | null;
+branchSlug?: string | null;
+isSuperAdmin?: boolean;
+}
 }
 
 declare module "next-auth/jwt" {
-  interface JWT {
-    role?: Role;
-    permissions?: unknown;
-    branchId?: number | null;
-    branchSlug?: string | null;
-    isSuperAdmin?: boolean;
-  }
+interface JWT {
+role?: Role;
+permissions?: unknown;
+branchId?: number | null;
+branchSlug?: string | null;
+isSuperAdmin?: boolean;
+}
 }
