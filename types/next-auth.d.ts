@@ -1,3 +1,4 @@
+
 import { DefaultSession } from "next-auth";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "VOLUNTEER";
@@ -8,6 +9,7 @@ declare module "next-auth" {
       role?: Role;
       permissions?: unknown;
       branchId?: number | null;
+      branchSlug?: string | null;
       isSuperAdmin?: boolean;
     } & DefaultSession["user"];
   }
@@ -16,6 +18,7 @@ declare module "next-auth" {
     role?: Role;
     permissions?: unknown;
     branchId?: number | null;
+    branchSlug?: string | null;
     isSuperAdmin?: boolean;
   }
 }
@@ -25,6 +28,7 @@ declare module "next-auth/jwt" {
     role?: Role;
     permissions?: unknown;
     branchId?: number | null;
+    branchSlug?: string | null;
     isSuperAdmin?: boolean;
   }
-}
+}
