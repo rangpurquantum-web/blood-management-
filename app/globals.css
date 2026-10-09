@@ -1,13 +1,12 @@
-@import url('https://fonts.cdnfonts.com/css/siam-rupali');
-@import url('https://cdn.jsdelivr.net/gh/ekushey/fonts@master/siam-rupali/siamrupali.css');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap');
+@import url("https://fonts.cdnfonts.com/css/siam-rupali");
+@import url("https://cdn.jsdelivr.net/gh/ekushey/fonts@master/siam-rupali/siamrupali.css");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
-
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -31,107 +30,271 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
   --color-chart-1: var(--chart-1);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 }
 
-:root {
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
+:root,
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: light;
+
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --card: #ffffff;
+  --card-foreground: #171717;
+
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+
+  --primary: #c8102e;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+
+  --destructive: #c8102e;
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #c8102e;
+
+  --radius: 0.625rem;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #c8102e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #c8102e;
+
+  --chart-1: #c8102e;
+  --chart-2: #666666;
+  --chart-3: #999999;
+  --chart-4: #444444;
+  --chart-5: #dddddd;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
-    font-family: 'Siam Rupali', 'SiamRupali', 'SiamRupaliANSI', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif !important;
+    @apply border-border;
+    font-family:
+      "Siam Rupali",
+      "SiamRupali",
+      "SiamRupaliANSI",
+      "Noto Sans Bengali",
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+
+  html {
+    min-height: 100%;
+    background: #ffffff;
+    color: #171717;
+    color-scheme: light;
+    font-family: var(--font-sans);
   }
 
   body {
-    @apply antialiased bg-background text-foreground;
-    font-family: 'Siam Rupali', 'SiamRupali', 'SiamRupaliANSI', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif !important;
+    min-height: 100vh;
+    margin: 0;
+    background: #ffffff;
+    color: #171717;
+    @apply antialiased;
   }
-  html {
-    @apply font-sans;
+
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    cursor: pointer;
   }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  input,
+  textarea,
+  select {
+    background-color: #ffffff;
+    color: #171717;
+  }
+}
+
+/* =========================================
+   GLOBAL PAGE COLORS
+   ========================================= */
+
+html,
+body {
+  background-color: #ffffff !important;
+  color: #171717;
+}
+
+.bg-background,
+.bg-card,
+.bg-popover {
+  background-color: #ffffff;
+}
+
+.text-foreground,
+.text-card-foreground {
+  color: #171717;
+}
+
+.text-muted-foreground {
+  color: #666666;
+}
+
+/* =========================================
+   REMOVE BLUE FROM NON-BUTTON ELEMENTS
+   Blue remains allowed on buttons and links.
+   ========================================= */
+
+*:not(button):not([role="button"]):not(a)[class*="text-blue-"] {
+  color: inherit;
+}
+
+*:not(button):not([role="button"]):not(a)[class*="border-blue-"] {
+  border-color: #e5e5e5;
+}
+
+*:not(button):not([role="button"]):not(a)[class*="bg-blue-"] {
+  background-color: transparent;
+}
+
+/* Common blue text and icon utilities outside buttons */
+.text-blue-50,
+.text-blue-100,
+.text-blue-200,
+.text-blue-300,
+.text-blue-400,
+.text-blue-500,
+.text-blue-600,
+.text-blue-700,
+.text-blue-800,
+.text-blue-900,
+.text-blue-950 {
+  color: inherit;
+}
+
+/* =========================================
+   BUTTON COLORS
+   ========================================= */
+
+/* Blue buttons: preserve blue background, white text */
+button[class*="bg-blue-"],
+[role="button"][class*="bg-blue-"],
+a[class*="bg-blue-"] {
+  color: #ffffff;
+}
+
+/* Red primary and destructive buttons */
+button.bg-primary,
+button.bg-destructive,
+[role="button"].bg-primary,
+[role="button"].bg-destructive,
+a.bg-primary,
+a.bg-destructive {
+  color: #ffffff;
+}
+
+/* White buttons: black text */
+button.bg-white,
+[role="button"].bg-white,
+a.bg-white,
+button[class*="bg-white"],
+[role="button"][class*="bg-white"],
+a[class*="bg-white"] {
+  background-color: #ffffff;
+  color: #171717;
+  border-color: #e5e5e5;
+}
+
+/* Keep text white inside blue or red buttons */
+button[class*="bg-blue-"] *,
+[role="button"][class*="bg-blue-"] *,
+a[class*="bg-blue-"] *,
+button.bg-primary *,
+button.bg-destructive *,
+[role="button"].bg-primary *,
+[role="button"].bg-destructive *,
+a.bg-primary *,
+a.bg-destructive * {
+  color: #ffffff;
+}
+
+/* Keep text black inside white buttons */
+button.bg-white *,
+[role="button"].bg-white *,
+a.bg-white *,
+button[class*="bg-white"] *,
+[role="button"][class*="bg-white"] *,
+a[class*="bg-white"] * {
+  color: #171717;
+}
+
+/* Standard primary button hover */
+button.bg-primary:hover,
+button.bg-destructive:hover,
+[role="button"].bg-primary:hover,
+[role="button"].bg-destructive:hover {
+  filter: brightness(0.92);
+}
+
+/* White page cards */
+.card,
+[data-slot="card"] {
+  background-color: #ffffff;
+  color: #171717;
+}
+
+/* Form fields */
+input,
+textarea,
+select {
+  background-color: #ffffff;
+  color: #171717;
+  border-color: #d4d4d4;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #737373;
+}
+
+/* Bottom navigation and header: light background */
+nav,
+header {
+  background-color: #ffffff;
+  color: #171717;
+}
+
+/* Red theme icons and highlights are allowed */
+.text-primary,
+.text-destructive {
+  color: #c8102e;
 }
