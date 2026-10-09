@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Droplet,
@@ -7,14 +8,42 @@ import {
   Heart,
 } from "lucide-react";
 import { auth } from "@/auth";
-import { getTenantPrismaFromSession } from "@/lib/tenant-db";
+import { getBranchDb } from "@/lib/branch-db";
+import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 import { DashboardCharts } from "@/features/dashboard/components/dashboard-charts";
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) return <div>Access Denied</div>;
 
-  const branchPrisma = await getTenantPrismaFromSession(session);
+  // SuperAdmin-এর নিজস্ব branch নেই — cookie থেকে বেছে নেওয়া branch ব্যবহার হয়
+  let branchId: number | null = null;
+
+  if (session.user.isSuperAdmin === true) {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value ?? null;
+    const parsed = raw ? Number(raw) : null;
+    branchId = parsed && Number.isInteger(parsed) ? parsed : null;
+  } else {
+    branchId =
+      typeof session.user.branchId === "number" ? session.user.branchId : null;
+  }
+
+  if (!branchId) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+        <p className="text-muted-foreground">
+          No branch selected. Please select a branch to view the dashboard.
+        </p>
+        <Link href="/dashboard/branches" className="text-primary underline">
+          Go to Branches
+        </Link>
+      </div>
+    );
+  }
+
+  const branchPrisma = await getBranchDb(branchId);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -86,6 +115,7 @@ export default async function DashboardPage() {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const bloodTypeData = donorsByBloodType
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((d: any) => ({ name: d.bloodType as string, value: d._count as number }))
     .sort((a, b) => b.value - a.value);
 
