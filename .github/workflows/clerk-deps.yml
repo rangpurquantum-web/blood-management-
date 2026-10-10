@@ -1,0 +1,38 @@
+name: Add Clerk dependency
+
+on:
+  push:
+    branches: [clerk-auth-migration]
+    paths: [".github/workflows/clerk-deps.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  add-clerk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Clerk if missing
+        run: |
+          if grep -q '"@clerk/nextjs"' package.json; then
+            echo "Clerk already in package.json, skipping"
+          else
+            npm install @clerk/nextjs
+          fi
+
+      - name: Verify lockfile with npm ci
+        run: npm ci
+
+      - name: Commit package files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --quiet && echo "No changes" || git commit -m "chore: add @clerk/nextjs and update lockfile"
+          git push
