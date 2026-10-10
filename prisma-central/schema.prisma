@@ -36,6 +36,8 @@ model SuperAdmin {
   email        String    @unique
   passwordHash String
   qrToken      String?   @unique
+  identity     UserIdentity?
+  linkCodes    AccountLinkCode[]
   isActive     Boolean   @default(true)
 
   createdAt    DateTime  @default(now())
@@ -52,6 +54,8 @@ model BranchUser {
   email        String    @unique
   passwordHash String
   qrToken      String?   @unique
+  identity     UserIdentity?
+  linkCodes    AccountLinkCode[]
 
   // ADMIN / COORDINATOR / VOLUNTEER
   role         String    @default("VOLUNTEER")
@@ -97,4 +101,31 @@ model PushSubscription {
 
   @@index([userId])
   @@index([branchId])
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// CLERK IDENTITY MAPPING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model UserIdentity {
+  id           Int         @id @default(autoincrement())
+  clerkUserId  String      @unique
+  userType     String
+  superAdminId Int?        @unique
+  branchUserId Int?        @unique
+  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  branchUser   BranchUser? @relation(fields: [branchUserId], references: [id], onDelete: Cascade)
+  linkedAt     DateTime    @default(now())
+}
+
+model AccountLinkCode {
+  id           Int         @id @default(autoincrement())
+  codeHash     String      @unique
+  userType     String
+  superAdminId Int?
+  branchUserId Int?
+  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  branchUser   BranchUser? @relation(fields: [branchUserId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime    @default(now())
 }
