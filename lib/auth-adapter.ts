@@ -100,3 +100,9 @@ async function resolveSession(): Promise<AppSession | null> {
 
 // Drop-in replacement for NextAuth's auth() in server code.
 export const auth = cache(resolveSession);
+
+// True when someone is signed in with Clerk (even if not linked/active in Qblood).
+export async function hasClerkSession(): Promise<boolean> {
+  const { userId } = await clerkAuth();
+  return Boolean(userId);
+}

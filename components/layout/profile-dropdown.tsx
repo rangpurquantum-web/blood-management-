@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { useClerk } from "@clerk/nextjs";
 import { LogOut, Settings, ChevronDown } from "lucide-react";
 import Link from "next/link";
 
@@ -16,6 +16,7 @@ export function ProfileDropdown({ name, email, role }: ProfileDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { signOut } = useClerk();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -28,7 +29,7 @@ export function ProfileDropdown({ name, email, role }: ProfileDropdownProps) {
   }, []);
 
   const handleSignOut = async () => {
-    await signOut({ redirect: false });
+    await signOut({ redirectUrl: "/login" });
     router.push("/login");
   };
 

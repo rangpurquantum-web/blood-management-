@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { auth } from "@/lib/auth-adapter";
+import { auth, hasClerkSession } from "@/lib/auth-adapter";
 import { centralPrisma } from "@/lib/central-db";
 import { Role } from "@/generated/branch";
 import { Droplet } from "lucide-react";
@@ -16,7 +16,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/login");
+    redirect((await hasClerkSession()) ? "/link-account" : "/login");
   }
 
   const role = session.user.role as Role;
