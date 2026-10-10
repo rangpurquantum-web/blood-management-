@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { centralPrisma } from "@/lib/central-db";
 import { Role } from "@/generated/branch";
 import { Droplet } from "lucide-react";

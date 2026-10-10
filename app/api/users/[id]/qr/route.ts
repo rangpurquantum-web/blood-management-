@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { centralPrisma } from "@/lib/central-db";
 
 async function requireAdmin(userId: number) {

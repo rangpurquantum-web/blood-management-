@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { centralPrisma } from "@/lib/central-db";
 import { disconnectBranchDb } from "@/lib/branch-db";
 

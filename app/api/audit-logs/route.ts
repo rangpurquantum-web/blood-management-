@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { Role } from "@/generated/branch";
 
 import { connectMongo } from "@/lib/mongodb";

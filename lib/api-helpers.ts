@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { prisma } from "@/lib/db";
 import { centralPrisma } from "@/lib/central-db";
 import { Role } from "@/generated/branch";

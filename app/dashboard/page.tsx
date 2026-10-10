@@ -7,7 +7,7 @@ import {
   Heart,
   Cake,
 } from "lucide-react";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { getBranchDb } from "@/lib/branch-db";
 import { centralPrisma } from "@/lib/central-db";
 import { cookies } from "next/headers";

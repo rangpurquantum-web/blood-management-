@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 
 export async function requireBranchUser() {
   const session = await auth();

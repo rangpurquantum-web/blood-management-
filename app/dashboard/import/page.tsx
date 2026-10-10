@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { redirect } from "next/navigation";
 import { Role } from "@/generated/branch";
 import { FileUploader } from "@/features/import-export/components/file-uploader";

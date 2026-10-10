@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { Role } from "@/generated/branch";
 import { DonorReportBuilder } from "@/features/reports/components/donor-report-builder";
 

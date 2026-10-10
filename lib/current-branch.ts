@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { getBranchDb } from "@/lib/branch-db";
 import type { PrismaClient } from "@/generated/branch";
 

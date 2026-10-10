@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { centralPrisma } from "@/lib/central-db";
 import { ACTIVE_BRANCH_COOKIE } from "@/lib/branch-cookie";
 

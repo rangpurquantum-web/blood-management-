@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth-adapter";
 import { Role } from "@/generated/branch";
 import { hasPermission } from "@/lib/permissions";
 import Link from "next/link";
