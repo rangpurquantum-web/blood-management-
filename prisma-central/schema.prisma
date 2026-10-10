@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("CENTRAL_DATABASE_URL")
+  url      = env("CENTRAL1_DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
