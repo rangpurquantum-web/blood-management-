@@ -82,7 +82,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         });
 
-        if (!branchUser) {
+        if (!branchUser || branchUser.isDeleted) {
           return null;
         }
 
@@ -178,7 +178,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         });
 
-        if (!branchUser) {
+        if (!branchUser || branchUser.isDeleted) {
           return null;
         }
 
