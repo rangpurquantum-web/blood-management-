@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAppSession as useSession } from "@/lib/use-app-session";
 import { useDonor, useUpdateDonor } from "@/features/donors/hooks";
 import { format } from "date-fns";
 import { hasPermission } from "@/lib/permissions";

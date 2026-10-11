@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSession } from "next-auth/react";
+import { useAppSession as useSession } from "@/lib/use-app-session";
 
 // Android WebView bridge থেকে FCM token receive করে backend-এ পাঠানো।
 // MainActivity.java window.receiveFcmToken(token) কল করে — এটা app
