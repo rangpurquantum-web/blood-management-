@@ -242,7 +242,7 @@ export function DonationForm({
               Donation Date
             </Label>
 
-            <Controller control={form.control} name="donationDate" render={({ field }) => (<DateInput id="donationDate" value={field.value instanceof Date && !Number.isNaN(field.value.getTime()) ? formatDateForInput(field.value) : ""} onChange={(iso) => { if (!iso) { field.onChange(undefined); return; } const [y, m, d] = iso.split("-").map(Number); field.onChange(new Date(y, m - 1, d)); }} max={todayISO()} />)} />
+            <Controller control={form.control} name="donationDate" render={({ field }) => (<DateInput id="donationDate" value={field.value instanceof Date && !Number.isNaN(field.value.getTime()) ? formatDateForInput(field.value) : ""} onChange={(iso) => { if (!iso) { field.onChange(undefined); return; } const [y, m, d] = iso.split("-").map(Number); field.onChange(new Date(Number(y), Number(m) - 1, Number(d))); }} max={todayISO()} />)} />
 
             {form.formState.errors.donationDate && (
               <span className="text-xs text-destructive">

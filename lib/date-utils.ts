@@ -8,7 +8,7 @@ export function maskDDMMYYYY(input: string): string {
 export function ddmmyyyyToISO(text: string): string | null {
   const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(text);
   if (!m) return null;
-  const day = +m[1], month = +m[2], year = +m[3];
+  const day = Number(m[1]), month = Number(m[2]), year = Number(m[3]);
   if (year < 1900 || month < 1 || month > 12 || day < 1) return null;
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   if (day > daysInMonth) return null;
