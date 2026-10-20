@@ -3,7 +3,7 @@
 import { todayISO } from "@/lib/date-utils";
 import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
