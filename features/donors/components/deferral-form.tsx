@@ -1,7 +1,8 @@
 "use client";
 
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -90,7 +91,7 @@ export function DeferralForm({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="deferredUntil">Deferred Until</Label>
-            <Input id="deferredUntil" type="date" {...form.register("deferredUntil")} />
+            <Controller control={form.control} name="deferredUntil" render={({ field, fieldState }) => (<DateInput id="deferredUntil" value={field.value as unknown as string} onChange={field.onChange} error={fieldState.error?.message} />)} />
             {form.formState.errors.deferredUntil && (
               <span className="text-xs text-destructive">{form.formState.errors.deferredUntil.message}</span>
             )}

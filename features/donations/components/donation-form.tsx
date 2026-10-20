@@ -1,5 +1,7 @@
 "use client";
 
+import { todayISO } from "@/lib/date-utils";
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -240,30 +242,7 @@ export function DonationForm({
               Donation Date
             </Label>
 
-            <Input
-              id="donationDate"
-              type="date"
-              max={formatDateForInput(new Date())}
-              {...form.register("donationDate", {
-                setValueAs: (value) => {
-                  if (!value) {
-                    return new Date();
-                  }
-
-                  // HTML date input returns YYYY-MM-DD.
-                  // Convert it to a local Date to avoid
-                  // timezone-related date shifting.
-                  const [year, month, day] =
-                    value.split("-").map(Number);
-
-                  return new Date(
-                    year,
-                    month - 1,
-                    day,
-                  );
-                },
-              })}
-            />
+            <Controller control={form.control} name="donationDate" render={({ field }) => (<DateInput id="donationDate" value={field.value instanceof Date && !Number.isNaN(field.value.getTime()) ? formatDateForInput(field.value) : ""} onChange={(iso) => { if (!iso) { field.onChange(undefined); return; } const [y, m, d] = iso.split("-").map(Number); field.onChange(new Date(y, m - 1, d)); }} max={todayISO()} />)} />
 
             {form.formState.errors.donationDate && (
               <span className="text-xs text-destructive">

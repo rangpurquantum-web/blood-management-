@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -247,23 +248,11 @@ export function DonorReportBuilder() {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">From</label>
-                        <Input
-                          id="rpt-created-from"
-                          type="date"
-                          className="h-9 text-sm"
-                          value={filters.createdFrom}
-                          onChange={(e) => set("createdFrom")(e.target.value)}
-                        />
+                        <DateInput id="rpt-created-from" value={filters.createdFrom} onChange={set("createdFrom")} />
                       </div>
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">To</label>
-                        <Input
-                          id="rpt-created-to"
-                          type="date"
-                          className="h-9 text-sm"
-                          value={filters.createdTo}
-                          onChange={(e) => set("createdTo")(e.target.value)}
-                        />
+                        <DateInput id="rpt-created-to" value={filters.createdTo} onChange={set("createdTo")} />
                       </div>
                     </div>
                   </div>
@@ -274,23 +263,11 @@ export function DonorReportBuilder() {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">From</label>
-                        <Input
-                          id="rpt-donation-from"
-                          type="date"
-                          className="h-9 text-sm"
-                          value={filters.lastDonationFrom}
-                          onChange={(e) => set("lastDonationFrom")(e.target.value)}
-                        />
+                        <DateInput id="rpt-donation-from" value={filters.lastDonationFrom} onChange={set("lastDonationFrom")} />
                       </div>
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">To</label>
-                        <Input
-                          id="rpt-donation-to"
-                          type="date"
-                          className="h-9 text-sm"
-                          value={filters.lastDonationTo}
-                          onChange={(e) => set("lastDonationTo")(e.target.value)}
-                        />
+                        <DateInput id="rpt-donation-to" value={filters.lastDonationTo} onChange={set("lastDonationTo")} />
                       </div>
                     </div>
                   </div>

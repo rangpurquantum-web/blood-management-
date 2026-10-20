@@ -1,5 +1,7 @@
 "use client";
 
+import { todayISO } from "@/lib/date-utils";
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 
 type DonationEditorProps = {
@@ -119,12 +121,7 @@ export default function DonationEditor({
             Update Last Donation Date
           </p>
 
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200"
-          />
+          <DateInput value={date} onChange={setDate} max={todayISO()} />
 
           <div className="mt-3 flex gap-2">
             <button
