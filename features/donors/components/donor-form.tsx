@@ -1,7 +1,9 @@
 "use client";
 
+import { todayISO } from "@/lib/date-utils";
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { Controller, useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -144,7 +146,7 @@ export function DonorForm({
               <Label htmlFor="dob">
                 Date of Birth <span className="text-muted-foreground text-xs font-normal">(optional)</span>
               </Label>
-              <Input id="dob" type="date" {...form.register("dob")} />
+              <Controller control={form.control} name="dob" render={({ field, fieldState }) => (<DateInput id="dob" value={field.value as unknown as string} onChange={field.onChange} max={todayISO()} error={fieldState.error?.message} />)} />
               {errors.dob && (
                 <span className="text-xs text-destructive">{errors.dob.message}</span>
               )}
@@ -197,7 +199,7 @@ export function DonorForm({
               <Label htmlFor="lastDonationDate">
                 Last Donation Date <span className="text-muted-foreground text-xs font-normal">(optional — if they've donated before)</span>
               </Label>
-              <Input id="lastDonationDate" type="date" {...form.register("lastDonationDate")} />
+              <Controller control={form.control} name="lastDonationDate" render={({ field, fieldState }) => (<DateInput id="lastDonationDate" value={field.value as unknown as string} onChange={field.onChange} max={todayISO()} error={fieldState.error?.message} />)} />
               <p className="text-[11px] text-muted-foreground">
                 If provided, this will be recorded in the donor's donation history and used to calculate their eligibility.
               </p>
