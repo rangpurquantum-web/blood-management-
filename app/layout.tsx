@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -50,46 +51,56 @@ export default function RootLayout({
       <head>
         {/*
           ============================================================
-          BOOT BACKGROUND FIX
+          GLOBAL BACKGROUND FIX
           ============================================================
-          Native splash হাইড হওয়ার পর, Tailwind CSS bundle লোড হওয়ার
-          আগ পর্যন্ত WebView-এর ডিফল্ট সাদা background এক মুহূর্তের
-          জন্য দেখা যায় ("white flash"). এই raw inline <style> ট্যাগটা
-          সবার আগে paint হয় (কোনো external CSS ফাইলের অপেক্ষা ছাড়াই),
-          তাই html/body সবসময় ব্র্যান্ড কালারে থাকে — সাদা flash হয় না।
-
-          ব্র্যান্ড কালার এখানে হোমপেজের background (#3D0B12) এর সাথে
-          মিলিয়ে রাখা হয়েছে। হোমপেজের রঙ বদলালে এখানেও বদলাতে হবে।
-
-          NOTE: body-তে bg-background ক্লাস যোগ করা হয়েছে যাতে CSS
-          লোড হওয়ার পর এই ম্যারুন কালার থিমের সঠিক background দিয়ে
-          ওভাররাইড হয়ে যায় — নাহলে এটা স্থায়ীভাবে থেকে যাচ্ছিল
-          (Chrome-এ scroll/overscroll bounce করলে দেখা যাচ্ছিল)।
+          Keep the document background white while the application
+          CSS loads and during mobile overscroll.
           ============================================================
         */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              html, body {
-                background-color: #3D0B12;
+              html,
+              body {
+                background-color: #FFFFFF;
                 margin: 0;
+              }
+
+              html {
+                color-scheme: light;
               }
             `,
           }}
         />
 
-        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/siam-rupali" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ekushey/fonts@master/siam-rupali/siamrupali.css" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.cdnfonts.com/css/siam-rupali"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/ekushey/fonts@master/siam-rupali/siamrupali.css"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap"
+        />
       </head>
-      <body className="min-h-screen bg-background font-sans" suppressHydrationWarning>
+
+      <body
+        className="min-h-screen bg-background font-sans"
+        suppressHydrationWarning
+      >
         <RegisterServiceWorker />
+
         <AppProviders>
           <ReceiveFcmToken />
           <UpdateChecker />
+
           <AppBootLoader>
             <TooltipProvider>{children}</TooltipProvider>
           </AppBootLoader>
+
           <Toaster position="top-center" richColors />
         </AppProviders>
       </body>
